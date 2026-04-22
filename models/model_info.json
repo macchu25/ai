@@ -1,17 +1,17 @@
 {
-  "version": "v2",
+  "version": "v4",
   "input_size": 99,
   "num_frames": 30,
   "num_classes": 4,
   "hidden_size": 256,
   "num_params": 1223556,
   "val_accuracy": 1.0,
-  "test_accuracy": 0.72,
+  "test_accuracy": 0.85,
   "labels": {
     "0": "normal",
     "1": "fall",
     "2": "unconscious",
     "3": "seizure"
   },
-  "note": "fall/normal: UR Fall real data. unconscious/seizure: synthetic keypoints"
+  "note": "Model: 4 classes (normal/fall/unconscious/seizure). Vector logic added for sitting/sleeping distinction within 'normal'."
 }

@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+// Dành cho việc generate ra mã Go sau này (tùy vào cách tổ chức thư mục của Go project)
+option go_package = "./;falldetection";
+
+package falldetection;
+
+// Định nghĩa khung hình chứa mảng 99 số thực
+message Frame {
+    repeated float keypoints = 1;
+}
+
+// Request chứa chuỗi 30 khung hình
+message FrameRequest {
+    repeated Frame frames = 1;
+}
+
+// Kết quả trả về sau khi phân tích
+message AnalysisResult {
+    string label = 1;
+    float confidence = 2;
+    map<string, float> probabilities = 3;
+}
+
+// Định nghĩa Service cho gRPC
+service FallDetector {
+    rpc Analyze (FrameRequest) returns (AnalysisResult);
+}
