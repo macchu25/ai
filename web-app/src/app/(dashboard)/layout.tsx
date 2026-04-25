@@ -1,13 +1,75 @@
+"use client"
+
 import Link from 'next/link';
-import { Camera, Activity, HeartPulse, Settings, UserCircle, ShieldCheck, LogIn } from 'lucide-react';
+import { signOut, useSession } from 'next-auth/react';
+import { Camera, Activity, HeartPulse, Settings, UserCircle, ShieldCheck, LogIn, Monitor, LayoutGrid } from 'lucide-react';
+import { useEffect } from 'react';
+import ScrollToTop from '@/components/ScrollToTop';
+import { NotificationProvider } from '@/app/context/NotificationContext';
+import { usePathname } from 'next/navigation';
 
 export default function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const { status } = useSession();
+
+  useEffect(() => {
+    const smoothScroll = (targetTop: number, container: HTMLElement) => {
+      const start = container.scrollTop;
+      const change = targetTop - start;
+      const duration = 800; // ms
+      let startTime = 0;
+
+      const easeInOutQuad = (t: number, b: number, c: number, d: number) => {
+        t /= d/2;
+        if (t < 1) return c/2*t*t + b;
+        t--;
+        return -c/2 * (t*(t-2) - 1) + b;
+      };
+
+      const animate = (currentTime: number) => {
+        if (!startTime) startTime = currentTime;
+        const progress = currentTime - startTime;
+        const val = easeInOutQuad(progress, start, change, duration);
+        container.scrollTop = val;
+        if (progress < duration) requestAnimationFrame(animate);
+      };
+
+      requestAnimationFrame(animate);
+    };
+
+    const handleLinkClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest('a');
+      const href = anchor?.getAttribute('href');
+      
+      if (anchor && href && href.includes('#')) {
+        const targetId = href.split('#')[1];
+        const targetElement = document.getElementById(targetId || '');
+        const scrollContainer = document.querySelector('.workspace-area') as HTMLElement;
+        
+        if (targetElement && scrollContainer) {
+          e.preventDefault();
+          const containerTop = scrollContainer.getBoundingClientRect().top;
+          const elementTop = targetElement.getBoundingClientRect().top;
+          const targetPos = elementTop - containerTop + scrollContainer.scrollTop;
+          smoothScroll(targetPos, scrollContainer);
+          
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          anchor.classList.add('active');
+        }
+      }
+    };
+
+    window.addEventListener('click', handleLinkClick, { capture: true });
+    return () => window.removeEventListener('click', handleLinkClick, { capture: true });
+  }, []);
+
   return (
-    <div className="dashboard-layout">
+    <NotificationProvider>
+      <div className="dashboard-layout">
             <aside className="sidebar-slim">
               <div className="logo-icon">
                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, white, #e2e8f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
@@ -16,33 +78,42 @@ export default function DashboardLayout({
               </div>
               
               <nav className="nav-menu">
-                <Link href="/" className="nav-link" title="Giám Sát Live">
-                  <Camera size={22} />
+                <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`} title="Tổng Quan Dashboard">
+                  <Monitor size={22} />
+                </Link>
+
+                <Link href="/cameras" className={`nav-link ${pathname === '/cameras' ? 'active' : ''}`} title="Phòng Camera Live">
+                  <LayoutGrid size={22} />
                 </Link>
                 
-                <Link href="/incidents" className="nav-link" title="Nhật Ký Sự Cố">
+                <Link href="/incidents" className={`nav-link ${pathname === '/incidents' ? 'active' : ''}`} title="Nhật Ký Sự Cố">
                   <Activity size={22} />
                 </Link>
                 
-                <Link href="/profile" className="nav-link" title="Hồ Sơ Y Tế">
+                <Link href="/profile" className={`nav-link ${pathname === '/profile' ? 'active' : ''}`} title="Hồ Sơ Y Tế">
                   <UserCircle size={22} />
                 </Link>
 
                 <div className="nav-divider"></div>
 
-                <Link href="/cpr" className="nav-link" title="Sơ Cứu Khẩn Cấp">
+                <Link href="/cpr" className={`nav-link ${pathname === '/cpr' ? 'active' : ''}`} title="Sơ Cứu Khẩn Cấp">
                   <HeartPulse size={22} />
                 </Link>
 
-                <Link href="/settings" className="nav-link" title="Cấu Hình AI">
+                <Link href="/settings" className={`nav-link ${pathname === '/settings' ? 'active' : ''}`} title="Cấu Hình AI">
                   <Settings size={22} />
                 </Link>
               </nav>
 
               <div className="sidebar-footer">
-                <Link href="/login" className="nav-link logout-btn" title="Đăng nhập">
+                <button 
+                  onClick={() => signOut()}
+                  className="nav-link logout-btn" 
+                  title="Đăng xuất"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', display: 'flex', justifyContent: 'center' }}
+                >
                   <LogIn size={22} color="var(--danger)" />
-                </Link>
+                </button>
               </div>
             </aside>
             
@@ -55,16 +126,17 @@ export default function DashboardLayout({
                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>14 Thg 10, 10:54 AM</div>
                 </div>
 
-                <div className="header-center">
-                   <div className="search-pill">
-                     <Settings size={18} color="var(--text-muted)" />
-                   </div>
-                   <nav className="header-tabs">
-                     <span className="tab active">Tổng Quan</span>
-                     <span className="tab">Mục Y Tế</span>
-                     <span className="tab">Báo Cáo</span>
-                   </nav>
-                </div>
+                 <div className="header-center">
+                    <div className="search-pill">
+                      <Settings size={18} color="var(--text-muted)" />
+                    </div>
+                    <nav className="header-tabs">
+                      <a href="/#tong-quan" className={`tab ${pathname === '/' ? 'active' : ''}`} style={{ textDecoration: 'none' }}>Tổng Quan</a>
+                      <a href="/#muc-y-te" className="tab" style={{ textDecoration: 'none' }}>Mục Y Tế</a>
+                      <a href="/#bao-cao" className="tab" style={{ textDecoration: 'none' }}>Báo Cáo</a>
+                      <a href="/#feedback-section" className="tab" style={{ textDecoration: 'none' }}>Góp Ý</a>
+                    </nav>
+                 </div>
 
                 <div className="header-right">
                    <div className="notification-bell">
@@ -77,10 +149,12 @@ export default function DashboardLayout({
                 </div>
               </header>
 
-              <div className="workspace-area">
+              <div className="workspace-area" style={{ scrollBehavior: 'smooth' }}>
                  {children}
               </div>
             </main>
-    </div>
+        <ScrollToTop />
+      </div>
+    </NotificationProvider>
   );
 }

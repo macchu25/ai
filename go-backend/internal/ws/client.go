@@ -94,11 +94,13 @@ func (c *Client) writePump() {
 
 // Giúp nâng cấp Endpoint HTTP /ws thành kết nối hai chiều
 func ServeWs(hub *Hub, c *gin.Context) {
+	log.Printf("[WebSocket] Yêu cầu kết nối mới từ: %s\n", c.Request.RemoteAddr)
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("[WebSocket] Lỗi Upgrade:", err)
 		return
 	}
+	log.Printf("[WebSocket] Kết nối thành công cho: %s\n", c.Request.RemoteAddr)
 	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
 	
 	// Register client vào Hub

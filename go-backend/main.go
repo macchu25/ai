@@ -94,40 +94,11 @@ func main() {
 	// Route public không cần JWT
 	// (Vd: có thể thêm route login trả token)
 
-	// Group route API version 1 có bọc JWT Auth
-	v1 := r.Group("/api/v1")
-	v1.Use(auth.JWTMiddleware())
+	// Group public không bọc JWT Auth
+	publicV1 := r.Group("/api/v1")
 	{
-		camAPI.RegisterRoutes(v1)
-
-		// API lấy danh sách sự cố thực tế từ MongoDB (Đã phân quyền)
-		v1.GET("/incidents", func(c *gin.Context) {
-			collection := db.Collection("events")
-			
-			// Lấy userID từ Token
-			userID, exists := c.Get("userID")
-			if !exists {
-				c.JSON(401, gin.H{"error": "Không tìm thấy thông tin người dùng"})
-				return
-			}
-			
-			filter := bson.M{"user_id": userID}
-
-			cursor, err := collection.Find(context.Background(), filter)
-			if err != nil {
-				c.JSON(500, gin.H{"error": "Không thể lấy dữ liệu sự cố"})
-				return
-			}
-			var events []interface{}
-			if err = cursor.All(context.Background(), &events); err != nil {
-				c.JSON(500, gin.H{"error": "Lỗi parse dữ liệu"})
-				return
-			}
-			c.JSON(200, events)
-		})
-
-		// API Social Login - Trả về JWT Token chính thức của hệ thống
-		v1.POST("/auth/social-login", func(c *gin.Context) {
+		// API Social Login - Trả về JWT Token chính thức của hệ thống (Public)
+		publicV1.POST("/auth/social-login", func(c *gin.Context) {
 			var body struct {
 				Email      string `json:"email"`
 				Name       string `json:"name"`
@@ -172,6 +143,40 @@ func main() {
 				"user_id": finalID.Hex(),
 				"name":    body.Name,
 			})
+		})
+	}
+
+	// Group route API version 1 có bọc JWT Auth
+	v1 := r.Group("/api/v1")
+	v1.Use(auth.JWTMiddleware())
+	{
+		camAPI.RegisterRoutes(v1)
+
+		// API lấy danh sách sự cố thực tế từ MongoDB (Đã phân quyền)
+		v1.GET("/incidents", func(c *gin.Context) {
+			collection := db.Collection("events")
+			
+			// Lấy userID từ Token
+			userID, exists := c.Get("userID")
+			if !exists {
+				c.JSON(401, gin.H{"error": "Không tìm thấy thông tin người dùng"})
+				return
+			}
+			
+			objID, _ := primitive.ObjectIDFromHex(userID.(string))
+			filter := bson.M{"user_id": objID}
+
+			cursor, err := collection.Find(context.Background(), filter)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "Không thể lấy dữ liệu sự cố"})
+				return
+			}
+			var events []interface{}
+			if err = cursor.All(context.Background(), &events); err != nil {
+				c.JSON(500, gin.H{"error": "Lỗi parse dữ liệu"})
+				return
+			}
+			c.JSON(200, events)
 		})
 
 		v1.GET("/users", func(c *gin.Context) {

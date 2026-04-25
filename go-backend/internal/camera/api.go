@@ -34,8 +34,14 @@ func (a *API) GetCameras(c *gin.Context) {
 		return
 	}
 
+	objID, err := primitive.ObjectIDFromHex(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID người dùng không hợp lệ"})
+		return
+	}
+
 	var cams []model.Camera = []model.Camera{}
-	cursor, err := a.db.Collection("cameras").Find(context.Background(), bson.M{"user_id": userID})
+	cursor, err := a.db.Collection("cameras").Find(context.Background(), bson.M{"user_id": objID})
 	if err == nil {
 		cursor.All(context.Background(), &cams)
 	}
@@ -83,22 +89,57 @@ func (a *API) DeleteCamera(c *gin.Context) {
 		return
 	}
 
+	// 1. Chuyển đổi ID Camera
 	idStr := c.Param("id")
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID không hợp lệ"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID Camera không hợp lệ"})
 		return
 	}
 	
-	// Xác minh quyền sở hữu trước khi xóa
-	res := a.db.Collection("cameras").FindOne(context.Background(), bson.M{"_id": id, "user_id": userID})
-	if res.Err() != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Bạn không có quyền xóa camera này"})
+	// 2. Chuyển đổi ID Người dùng từ Token
+	userIDStr, _ := userID.(string)
+	userObjID, err := primitive.ObjectIDFromHex(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "ID Người dùng không hợp lệ"})
 		return
 	}
 
-	a.manager.StopStream(id)
+	// 3. Xác minh quyền sở hữu: Thử cả 2 kiểu dữ liệu (ObjectID và String) để tương thích dữ liệu cũ/mới
+	filter := bson.M{
+		"_id": id,
+		"$or": []bson.M{
+			{"user_id": userObjID},
+			{"user_id": userIDStr},
+		},
+	}
+
+	var cam model.Camera
+	err = a.db.Collection("cameras").FindOne(context.Background(), filter).Decode(&cam)
 	
-	a.db.Collection("cameras").DeleteOne(context.Background(), bson.M{"_id": id})
-	c.JSON(http.StatusOK, gin.H{"message": "Đã chặn stream và xóa camera"})
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			// Thử tìm camera mà không lọc theo user_id để biết lỗi chính xác
+			var existCheck bson.M
+			errEx := a.db.Collection("cameras").FindOne(context.Background(), bson.M{"_id": id}).Decode(&existCheck)
+			if errEx == mongo.ErrNoDocuments {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Không tìm thấy camera này trong hệ thống"})
+			} else {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Bạn không có quyền sở hữu camera này (Quyền bị từ chối)"})
+			}
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi truy vấn database: " + err.Error()})
+		}
+		return
+	}
+
+	// 4. Dừng stream và xóa
+	a.manager.StopStream(id)
+	_, err = a.db.Collection("cameras").DeleteOne(context.Background(), bson.M{"_id": id})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể xóa camera khỏi database"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Đã chặn stream và xóa camera thành công"})
 }
