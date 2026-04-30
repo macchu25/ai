@@ -1,89 +1,127 @@
-# 🏃‍♂️ AI Fall Detection System
+# 🏃‍♂️ Cardiac Alert System (CAS)
 
-Dự án Hệ thống Nhận diện Ngã (Fall Detection) dựa trên AI (CNN + LSTM). Dự án phân chia thành 2 môi trường hoạt động nhằm phục vụ cho cả việc thử nghiệm và tích hợp thực tế.
-
----
-
-## 🚀 Cách 1: Chạy mô phỏng trực tiếp (Webcam)
-
-Sử dụng trực tiếp Webcam của máy tính để nhận diện chuyển động thực tế. Màn hình sẽ bật lên một giao diện Video, tự động vẽ khung xương (Pose Landmarks) và hiện Tracking trạng thái ngay trên khung hình.
-
-- **Chức năng chính**: Thử nghiệm thuật toán nhanh chóng, điều chỉnh thông số trực tiếp bằng mắt nhìn.
-- **Cách chạy**:
-  > Mở Terminal (Powershell) tại thư mục gốc và chạy:
-  > ```powershell`
-  > python inference.py
-  > ```
-  > *(Nhấn phím `q` trên cửa sổ video để tắt)*
+Hệ thống giám sát và nhận diện té ngã thông minh sử dụng trí tuệ nhân tạo (AI), hỗ trợ đa nền tảng (Web, Mobile) và cảnh báo thời gian thực qua cuộc gọi tự động.
 
 ---
 
-## 🌐 Cách 2: Chạy dưới dạng Server (API Backend)
+## 🛠️ Công nghệ sử dụng (Technology Stack)
 
-Chức năng này biến hệ thống AI của bạn thành một "bộ não" chạy ngầm. Cơ chế như sau:
-1. Thiết bị người dùng (Mobile App / IoT Camera) sẽ tự bật Camera, gom các điểm ảnh khung xương và nén thành một mảng số.
-2. Ứng dụng người dùng đẩy cục số này qua mạng Wifi/Internet về cho máy chủ.
-3. API Server chạy qua AI Model và trả về kết quả `fall / normal / seizure` mà **không hề mở giao diện Camera nào**.
+### 🔹 Backend & Core
+- **Golang (Gin Gonic)**: Framework chính cho máy chủ API, xử lý hiệu năng cao và concurrency thông qua Goroutines.
+- **MongoDB**: Cơ sở dữ liệu NoSQL dùng để lưu trữ thông tin người dùng, cấu hình camera và nhật ký sự cố.
+- **WebSocket (Gorilla)**: Giao tiếp thời gian thực để đẩy thông báo từ AI Hub tới các Dashboard ngay lập tức.
+- **FFmpeg**: Công cụ nòng cốt để transcode luồng RTSP từ Camera thành HLS Stream cho trình duyệt và thiết bị di động.
+- **ADB (Android Debug Bridge)**: Gateway điều khiển điện thoại Android thực hiện cuộc gọi khẩn cấp qua SIM vật lý.
 
-- **Chức năng chính**: Là kiến trúc chuẩn để ghép nối hệ thống AI này với App trên điện thoại hoặc Website.
-- **Cách khởi động Server**:
-  > ```powershell
-  > uvicorn ai-service.main:app --reload
-  > ```
-  > Server sẽ online tại cổng `http://127.0.0.1:8000`. Bạn có thể vào `/docs` để kiểm tra tài liệu Swagger UI.
-- **Cách Test thử API**:
-  > Mở một Terminal khác và chạy kịch bản thử nghiệm tải trọng (gửi tự động một request lên):
-  > ```powershell
-  > python tests/test_api.py
-  > ```
+### 🔹 Frontend & Mobile
+- **Next.js 14 (TypeScript)**: Dashboard quản trị với Server-side Rendering và kiến trúc App Router hiện đại.
+- **React Native (Expo)**: Ứng dụng di động dành cho người thân, tích hợp Notification và quản lý hồ sơ y tế.
+- **Tailwind CSS & Vanilla CSS**: Thiết kế giao diện cao cấp, Responsive và tối ưu trải nghiệm người dùng (UX).
+
+### 🔹 AI Hub
+- **Python (PyTorch)**: Framework huấn luyện và chạy mô hình học sâu (Deep Learning).
+- **MediaPipe**: Thư viện Google giúp trích xuất khung xương (Pose Landmarks) từ Video với tốc độ cao.
+- **CNN + LSTM**: Kiến trúc mô hình kết hợp nhận diện không gian và thời gian để phân biệt "ngã" với "ngồi xuống" hoặc "nằm xuống".
 
 ---
 
-## 📂 Cấu trúc dự án chuẩn (Clean Code)
-```text
-C:\Users\dayla\ai\
-├── models/             # Root của AI: Chứa weights (best_model.pth), model config và Label definitions.
-├── ai-service/         # Root của API: Chứa mã nguồn Fast API Server dùng để giao tiếp mạng.
-├── tests/              # Chứa các unit tests & scripts dùng để thử nghiệm hệ thống.
-└── inference.py        # Ứng dụng chạy độc lập tích hợp AI với OpenCV cho Cách 1.
+## 🛡️ Kiến trúc Bảo mật (Security Architecture)
+
+Hệ thống được thiết kế với nhiều lớp bảo mật để bảo vệ dữ liệu y tế nhạy cảm và ngăn chặn báo động giả:
+
+### 1. Xác thực & Phân quyền (Auth & RBAC)
+- **JWT (JSON Web Tokens)**: Mọi yêu cầu từ Web và Mobile đều phải có Token hợp lệ. Chìa khóa ký (`JWT_SECRET`) được lưu trữ an toàn trong biến môi trường, không nằm trong mã nguồn.
+- **Middleware Protection**: Các route nhạy cảm (Xóa camera, Sửa hồ sơ) đều được bảo vệ bởi lớp Middleware kiểm tra Token.
+
+### 2. Chống chiếm quyền điều khiển (Resource Ownership)
+- **Ownership Verification**: Hệ thống kiểm tra quyền sở hữu đối với từng ID Camera. Người dùng không thể xem, sửa hoặc xóa camera của người khác ngay cả khi biết ID của họ (Chống Horizontal Privilege Escalation).
+
+### 3. Bảo mật luồng AI & Video (Video Privacy)
+- **Secure HLS Streaming**: Mọi luồng video (`.m3u8`, `.ts`) từ Go Backend đều được bảo vệ bằng JWT. Hệ thống hỗ trợ xác thực qua Header hoặc Query Parameter (`?token=`), đảm bảo chỉ người sở hữu camera mới có thể xem luồng trực tiếp.
+- **X-API-Key**: Mọi dữ liệu đẩy từ script AI về Server đều phải đính kèm một `INTERNAL_API_KEY` bí mật. Điều này ngăn chặn việc kẻ xấu giả mạo sự cố để kích hoạt hệ thống báo động.
+- **WebSocket Privacy**: Kênh thông báo thời gian thực (`/ws`) được bảo vệ bằng JWT. Hệ thống chỉ đẩy thông báo (Alert) tới các Client có cùng UserID với chủ sở hữu Camera, đảm bảo người dùng khác không thể nghe lén sự cố của bạn.
+- **Redis State Storage**: Trạng thái của từng Camera (đang theo dõi, đã phát cảnh báo chưa, thời gian bắt đầu sự cố) được lưu trữ vào Redis thay vì bộ nhớ RAM. Điều này đảm bảo khi Server khởi động lại, quá trình đếm ngược và xử lý sự cố không bị gián đoạn.
+- **Structured Logging (Zap)**: Hệ thống sử dụng Zap Logger để ghi lại mọi sự kiện theo định dạng cấu trúc, giúp việc truy vết sự cố y tế trở nên chính xác và nhanh chóng.
+- **Prometheus Metrics**: Cung cấp endpoint `/metrics` để theo dõi sức khỏe hệ thống (số vụ ngã, số cuộc gọi thành công, FPS trung bình) thời gian thực.
+- **Evidence Archiving**: Khi có sự cố té ngã, hệ thống tự động trích xuất 2 phút video liên quan (trước và sau sự cố) vào kho lưu trữ vĩnh viễn (`storage/archives/`), đảm bảo bằng chứng không bị mất.
+- **Auto-Cleanup Worker**: Robot chạy ngầm tự động dọn dẹp các file video Live cũ sau 1 giờ để bảo vệ ổ cứng, nhưng tuyệt đối không chạm vào kho bằng chứng sự cố.
+- **Telegram Bot Integration**: Hệ thống gửi tin nhắn báo động tức thời tới nhóm Telegram gia đình ngay khi phát hiện nghi vấn hoặc sự cố khẩn cấp.
+
+### 4. Quản lý cấu hình (Configuration Security)
+- **Environment Variables (.env)**: Toàn bộ thông tin nhạy cảm như MONGODB_URI, API Keys (ElevenLabs, Stringee), và đường dẫn ADB được tách biệt hoàn toàn khỏi mã nguồn.
+
+---
+
+## 🚀 Hướng dẫn khởi động (6 Bước)
+
+### 1. Chuẩn bị Cơ sở dữ liệu
+- **MongoDB**: Khởi động MongoDB (Local hoặc Atlas).
+- **Redis**: Khởi động Redis Server (`localhost:6379`).
+
+### 1.5. Cách nhanh nhất: Sử dụng Docker (Khuyên dùng)
+Nếu bạn đã cài Docker, bạn có thể khởi động toàn bộ hạ tầng (MongoDB, Redis, Backend, Web App) chỉ bằng một câu lệnh duy nhất:
+```powershell
+docker-compose up --build
+```
+*Lưu ý: Bạn vẫn cần chạy script `inference.py` (AI Hub) thủ công ở máy ngoài để có thể truy cập Webcam/GPU.*
+
+### 2. Cấu hình Biến môi trường
+Tạo/Cập nhật file `.env` tại thư mục `go-backend/`:
+```env
+MONGODB_URI=mongodb+srv://...
+JWT_SECRET=your_jwt_secret
+INTERNAL_API_KEY=ai_secret_key_12345
+REDIS_URL=localhost:6379
+ADB_PATH=C:\path\to\adb.exe
+# Ngưỡng thời gian báo động
+LOCAL_WARNING_SECONDS=7
+EMERGENCY_ALERT_MINUTES=8
+```
+
+### 3. Chạy Backend (Go)
+```powershell
+cd go-backend
+go run main.go
+```
+
+### 4. Chạy AI Hub (Python)
+```powershell
+# Webcam
+python inference.py --source 0
+# Hoặc RTSP
+python inference.py --source "rtsp://..."
+```
+
+### 5. Chạy Dashboard (Web)
+```powershell
+cd web-app
+npm run dev
+```
+Truy cập: `http://localhost:3000`
+
+### 6. Chạy Mobile App (Expo)
+```powershell
+cd mobile-app
+npx expo start
 ```
 
 ---
 
-## 📝 Nhật ký Phát triển & Thử nghiệm (Log)
+**📊 Giám sát hệ thống:**
+- **Logs**: Xem tại console của Go Backend (Zap Structured Logs).
+- **Metrics**: Truy cập `http://localhost:8080/metrics` để xem thông số Prometheus.
+- **API Docs**: Truy cập `http://localhost:8080/swagger/index.html`.
 
-Dưới đây là các bước đã thực hiện để tối ưu hóa hệ thống từ phiên bản gốc:
+---
 
-### 1. Nâng cấp Model & Phân loại tư thế
-- **Thực hiện**: Tích hợp Model 4 lớp nhãn (`0: normal`, `1: fall`, `2: unconscious`, `3: seizure`).
-- **Nâng cấp**: Sử dụng Vector hình học (góc thân mình và đùi) để phân biệt chi tiết trạng thái **Ngồi (ngoi)** và **Đi ngủ (di ngu)** khi AI báo kết quả "Normal".
-- **Kết quả**: Hệ thống nhận diện chính xác tư thế nằm nghỉ và ngồi, không còn bị nhầm lẫn là "Normal" chung chung.
-
-### 2. Thuật toán "Instant Fall" (Ngã đột ngột)
-- **Thực hiện**: Theo dõi vận tốc góc của thân mình trong vòng 1 giây qua `angle_history`.
-- **Kết quả**: Nếu góc lưng thay đổi cực nhanh từ Đứng (< 25 độ) sang Nằm (> 60 độ), hệ thống sẽ kích hoạt báo động ngay lập tức (chỉ sau 3 khung hình) mà không cần đợi xác nhận lâu theo cách cũ.
-
-### 3. Lọc nhiễu & Chống báo giả (Alert Filtering)
-- **Thực hiện**: Cấu hình để hệ thống **chỉ gửi cảnh báo về Dashboard** đối với các nhãn nguy hiểm thực sự (`fall`, `unconscious`, `seizure`). Các trạng thái sinh hoạt (`ngoi`, `di ngu`) chỉ hiển thị trên màn hình camera mà không gây báo động giả.
-- **Thử nghiệm**: Khi người dùng ngồi xuống từ từ, hệ thống nhận diện đúng là `di ngu (tu tu)` và không nổ chuông báo động.
-
-### 4. Hồi phục bền vững (Persistent Recovery)
-- **Vấn đề**: Khi người ngã cựa quậy vì đau, bộ đếm giây hay bị reset về 0 khiến cảnh báo không ổn định.
-- **Giải pháp**: Áp dụng cơ chế xác nhận hồi phục **6 giây** (`RECOVERY_THRESHOLD = 180`).
-- **Kết quả**: Hệ thống chỉ reset cảnh báo khi người dùng thực sự đứng hoặc ngồi dậy và **duy trì** tư thế đó liên tục trong hơn 6 giây. Nếu chỉ lăn lộn trên sàn, nhãn té ngã vẫn giữ nguyên và bộ đếm vẫn tiếp tục chạy.
-
-### 5. Các lỗi kỹ thuật đã xử lý
-- **Lỗi Shape Mismatch**: Sửa lỗi kích thước layer cuối (fc.3) của model khi nạp trọng số 4 nhãn vào code cũ mang cấu trúc 2 nhãn.
-- **Lỗi Unicode**: Chuyển đổi các thông báo Console sang tiếng Việt không dấu để tránh lỗi crash chương trình trên máy Windows.
-- **Lỗi Syntax**: Sửa lỗi định nghĩa hàm trong class `FallDetector` bị sai thụt lề trong quá trình cập nhật.
-https://xxxx.ngrok-free.app/webhook/be736ba9-f7f4-4f77-98b3-c3766b2df78a
-
-"C:\Users\NHU HUU\ngrok\ngrok.exe" http 5678
-
-set WEBHOOK_URL=https://9ce6-115-76-55-57.ngrok-free.app 
-npx n8n
-.\server.exe
-go run main.go
-
-rm server.exe
-go build -o server.exe .; .\server.exe
+## 📂 Cấu trúc thư mục (Refactored)
+```text
+c:\cardiac-alert\
+├── go-backend/         # Máy chủ Go (Gin Gonic, MongoDB)
+│   ├── internal/       # Business Logic (Module: alert, auth, camera, user)
+│   └── main.go         # Entry point (Modularized)
+├── web-app/            # Next.js 14 Dashboard
+├── mobile-app/         # Expo React Native App
+├── inference.py        # AI Prediction Script (Secured)
+└── models/             # AI Model weights & Definition
+```

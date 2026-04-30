@@ -24,7 +24,8 @@ export default function CamerasGridPage() {
       
       const fetchCams = async () => {
         try {
-          const res = await fetch('http://localhost:8080/api/v1/cameras', {
+          const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+          const res = await fetch(`${apiBase}/cameras`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const data = await res.json();
@@ -83,7 +84,7 @@ export default function CamerasGridPage() {
             cameras.map((cam: any) => (
               <VideoPlayer 
                 key={cam.id} 
-                url={`http://localhost:8080/streams/${cam.id}/stream.m3u8`} 
+                url={`${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8`} 
                 name={cam.name} 
               />
             ))

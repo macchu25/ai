@@ -19,7 +19,8 @@ export default function ProfilePage() {
 
   const fetchData = async () => {
     const token = (session?.user as any)?.accessToken;
-    const res = await fetch('http://localhost:8080/api/v1/health-profiles', {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+    const res = await fetch(`${apiBase}/health-profiles`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) setPatient(await res.json());
@@ -41,7 +42,8 @@ export default function ProfilePage() {
       newContacts.push({ ...formData, id: Date.now().toString() });
     }
 
-    const res = await fetch('http://localhost:8080/api/v1/health-profiles/contacts', {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+    const res = await fetch(`${apiBase}/health-profiles/contacts`, {
       method: 'PUT',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(newContacts)
@@ -62,7 +64,8 @@ export default function ProfilePage() {
     const token = (session?.user as any)?.accessToken;
     const newContacts = patient.contacts.filter((c: any) => c.id !== id);
 
-    const res = await fetch('http://localhost:8080/api/v1/health-profiles/contacts', {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+    const res = await fetch(`${apiBase}/health-profiles/contacts`, {
       method: 'PUT',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(newContacts)
@@ -80,7 +83,8 @@ export default function ProfilePage() {
     showToast("Đang chuẩn bị cuộc gọi thử nghiệm...", "info");
     
     try {
-      const res = await fetch('http://localhost:8080/api/v1/test-call', {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+    const res = await fetch(`${apiBase}/test-call`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });

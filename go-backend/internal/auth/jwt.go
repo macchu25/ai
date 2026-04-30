@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -10,7 +11,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var SecretKey = []byte("my_super_secret_key_123")
+func getSecretKey() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = "default_unsafe_secret_key"
+	}
+	return []byte(secret)
+}
 
 // GenerateToken sinh JWT Token cho một userID cụ thể
 func GenerateToken(userID string) (string, error) {
@@ -20,29 +27,35 @@ func GenerateToken(userID string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(SecretKey)
+	return token.SignedString(getSecretKey())
 }
 
 func JWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Thiếu JWT Token"})
-			return
+		tokenString := ""
+
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString = parts[1]
+			}
 		}
 
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token phải có định dạng 'Bearer <token>'"})
-			return
+		// Nếu không có header, thử tìm trong query parameter (dùng cho luồng Stream/Video)
+		if tokenString == "" {
+			tokenString = c.Query("token")
 		}
 
-		tokenString := parts[1]
+		if tokenString == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Thiếu JWT Token (Header hoặc Query)"})
+			return
+		}
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("phương thức ký không hợp lệ: %v", token.Header["alg"])
 			}
-			return SecretKey, nil
+			return getSecretKey(), nil
 		})
 
 		if err != nil || !token.Valid {

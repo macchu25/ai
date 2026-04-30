@@ -2,11 +2,18 @@ package alert
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
+	"go-backend/internal/logger"
+	"go-backend/internal/metrics"
 	"go-backend/internal/model"
+	"go-backend/internal/stream"
+	"go-backend/internal/telephony"
 	"go-backend/internal/ws"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,93 +25,131 @@ type AIResult struct {
 	Confidence float32
 }
 
-type CameraState struct {
-	SuspectStart   time.Time
-	LastAlert      time.Time
-	LocalAlertSent bool
-}
-
 type Engine struct {
-	db       *mongo.Database
-	states   map[primitive.ObjectID]*CameraState
-	mutex    sync.RWMutex
-	ResultCh chan AIResult
-	hub      *ws.Hub
+	db        *mongo.Database
+	storage   StateStorage
+	ResultCh  chan AIResult
+	hub       *ws.Hub
+	gateway   *telephony.Gateway
+	hlsServer *stream.HLSServer
 }
 
-func NewEngine(db *mongo.Database, hub *ws.Hub) *Engine {
+func NewEngine(db *mongo.Database, hub *ws.Hub, hls *stream.HLSServer) *Engine {
+	var storage StateStorage
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL != "" {
+		storage = NewRedisStorage(redisURL)
+		logger.Log.Infof("[AlertEngine] Sử dụng Redis Storage tại %s", redisURL)
+	} else {
+		storage = NewMemoryStorage()
+		logger.Log.Warn("[AlertEngine] REDIS_URL không thiết lập, sử dụng Memory Storage (Không bền bỉ)")
+	}
+
 	return &Engine{
-		db:       db,
-		states:   make(map[primitive.ObjectID]*CameraState),
-		ResultCh: make(chan AIResult, 100),
-		hub:      hub,
+		db:        db,
+		storage:   storage,
+		ResultCh:  make(chan AIResult, 100),
+		hub:       hub,
+		gateway:   telephony.NewGateway(db),
+		hlsServer: hls,
 	}
 }
 
 func (e *Engine) Start() {
 	go func() {
-		log.Println("[AlertEngine] Bắt đầu lắng nghe AI results...")
+		logger.Log.Info("[AlertEngine] Bắt đầu lắng nghe AI results...")
 		for result := range e.ResultCh {
+			metrics.InferenceResults.WithLabelValues(result.Label).Inc()
 			e.Process(result.CameraID, result.Label, result.Confidence)
 		}
 	}()
 }
 
 func (e *Engine) Process(camID primitive.ObjectID, label string, conf float32) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-
-	state, exists := e.states[camID]
-	if !exists {
+	ctx := context.Background()
+	state, _ := e.storage.Get(ctx, camID)
+	if state == nil {
 		state = &CameraState{}
-		e.states[camID] = state
 	}
 
-	if conf > 0.85 && label != "normal" && label != "" {
+	confThreshold, _ := strconv.ParseFloat(os.Getenv("CONFIDENCE_THRESHOLD"), 32)
+	if confThreshold == 0 {
+		confThreshold = 0.85
+	}
+
+	if float64(conf) > confThreshold && label != "normal" && label != "" {
 		if state.SuspectStart.IsZero() {
 			state.SuspectStart = time.Now()
 			state.LocalAlertSent = false
-			log.Printf("[AlertEngine] Camera %s chuyển sang trạng thái THEO DÕI (%s)\n", camID.Hex(), label)
+			logger.Log.Infow("Camera chuyển sang trạng thái THEO DÕI", "camID", camID.Hex(), "label", label)
+			metrics.ActiveAlerts.Inc()
 		}
 
 		elapsed := time.Since(state.SuspectStart)
 
-		// GIAI ĐOẠN 1: Cảnh báo tại chỗ (7 giây)
-		if elapsed >= 7*time.Second && !state.LocalAlertSent {
+		// GIAI ĐOẠN 1: Cảnh báo tại chỗ
+		localSeconds, _ := strconv.Atoi(os.Getenv("LOCAL_WARNING_SECONDS"))
+		if localSeconds == 0 { localSeconds = 7 }
+		
+		if elapsed >= time.Duration(localSeconds)*time.Second && !state.LocalAlertSent {
 			e.triggerLocalWarning(camID, label, conf)
 			state.LocalAlertSent = true
 		}
 
-		// GIAI ĐOẠN 2: Gọi người thân (8 phút)
-		if elapsed >= 8*time.Minute {
+		// GIAI ĐOẠN 2: Gọi người thân
+		emergencyMinutes, _ := strconv.Atoi(os.Getenv("EMERGENCY_ALERT_MINUTES"))
+		if emergencyMinutes == 0 { emergencyMinutes = 8 }
+		
+		if elapsed >= time.Duration(emergencyMinutes)*time.Minute {
 			if state.LastAlert.IsZero() || time.Since(state.LastAlert) >= 15*time.Minute {
 				e.triggerAlert(camID, label, conf)
 				state.LastAlert = time.Now()
 			}
 		}
+		e.storage.Set(ctx, camID, state)
 	} else {
 		if !state.SuspectStart.IsZero() {
 			state.SuspectStart = time.Time{}
 			state.LocalAlertSent = false
-			log.Printf("[AlertEngine] Camera %s trở lại trạng thái NORMAL\n", camID.Hex())
-			if e.hub != nil {
-				e.hub.Broadcast <- []byte(`{"event":"clear_alert", "camera_id":"` + camID.Hex() + `"}`)
-			}
+			logger.Log.Infow("Camera trở lại trạng thái NORMAL", "camID", camID.Hex())
+			metrics.ActiveAlerts.Dec()
+			e.broadcastToOwner(camID, []byte(`{"event":"clear_alert", "camera_id":"` + camID.Hex() + `"}`))
+			e.storage.Set(ctx, camID, state)
 		}
 	}
 }
 
-func (e *Engine) triggerLocalWarning(camID primitive.ObjectID, label string, conf float32) {
-	log.Printf("⚠️ [WARNING] Cảnh báo tại chỗ tại Camera %s (7 giây nằm im)\n", camID.Hex())
-	if e.hub != nil {
-		e.hub.Broadcast <- []byte(`{"event":"local_warning", "camera_id":"` + camID.Hex() + `", "label":"` + label + `"}`)
+func (e *Engine) broadcastToOwner(camID primitive.ObjectID, data []byte) {
+	if e.hub == nil {
+		return
 	}
+	var cameraDoc model.Camera
+	err := e.db.Collection("cameras").FindOne(context.Background(), primitive.M{"_id": camID}).Decode(&cameraDoc)
+	if err != nil || cameraDoc.UserID.IsZero() {
+		return
+	}
+	e.hub.Broadcast <- ws.PrivateMessage{
+		UserID: cameraDoc.UserID.Hex(),
+		Data:   data,
+	}
+}
+
+func (e *Engine) triggerLocalWarning(camID primitive.ObjectID, label string, conf float32) {
+	logger.Log.Warnw("Cảnh báo tại chỗ kích hoạt", "camID", camID.Hex(), "label", label)
+	e.broadcastToOwner(camID, []byte(`{"event":"local_warning", "camera_id":"` + camID.Hex() + `", "label":"` + label + `"}`))
 	e.pushFCM(camID.Hex(), label)
+	
+	// Gửi Telegram cảnh báo nhẹ
+	go telephony.SendTelegramAlert(fmt.Sprintf("⚠️ *Cảnh báo nhẹ:* Camera `%s` phát hiện dấu hiệu `%s`. Đang theo dõi sát sao...", camID.Hex(), label))
 }
 
 func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float32) {
-	log.Printf("🚨 [EMERGENCY] Kích hoạt gọi người thân cho Camera %s (8 phút nằm im)\n", camID.Hex())
-
+	logger.Log.Errorw("🚨 Kích hoạt gọi người thân khẩn cấp", "camID", camID.Hex(), "label", label)
+	metrics.EmergencyCalls.Inc()
+	
+	// Gửi Telegram khẩn cấp
+	go telephony.SendTelegramAlert(fmt.Sprintf("🚨 *KHẨN CẤP:* Camera `%s` báo động sự cố `%s`! Hệ thống đang thực hiện cuộc gọi cho người thân.", camID.Hex(), label))
+	
 	// Tạo Event
 	event := model.Event{
 		CameraID:        camID,
@@ -114,7 +159,7 @@ func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float
 		DetectedAt:      time.Now(),
 	}
 
-	// Tự động tìm chủ sở hữu của Camera để gán UserID cho Event
+	// Tự động tìm chủ sở hữu
 	var cameraDoc model.Camera
 	err := e.db.Collection("cameras").FindOne(context.Background(), primitive.M{"_id": camID}).Decode(&cameraDoc)
 	if err == nil && !cameraDoc.UserID.IsZero() {
@@ -123,10 +168,15 @@ func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float
 
 	res, err := e.db.Collection("events").InsertOne(context.Background(), event)
 	if err != nil {
-		log.Printf("[AlertEngine] Lỗi lưu database Event: %v\n", err)
+		logger.Log.Errorf("Lỗi lưu database Event: %v", err)
 		return
 	}
 	eventID := res.InsertedID.(primitive.ObjectID)
+
+	// Tự động trích xuất bằng chứng video (Dọn dẹp nhưng vẫn giữ lại đoạn này)
+	if e.hlsServer != nil {
+		go e.hlsServer.ArchiveIncident(camID.Hex(), eventID.Hex())
+	}
 
 	// Tạo Alert
 	alertRecord := model.Alert{
@@ -139,82 +189,29 @@ func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float
 	}
 	
 	if _, err := e.db.Collection("alerts").InsertOne(context.Background(), alertRecord); err != nil {
-		log.Printf("[AlertEngine] Lỗi lưu database Alert: %v\n", err)
+		logger.Log.Errorf("Lỗi lưu database Alert: %v", err)
 	}
 
-	// Đẩy tín hiệu realtime qua WebSockets cho toàn bộ frontend dashboard
-	if e.hub != nil {
-		e.hub.Broadcast <- []byte(`{"event":"alert", "camera_id":"` + camID.Hex() + `", "label":"` + label + `"}`)
-	}
-
+	// Đẩy tín hiệu realtime
+	e.broadcastToOwner(camID, []byte(`{"event":"alert", "camera_id":"` + camID.Hex() + `", "label":"` + label + `"}`))
 	e.pushFCM(camID.Hex(), label)
 
-	// Tự động gọi người thân qua ElevenLabs
+	// Gọi người thân
 	if !event.UserID.IsZero() {
-		go e.initiateElevenLabsCall(event.UserID, label)
-	}
-}
-
-func (e *Engine) initiateElevenLabsCall(userID primitive.ObjectID, label string) {
-	// 1. Tìm hồ sơ y tế của user để lấy danh bạ
-	var profile struct {
-		Name     string `bson:"name"`
-		Contacts []struct {
-			Name  string `bson:"name"`
-			Phone string `bson:"phone"`
-		} `bson:"contacts"`
-	}
-
-	coll := e.db.Collection("health_profiles")
-	err := coll.FindOne(context.Background(), primitive.M{"user_id": userID}).Decode(&profile)
-	if err != nil {
-		log.Printf("[AlertEngine] Không tìm thấy hồ sơ y tế cho User %s: %v\n", userID.Hex(), err)
-		return
-	}
-
-	patientName := profile.Name
-	if patientName == "" {
-		patientName = "Người thân của bạn"
-	}
-
-	// 2. Gọi cho tất cả các số trong danh bạ (hoặc số đầu tiên)
-	if len(profile.Contacts) == 0 {
-		log.Printf("[AlertEngine] User %s không có danh bạ khẩn cấp.\n", userID.Hex())
-		return
-	}
-
-	// Chuyển đổi nhãn sang tiếng Việt để Agent nói dễ hiểu hơn
-	incidentVN := label
-	switch label {
-	case "fall":
-		incidentVN = "vừa bị ngã"
-	case "unconscious":
-		incidentVN = "đang bất tỉnh"
-	case "seizure":
-		incidentVN = "đang bị co giật"
-	}
-
-	for _, contact := range profile.Contacts {
-		if contact.Phone != "" {
-			log.Printf("[ElevenLabs] Đang chuẩn bị gọi cho %s (%s)...\n", contact.Name, contact.Phone)
-			err := CallRelative(contact.Phone, patientName, incidentVN)
-			if err != nil {
-				log.Printf("[ElevenLabs] Lỗi khi gọi cho %s: %v\n", contact.Phone, err)
-			}
-		}
+		go e.gateway.InitiateAndroidCall(event.UserID, label, CallRelative)
 	}
 }
 
 func (e *Engine) callTwilioTTS(camIDHex, label string) {
-	log.Printf("📞 [TWILIO TTS] Đang gọi điện 115 cho sự cố %s...\n", label)
+	logger.Log.Infof("📞 [TWILIO TTS] Đang gọi điện 115 cho sự cố %s...", label)
 }
 
 func (e *Engine) pushFCM(camIDHex, label string) {
-	log.Printf("📱 [FCM PUSH] Gửi notification đến mobile: Sự cố %s\n", label)
+	logger.Log.Infof("📱 [FCM PUSH] Gửi notification đến mobile: %s", label)
 }
 
 // CallTestManual hỗ trợ nút bấm Test trên giao diện Web
 func (e *Engine) CallTestManual(userID primitive.ObjectID) {
-	log.Printf("🧪 [TEST] Đang kích hoạt cuộc gọi thử nghiệm cho User %s\n", userID.Hex())
-	e.initiateElevenLabsCall(userID, "đây là một cuộc gọi thử nghiệm")
+	logger.Log.Infow("🧪 [TEST] Kích hoạt cuộc gọi thử nghiệm", "userID", userID.Hex())
+	e.gateway.InitiateAndroidCall(userID, "đây là một cuộc gọi thử nghiệm", CallRelative)
 }

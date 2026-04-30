@@ -70,8 +70,19 @@ func (a *API) AddCamera(c *gin.Context) {
 	objID, _ := primitive.ObjectIDFromHex(userID.(string))
 	cam.UserID = objID
 
+	// Security: Kiểm tra quyền sở hữu nếu ID camera đã tồn tại
+	filter := bson.M{"_id": cam.ID}
+	var existingCam model.Camera
+	err := a.db.Collection("cameras").FindOne(context.Background(), filter).Decode(&existingCam)
+	
+	// Nếu camera đã tồn tại và KHÔNG thuộc về user hiện tại -> Từ chối
+	if err == nil && existingCam.UserID != objID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Bạn không có quyền cập nhật camera của người khác (Hijacking detected)"})
+		return
+	}
+
 	opts := options.Update().SetUpsert(true)
-	_, err := a.db.Collection("cameras").UpdateOne(context.Background(), bson.M{"_id": cam.ID}, bson.M{"$set": cam}, opts)
+	_, err = a.db.Collection("cameras").UpdateOne(context.Background(), filter, bson.M{"$set": cam}, opts)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

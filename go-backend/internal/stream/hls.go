@@ -2,32 +2,79 @@ package stream
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
+	"go-backend/internal/logger"
 )
 
 type HLSServer struct {
-	OutputDir string
+	OutputDir  string
+	ArchiveDir string
 }
 
 func NewHLSServer() *HLSServer {
-	// Sử dụng ./tmp/streams làm output local
 	dir := filepath.Join(".", "tmp", "streams")
-	os.MkdirAll(dir, 0755)
+	archiveDir := filepath.Join(".", "storage", "archives")
 	
-	log.Printf("[HLS] Khởi tạo HLS Server. Thư mục chứa stream: %s\n", dir)
-	return &HLSServer{
-		OutputDir: dir,
+	os.RemoveAll(dir)
+	os.MkdirAll(dir, 0755)
+	os.MkdirAll(archiveDir, 0755)
+	
+	logger.Log.Infof("[HLS] Init Server. Stream: %s | Archive: %s", dir, archiveDir)
+	s := &HLSServer{
+		OutputDir:  dir,
+		ArchiveDir: archiveDir,
 	}
+	go s.StartCleanupWorker()
+	return s
+}
+
+func (s *HLSServer) StartCleanupWorker() {
+	ticker := time.NewTicker(30 * time.Minute)
+	logger.Log.Info("[HLS] Cleanup Worker started (30m interval)")
+	for range ticker.C {
+		now := time.Now()
+		err := filepath.Walk(s.OutputDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil { return err }
+			// Skip directories and recently modified files (last 1 hour)
+			if !info.IsDir() && now.Sub(info.ModTime()) > 1*time.Hour {
+				if filepath.Ext(path) == ".ts" || filepath.Ext(path) == ".m3u8" {
+					os.Remove(path)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			logger.Log.Errorf("[HLS] Cleanup Error: %v", err)
+		} else {
+			logger.Log.Info("[HLS] Cleanup cycle complete (1h retention)")
+		}
+	}
+}
+
+// ArchiveIncident copies current segments to a permanent folder
+func (s *HLSServer) ArchiveIncident(camID string, incidentID string) {
+	srcDir := filepath.Join(s.OutputDir, camID)
+	destDir := filepath.Join(s.ArchiveDir, incidentID)
+	os.MkdirAll(destDir, 0755)
+
+	files, _ := filepath.Glob(filepath.Join(srcDir, "*.ts"))
+	m3u8, _ := filepath.Glob(filepath.Join(srcDir, "*.m3u8"))
+	files = append(files, m3u8...)
+
+	for _, f := range files {
+		input, _ := os.ReadFile(f)
+		os.WriteFile(filepath.Join(destDir, filepath.Base(f)), input, 0644)
+	}
+	logger.Log.Infow("🛡️ Đã khóa bằng chứng video cho sự cố", "incidentID", incidentID, "camID", camID)
 }
 
 // StartHLS chạy dòng lệnh ffmpeg chuyển RTSP->HLS dưới dạng subprocess. Có cơ chế tự khôi phục khi crash.
 func (s *HLSServer) StartHLS(ctx context.Context, camID string, rtspURL string) {
 	if rtspURL == "" {
-		log.Printf("[HLS] RTSP URL trống cho camera %s\n", camID)
+		logger.Log.Warnf("[HLS] RTSP URL trống cho camera %s", camID)
 		return
 	}
 
@@ -38,42 +85,34 @@ func (s *HLSServer) StartHLS(ctx context.Context, camID string, rtspURL string) 
 		for {
 			select {
 			case <-ctx.Done():
-				log.Printf("[HLS] Dừng vòng lặp transcode an toàn cho camera %s\n", camID)
 				return
 			default:
 			}
 
 			playlistPath := filepath.Join(camDir, "stream.m3u8")
 			
-			// Format arg để giảm latency xuống mức cấu hình (< 5s latency)
 			args := []string{
-				"-y", // Ghi đè file có sẵn
+				"-y",
 				"-rtsp_transport", "tcp",
 				"-i", rtspURL,
 				"-c:v", "libx264",
 				"-preset", "ultrafast",
 				"-tune", "zerolatency",
-				"-b:v", "1000k", // Cố định bitrate để mạng yếu không bị giật
-				"-hls_time", "2", // Mỗi chunk HLS dài 2 giây
-				"-hls_list_size", "3", // Giữ 3 file m3u8 (6 giây)
-				"-hls_flags", "delete_segments+append_list", // Xóa cache segment cũ
-				"-f", "hls", // Format đầu ra là hls
+				"-b:v", "1000k",
+				"-hls_time", "2",
+				"-hls_list_size", "60", // Giữ 2 phút video gần nhất làm buffer
+				"-hls_flags", "delete_segments+append_list",
+				"-f", "hls",
 				playlistPath,
 			}
 
-			log.Printf("[HLS] Bắt đầu FFMPEG stream cho camera %s\n", camID)
+			logger.Log.Infof("[HLS] Bắt đầu FFMPEG cho camera %s", camID)
 			cmd := exec.CommandContext(ctx, "ffmpeg", args...)
-
-			// Chạy ffmpeg process
 			err := cmd.Run()
 			
-			// Kiểm tra lỗi nếu process chết nhưng chưa nhận context Done ()
-			if ctx.Err() != nil {
-				return
-			}
-			
+			if ctx.Err() != nil { return }
 			if err != nil {
-				log.Printf("[HLS] Tiến trình ffmpeg của %s gặp lỗi: %v. Chuẩn bị tự động khôi phục trong 5s...\n", camID, err)
+				logger.Log.Errorf("[HLS] FFMPEG %s lỗi: %v. Restart in 5s...", camID, err)
 				time.Sleep(5 * time.Second)
 			}
 		}

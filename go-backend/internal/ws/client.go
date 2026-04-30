@@ -26,9 +26,10 @@ var upgrader = websocket.Upgrader{
 
 // Client đại diện cho kết nối của 1 app (Frontend)
 type Client struct {
-	hub  *Hub
-	conn *websocket.Conn
-	send chan []byte
+	hub    *Hub
+	conn   *websocket.Conn
+	send   chan []byte
+	UserID string
 }
 
 func (c *Client) readPump() {
@@ -94,14 +95,20 @@ func (c *Client) writePump() {
 
 // Giúp nâng cấp Endpoint HTTP /ws thành kết nối hai chiều
 func ServeWs(hub *Hub, c *gin.Context) {
-	log.Printf("[WebSocket] Yêu cầu kết nối mới từ: %s\n", c.Request.RemoteAddr)
+	userID, exists := c.Get("userID")
+	if !exists {
+		log.Println("[WebSocket] Từ chối kết nối: Thiếu UserID")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	log.Printf("[WebSocket] Yêu cầu kết nối mới từ User %s (%s)\n", userID, c.Request.RemoteAddr)
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("[WebSocket] Lỗi Upgrade:", err)
 		return
 	}
-	log.Printf("[WebSocket] Kết nối thành công cho: %s\n", c.Request.RemoteAddr)
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
+	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256), UserID: userID.(string)}
 	
 	// Register client vào Hub
 	client.hub.Register <- client

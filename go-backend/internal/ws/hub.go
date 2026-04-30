@@ -1,13 +1,22 @@
 package ws
 
+import (
+	"log"
+)
+
+type PrivateMessage struct {
+	UserID string
+	Data   []byte
+}
+
 // Hub duy trì danh sách các client đang kết nối và xử lý logic phát tin nhắn 
-// Broadcast đến tất cả các client đó (ví dụ truyền tín hiệu alert real-time).
+// Broadcast đến các client thuộc về User cụ thể.
 type Hub struct {
 	// Quản lý các client web socket đang connect
 	clients map[*Client]bool
 
-	// Channel nhận dữ liệu cần push xuống cho toàn bộ các Client
-	Broadcast chan []byte
+	// Channel nhận dữ liệu cần push xuống cho các Client cụ thể
+	Broadcast chan PrivateMessage
 
 	// Đăng ký client mới
 	Register chan *Client
@@ -18,7 +27,7 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		Broadcast:  make(chan []byte),
+		Broadcast:  make(chan PrivateMessage),
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
@@ -35,13 +44,16 @@ func (h *Hub) Run() {
 				delete(h.clients, client)
 				close(client.send)
 			}
-		case message := <-h.Broadcast:
+		case pm := <-h.Broadcast:
 			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					close(client.send)
-					delete(h.clients, client)
+				// Privacy Check: Only send if client's UserID matches the target
+				if client.UserID == pm.UserID {
+					select {
+					case client.send <- pm.Data:
+					default:
+						close(client.send)
+						delete(h.clients, client)
+					}
 				}
 			}
 		}

@@ -3,12 +3,10 @@ package alert
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strings"
 	"time"
-	"net/url"
 )
 
 // CallRelative thực hiện cuộc gọi qua Android ADB và dùng Google TTS để đọc thông báo
@@ -20,24 +18,40 @@ func CallRelative(phoneNumber, patientName, incidentType string) error {
 }
 
 func triggerAndroidCall(toPhoneNumber, alertText string) error {
-	adbPath := filepath.Join("..", "platform-tools", "adb.exe")
+	// Lấy ADB_PATH từ môi trường hoặc dùng mặc định
+	adbPath := os.Getenv("ADB_PATH")
+	if adbPath == "" {
+		adbPath = "adb" // Giả định adb có sẵn trong PATH
+	}
 	
 	log.Printf("📱 [Android Gateway] Đang chuẩn bị gọi đến %s...\n", toPhoneNumber)
 
+	// Hàm helper để chạy lệnh và log lỗi
+	runCmd := func(args ...string) error {
+		cmd := exec.Command(adbPath, args...)
+		if err := cmd.Run(); err != nil {
+			log.Printf("❌ [ADB Error] Lệnh %v thất bại: %v\n", args, err)
+			return err
+		}
+		return nil
+	}
+
 	// 1. Đánh thức điện thoại
-	exec.Command(adbPath, "shell", "input", "keyevent", "KEYCODE_WAKEUP").Run()
-	exec.Command(adbPath, "shell", "wm", "dismiss-keyguard").Run()
+	runCmd("shell", "input", "keyevent", "KEYCODE_WAKEUP")
+	runCmd("shell", "wm", "dismiss-keyguard")
 
 	// 2. Thực hiện cuộc gọi
 	log.Printf("📞 Đang gọi %s...\n", toPhoneNumber)
-	exec.Command(adbPath, "shell", "am", "start", "-a", "android.intent.action.CALL", "-d", "tel:"+toPhoneNumber).Run()
+	if err := runCmd("shell", "am", "start", "-a", "android.intent.action.CALL", "-d", "tel:"+toPhoneNumber); err != nil {
+		return err
+	}
 
 	// 3. Đợi người dùng nhấc máy (Rút ngắn còn 6 giây cho nhanh)
 	log.Println("⏳ Đợi nhấc máy (6 giây)...")
 	time.Sleep(6 * time.Second)
 
 	// 4. Bật loa ngoài
-	exec.Command(adbPath, "shell", "input", "keyevent", "KEYCODE_SPEAKERPHONE_ON").Run()
+	runCmd("shell", "input", "keyevent", "KEYCODE_SPEAKERPHONE_ON")
 
 	// 5. PHÁT GIỌNG NÓI QUA GOOGLE TRANSLATE TTS (MIỄN PHÍ)
 	log.Println("📢 Đang yêu cầu chị Google đọc thông báo...")
@@ -47,11 +61,13 @@ func triggerAndroidCall(toPhoneNumber, alertText string) error {
 	ttsURL := fmt.Sprintf("https://translate.google.com/translate_tts?ie=UTF-8&q=%s&tl=vi&client=tw-ob", encodedText)
 	
 	// Tăng âm lượng tối đa
-	exec.Command(adbPath, "shell", "media", "volume", "--stream", "3", "--set", "15").Run()
+	runCmd("shell", "media", "volume", "--stream", "3", "--set", "15")
 	
 	// Ra lệnh cho Android mở link này (nó sẽ tự động phát âm thanh)
-	exec.Command(adbPath, "shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", ttsURL).Run()
+	if err := runCmd("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", ttsURL); err != nil {
+		return err
+	}
 
-	log.Printf("✅ [Android Gateway] Đã hoàn tất quy trình báo động miễn phí.\n")
+	log.Printf("✅ [Android Gateway] Đã hoàn tất quy trình báo động.\n")
 	return nil
 }

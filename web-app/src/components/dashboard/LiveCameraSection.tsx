@@ -7,9 +7,10 @@ import Link from 'next/link';
 
 interface LiveCameraSectionProps {
   cameras: any[];
+  token: string;
 }
 
-const LiveCameraSection: React.FC<LiveCameraSectionProps> = ({ cameras }) => {
+const LiveCameraSection: React.FC<LiveCameraSectionProps> = ({ cameras, token }) => {
   const onlineCameras = cameras.filter(c => c.status === 'online');
   const displayCams = onlineCameras.slice(0, 2);
 
@@ -24,20 +25,23 @@ const LiveCameraSection: React.FC<LiveCameraSectionProps> = ({ cameras }) => {
             Luồng stream thời gian thực từ các vị trí trọng yếu.
           </p>
         </div>
-        <Link href="/cameras" className="view-all-link">
+        <Link href="/incidents" className="view-all-link">
           Xem tất cả camera <ArrowRight size={16} />
         </Link>
       </div>
 
       <div className="cameras-preview-grid">
         {displayCams.length > 0 ? (
-          displayCams.map(cam => (
-            <VideoPlayer 
-              key={cam.id} 
-              url={`http://localhost:8080/streams/${cam.id}/stream.m3u8`} 
-              name={cam.name} 
-            />
-          ))
+          displayCams.map(cam => {
+            const streamUrl = `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8?token=${token}`;
+            return (
+              <VideoPlayer 
+                key={cam.id} 
+                url={streamUrl} 
+                name={cam.name} 
+              />
+            );
+          })
         ) : (
           <div className="empty-cameras-box">
              <Camera size={48} color="#cbd5e1" />
