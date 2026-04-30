@@ -13,7 +13,7 @@ import StatsSection from '@/components/dashboard/StatsSection';
 import FeedbackSection from '@/components/dashboard/FeedbackSection';
 
 // Styles
-import '../dashboard.css';
+import '@/app/dashboard.css';
 
 import { useDashboardSocket } from '@/hooks/useDashboardSocket';
 

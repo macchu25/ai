@@ -11,7 +11,7 @@ import CameraManager from '@/components/dashboard/CameraManager';
 import IncidentTable from '@/components/dashboard/IncidentTable';
 
 // Styles
-import '../incidents.css';
+import '@/app/incidents.css';
 
 export default function IncidentsPage() {
   const { showToast, confirm } = useNotification();
