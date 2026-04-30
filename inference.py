@@ -495,11 +495,14 @@ if __name__ == "__main__":
 
     def push_to_go(lbl, cnf):
         try:
-            requests.post("http://localhost:8080/api/v1/ai-result", json={
-                "CameraID": target_cam_id,
-                "Label": lbl,
-                "Confidence": float(cnf)
-            }, timeout=0.1)
+            requests.post("http://localhost:8080/api/v1/ai-result", 
+                json={
+                    "CameraID": target_cam_id,
+                    "Label": lbl,
+                    "Confidence": float(cnf)
+                }, 
+                headers={"X-API-Key": "ai_secret_key_12345"},
+                timeout=0.1)
         except: pass
 
     prev_time = time.time()
