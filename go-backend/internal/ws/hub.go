@@ -1,9 +1,5 @@
 package ws
 
-import (
-	"log"
-)
-
 type PrivateMessage struct {
 	UserID string
 	Data   []byte
