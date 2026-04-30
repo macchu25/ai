@@ -10,7 +10,7 @@ def load_config():
     parser.add_argument("--camera_id", type=str, help="ID of the camera from dashboard")
     parser.add_argument("--source", type=str, default="0", help="Camera source (0 for webcam or RTSP link)")
     parser.add_argument("--model", type=str, default="models/best_model.pth", help="Path to PyTorch model")
-    parser.add_argument("--labels", type=str, default="models/labels.json", help="Path to labels.json")
+    parser.add_argument("--labels", type=str, default="models/label_map.json", help="Path to labels.json")
     
     args = parser.parse_args()
     
