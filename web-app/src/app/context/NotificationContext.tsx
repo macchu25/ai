@@ -12,7 +12,7 @@ interface ToastData {
 
 interface NotificationContextType {
   showToast: (message: string, type?: ToastType) => void;
-  confirm: (title: string, message: string) => Promise<boolean>;
+  confirm: (title: string, message: string, confirmText?: string, confirmType?: 'danger' | 'primary') => Promise<boolean>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -23,6 +23,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     isOpen: boolean;
     title: string;
     message: string;
+    confirmText?: string;
+    confirmType?: 'danger' | 'primary';
     resolve: (value: boolean) => void;
   } | null>(null);
 
@@ -36,9 +38,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     setTimeout(() => removeToast(id), 5000);
   }, [removeToast]);
 
-  const confirm = (title: string, message: string): Promise<boolean> => {
+  const confirm = (title: string, message: string, confirmText?: string, confirmType?: 'danger' | 'primary'): Promise<boolean> => {
     return new Promise((resolve) => {
-      setConfirmState({ isOpen: true, title, message, resolve });
+      setConfirmState({ isOpen: true, title, message, confirmText, confirmType, resolve });
     });
   };
 
@@ -64,6 +66,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           isOpen={confirmState.isOpen}
           title={confirmState.title}
           message={confirmState.message}
+          confirmText={confirmState.confirmText}
+          confirmType={confirmState.confirmType}
           onConfirm={() => handleConfirm(true)}
           onCancel={() => handleConfirm(false)}
         />

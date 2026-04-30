@@ -7,18 +7,20 @@ interface ConfirmModalProps {
   isOpen: boolean;
   title: string;
   message: string;
+  confirmText?: string;
+  confirmType?: 'danger' | 'primary';
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }: ConfirmModalProps) => {
+const ConfirmModal = ({ isOpen, title, message, confirmText = 'Xác nhận xóa', confirmType = 'danger', onConfirm, onCancel }: ConfirmModalProps) => {
   if (!isOpen) return null;
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
-          <div className="warning-icon">
+          <div className={`warning-icon ${confirmType}`}>
             <AlertTriangle size={24} />
           </div>
           <button className="close-btn" onClick={onCancel}><X size={20} /></button>
@@ -31,7 +33,7 @@ const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }: ConfirmMo
 
         <div className="modal-footer">
           <button className="btn-cancel" onClick={onCancel}>Hủy bỏ</button>
-          <button className="btn-confirm" onClick={onConfirm}>Xác nhận xóa</button>
+          <button className={`btn-confirm ${confirmType}`} onClick={onConfirm}>{confirmText}</button>
         </div>
       </div>
 
@@ -76,13 +78,14 @@ const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }: ConfirmMo
         .warning-icon {
           width: 56px;
           height: 56px;
-          background: #fef2f2;
-          color: #ef4444;
           border-radius: 18px;
           display: flex;
           align-items: center;
           justify-content: center;
         }
+        
+        .warning-icon.danger { background: #fef2f2; color: #ef4444; }
+        .warning-icon.primary { background: #eff6ff; color: #3b82f6; }
 
         .close-btn {
           background: transparent;
@@ -131,14 +134,17 @@ const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }: ConfirmMo
           padding: 14px;
           border-radius: 16px;
           border: none;
-          background: #ef4444;
           color: white;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.2s;
-          box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
         }
-        .btn-confirm:hover { background: #dc2626; transform: translateY(-2px); }
+        
+        .btn-confirm.danger { background: #ef4444; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2); }
+        .btn-confirm.danger:hover { background: #dc2626; transform: translateY(-2px); }
+        
+        .btn-confirm.primary { background: #3b82f6; box-shadow: 0 10px 20px rgba(59, 130, 246, 0.2); }
+        .btn-confirm.primary:hover { background: #2563eb; transform: translateY(-2px); }
       `}</style>
     </div>
   );

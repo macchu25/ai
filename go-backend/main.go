@@ -11,6 +11,7 @@ import (
 	"go-backend/internal/stream"
 	"go-backend/internal/ws"
 
+	"github.com/joho/godotenv"
 	"github.com/google/uuid"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -35,6 +36,11 @@ import (
 // @in header
 // @name Authorization
 func main() {
+	// 0. Load biến môi trường từ file .env
+	if err := godotenv.Load(); err != nil {
+		log.Println("Lưu ý: Không tìm thấy file .env, sẽ sử dụng biến môi trường hệ thống.")
+	}
+
 	// 1. Kết nối CSDL MongoDB Atlas Cloud
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -83,6 +89,7 @@ func main() {
 
 	// Serving file m3u8 và ts ngầm qua router này cho HLS play lại
 	r.Static("/streams", hlsServer.OutputDir)
+	r.Static("/audio", "./audio")
 
 	// WebSocket Route (Không cần auth token JWT để dễ debug, hoặc có tuỳ thiết kế)
 	r.GET("/ws", func(c *gin.Context) {
@@ -192,8 +199,9 @@ func main() {
 			}
 
 			coll := db.Collection("health_profiles")
+			objID, _ := primitive.ObjectIDFromHex(userID.(string))
 			var profile bson.M
-			err := coll.FindOne(context.Background(), bson.M{"user_id": userID}).Decode(&profile)
+			err := coll.FindOne(context.Background(), bson.M{"user_id": objID}).Decode(&profile)
 			if err != nil {
 				// Nếu chưa có, trả về template mặc định
 				c.JSON(200, gin.H{
@@ -231,9 +239,10 @@ func main() {
 			}
 
 			coll := db.Collection("health_profiles")
+			objID, _ := primitive.ObjectIDFromHex(userID.(string))
 			_, err := coll.UpdateOne(
 				context.Background(),
-				bson.M{"user_id": userID},
+				bson.M{"user_id": objID},
 				bson.M{"$set": bson.M{"contacts": contacts}},
 				options.Update().SetUpsert(true),
 			)
@@ -242,6 +251,77 @@ func main() {
 				return
 			}
 			c.JSON(200, gin.H{"message": "Thành công", "contacts": contacts})
+		})
+
+		// Cập nhật toàn bộ Hồ sơ y tế
+		v1.PUT("/health-profiles", func(c *gin.Context) {
+			userID, exists := c.Get("userID")
+			if !exists {
+				c.JSON(401, gin.H{"error": "Unauthorized"})
+				return
+			}
+			var body struct {
+				Name       string   `json:"name"`
+				Age        int      `json:"age"`
+				Location   string   `json:"location"`
+				BloodType  string   `json:"bloodType"`
+				Conditions []string `json:"conditions"`
+			}
+			if err := c.ShouldBindJSON(&body); err != nil {
+				c.JSON(400, gin.H{"error": "Dữ liệu không hợp lệ"})
+				return
+			}
+
+			coll := db.Collection("health_profiles")
+			objID, _ := primitive.ObjectIDFromHex(userID.(string))
+			_, err := coll.UpdateOne(
+				context.Background(),
+				bson.M{"user_id": objID},
+				bson.M{"$set": bson.M{
+					"name":       body.Name,
+					"age":        body.Age,
+					"location":   body.Location,
+					"bloodType":  body.BloodType,
+					"conditions": body.Conditions,
+				}},
+				options.Update().SetUpsert(true),
+			)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "Không thể cập nhật hồ sơ"})
+				return
+			}
+			c.JSON(200, gin.H{"message": "Cập nhật hồ sơ thành công"})
+		})
+
+		// API Test gọi điện thủ công
+		v1.POST("/test-call", func(c *gin.Context) {
+			userID, _ := c.Get("userID")
+			objID, _ := primitive.ObjectIDFromHex(userID.(string))
+			log.Printf("🧪 [TEST] Đang kích hoạt cuộc gọi thử nghiệm cho User %s\n", objID.Hex())
+			
+			// Lấy tên bệnh nhân từ hồ sơ
+			var profile bson.M
+			db.Collection("health_profiles").FindOne(context.Background(), bson.M{"user_id": objID}).Decode(&profile)
+			patientName := "Người thân của bạn"
+			if name, ok := profile["name"].(string); ok && name != "" {
+				patientName = name
+			}
+
+			go alert.CallRelative("0905304143", patientName, "đây là một cuộc gọi thử nghiệm")
+			c.JSON(200, gin.H{"message": "Đã kích hoạt cuộc gọi thử nghiệm"})
+		})
+
+		// Endpoint trả về lệnh cho Stringee (Dự phòng)
+		v1.GET("/answer", func(c *gin.Context) {
+			scco := []gin.H{
+				{
+					"action": "talk",
+					"text":   "Chào bạn, đây là thông báo khẩn cấp từ hệ thống Cardiac Alert. Người thân của bạn đang gặp sự cố, vui lòng kiểm tra ngay lập tức.",
+					"voice":  "female",
+					"speed":  0,
+				},
+			}
+			c.JSON(200, scco)
 		})
 	}
 

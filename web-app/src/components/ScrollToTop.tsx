@@ -75,6 +75,15 @@ const ScrollToTop: React.FC = () => {
           from { opacity: 0; transform: translateY(30px) scale(0.8); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
+
+        @media (max-width: 768px) {
+          .scroll-to-top {
+            bottom: 90px;
+            right: 20px;
+            width: 44px;
+            height: 44px;
+          }
+        }
       `}</style>
     </button>
   );

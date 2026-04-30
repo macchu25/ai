@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
 import { Camera, Activity, HeartPulse, Settings, UserCircle, ShieldCheck, LogIn, Monitor, LayoutGrid } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import ScrollToTop from '@/components/ScrollToTop';
 import { NotificationProvider } from '@/app/context/NotificationContext';
 import { usePathname } from 'next/navigation';
@@ -15,6 +15,14 @@ export default function DashboardLayout({
 }>) {
   const pathname = usePathname();
   const { status } = useSession();
+  const [time, setTime] = useState(new Date());
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const smoothScroll = (targetTop: number, container: HTMLElement) => {
@@ -123,7 +131,11 @@ export default function DashboardLayout({
                    <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)', letterSpacing: '-0.5px' }}>
                      Trung Tâm Điều Hành <span style={{ color: 'var(--accent)' }}>AI</span>
                    </div>
-                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>14 Thg 10, 10:54 AM</div>
+                   {mounted && (
+                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                       {time.toLocaleDateString('vi-VN', { day: '2-digit', month: 'short' })}, {time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                     </div>
+                   )}
                 </div>
 
                  <div className="header-center">
@@ -133,6 +145,7 @@ export default function DashboardLayout({
                     <nav className="header-tabs">
                       <a href="/#tong-quan" className={`tab ${pathname === '/' ? 'active' : ''}`} style={{ textDecoration: 'none' }}>Tổng Quan</a>
                       <a href="/#muc-y-te" className="tab" style={{ textDecoration: 'none' }}>Mục Y Tế</a>
+                      <a href="/#huong-dan" className="tab" style={{ textDecoration: 'none' }}>Hướng Dẫn</a>
                       <a href="/#bao-cao" className="tab" style={{ textDecoration: 'none' }}>Báo Cáo</a>
                       <a href="/#feedback-section" className="tab" style={{ textDecoration: 'none' }}>Góp Ý</a>
                     </nav>

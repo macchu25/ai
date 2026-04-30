@@ -19,8 +19,9 @@ type AIResult struct {
 }
 
 type CameraState struct {
-	SuspectStart time.Time
-	LastAlert    time.Time
+	SuspectStart   time.Time
+	LastAlert      time.Time
+	LocalAlertSent bool
 }
 
 type Engine struct {
@@ -62,12 +63,21 @@ func (e *Engine) Process(camID primitive.ObjectID, label string, conf float32) {
 	if conf > 0.85 && label != "normal" && label != "" {
 		if state.SuspectStart.IsZero() {
 			state.SuspectStart = time.Now()
-			log.Printf("[AlertEngine] Camera %s chuyển sang trạng thái SUSPICIOUS (%s, conf: %.2f)\n", camID.Hex(), label, conf)
+			state.LocalAlertSent = false
+			log.Printf("[AlertEngine] Camera %s chuyển sang trạng thái THEO DÕI (%s)\n", camID.Hex(), label)
 		}
 
 		elapsed := time.Since(state.SuspectStart)
-		if elapsed >= 10*time.Second {
-			if state.LastAlert.IsZero() || time.Since(state.LastAlert) >= 5*time.Minute {
+
+		// GIAI ĐOẠN 1: Cảnh báo tại chỗ (7 giây)
+		if elapsed >= 7*time.Second && !state.LocalAlertSent {
+			e.triggerLocalWarning(camID, label, conf)
+			state.LocalAlertSent = true
+		}
+
+		// GIAI ĐOẠN 2: Gọi người thân (8 phút)
+		if elapsed >= 8*time.Minute {
+			if state.LastAlert.IsZero() || time.Since(state.LastAlert) >= 15*time.Minute {
 				e.triggerAlert(camID, label, conf)
 				state.LastAlert = time.Now()
 			}
@@ -75,13 +85,25 @@ func (e *Engine) Process(camID primitive.ObjectID, label string, conf float32) {
 	} else {
 		if !state.SuspectStart.IsZero() {
 			state.SuspectStart = time.Time{}
+			state.LocalAlertSent = false
 			log.Printf("[AlertEngine] Camera %s trở lại trạng thái NORMAL\n", camID.Hex())
+			if e.hub != nil {
+				e.hub.Broadcast <- []byte(`{"event":"clear_alert", "camera_id":"` + camID.Hex() + `"}`)
+			}
 		}
 	}
 }
 
+func (e *Engine) triggerLocalWarning(camID primitive.ObjectID, label string, conf float32) {
+	log.Printf("⚠️ [WARNING] Cảnh báo tại chỗ tại Camera %s (7 giây nằm im)\n", camID.Hex())
+	if e.hub != nil {
+		e.hub.Broadcast <- []byte(`{"event":"local_warning", "camera_id":"` + camID.Hex() + `", "label":"` + label + `"}`)
+	}
+	e.pushFCM(camID.Hex(), label)
+}
+
 func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float32) {
-	log.Printf("🚨 [ALERT] Phát hiện sự cố %s (Confidence: %.2f) tại Camera %s🚨\n", label, conf, camID.Hex())
+	log.Printf("🚨 [EMERGENCY] Kích hoạt gọi người thân cho Camera %s (8 phút nằm im)\n", camID.Hex())
 
 	// Tạo Event
 	event := model.Event{
@@ -125,8 +147,62 @@ func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float
 		e.hub.Broadcast <- []byte(`{"event":"alert", "camera_id":"` + camID.Hex() + `", "label":"` + label + `"}`)
 	}
 
-	e.callTwilioTTS(camID.Hex(), label)
 	e.pushFCM(camID.Hex(), label)
+
+	// Tự động gọi người thân qua ElevenLabs
+	if !event.UserID.IsZero() {
+		go e.initiateElevenLabsCall(event.UserID, label)
+	}
+}
+
+func (e *Engine) initiateElevenLabsCall(userID primitive.ObjectID, label string) {
+	// 1. Tìm hồ sơ y tế của user để lấy danh bạ
+	var profile struct {
+		Name     string `bson:"name"`
+		Contacts []struct {
+			Name  string `bson:"name"`
+			Phone string `bson:"phone"`
+		} `bson:"contacts"`
+	}
+
+	coll := e.db.Collection("health_profiles")
+	err := coll.FindOne(context.Background(), primitive.M{"user_id": userID}).Decode(&profile)
+	if err != nil {
+		log.Printf("[AlertEngine] Không tìm thấy hồ sơ y tế cho User %s: %v\n", userID.Hex(), err)
+		return
+	}
+
+	patientName := profile.Name
+	if patientName == "" {
+		patientName = "Người thân của bạn"
+	}
+
+	// 2. Gọi cho tất cả các số trong danh bạ (hoặc số đầu tiên)
+	if len(profile.Contacts) == 0 {
+		log.Printf("[AlertEngine] User %s không có danh bạ khẩn cấp.\n", userID.Hex())
+		return
+	}
+
+	// Chuyển đổi nhãn sang tiếng Việt để Agent nói dễ hiểu hơn
+	incidentVN := label
+	switch label {
+	case "fall":
+		incidentVN = "vừa bị ngã"
+	case "unconscious":
+		incidentVN = "đang bất tỉnh"
+	case "seizure":
+		incidentVN = "đang bị co giật"
+	}
+
+	for _, contact := range profile.Contacts {
+		if contact.Phone != "" {
+			log.Printf("[ElevenLabs] Đang chuẩn bị gọi cho %s (%s)...\n", contact.Name, contact.Phone)
+			err := CallRelative(contact.Phone, patientName, incidentVN)
+			if err != nil {
+				log.Printf("[ElevenLabs] Lỗi khi gọi cho %s: %v\n", contact.Phone, err)
+			}
+		}
+	}
 }
 
 func (e *Engine) callTwilioTTS(camIDHex, label string) {
@@ -135,4 +211,10 @@ func (e *Engine) callTwilioTTS(camIDHex, label string) {
 
 func (e *Engine) pushFCM(camIDHex, label string) {
 	log.Printf("📱 [FCM PUSH] Gửi notification đến mobile: Sự cố %s\n", label)
+}
+
+// CallTestManual hỗ trợ nút bấm Test trên giao diện Web
+func (e *Engine) CallTestManual(userID primitive.ObjectID) {
+	log.Printf("🧪 [TEST] Đang kích hoạt cuộc gọi thử nghiệm cho User %s\n", userID.Hex())
+	e.initiateElevenLabsCall(userID, "đây là một cuộc gọi thử nghiệm")
 }

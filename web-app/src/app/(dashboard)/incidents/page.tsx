@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { PlusCircle, Search, Download, History, ShieldAlert, CheckCircle2, Video, MapPin, Link as LinkIcon, Trash2, Database, LayoutGrid, Pencil, Power, X } from 'lucide-react';
+import { PlusCircle, Search, Download, History, ShieldAlert, CheckCircle2, Video, MapPin, Link as LinkIcon, Trash2, Database, LayoutGrid, Pencil, Power, X, Crosshair, Loader2 } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useNotification } from '@/app/context/NotificationContext';
@@ -17,6 +17,7 @@ export default function IncidentsPage() {
   const [camName, setCamName] = useState('');
   const [camLocation, setCamLocation] = useState('');
   const [isTesting, setIsTesting] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [editingCamId, setEditingCamId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,6 +59,41 @@ export default function IncidentsPage() {
     }
   }, [status, session, router]);
 
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      showToast("Trình duyệt không hỗ trợ định vị GPS.", "error");
+      return;
+    }
+    
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=vi`);
+          const data = await res.json();
+          if (data && data.display_name) {
+            setCamLocation(data.display_name);
+            showToast("Đã tự động lấy địa chỉ!", "success");
+          } else {
+            setCamLocation(`Vĩ độ: ${latitude.toFixed(5)}, Kinh độ: ${longitude.toFixed(5)}`);
+            showToast("Đã lấy tọa độ GPS.", "success");
+          }
+        } catch (err) {
+          setCamLocation(`Vĩ độ: ${latitude.toFixed(5)}, Kinh độ: ${longitude.toFixed(5)}`);
+          showToast("Đã lấy tọa độ GPS.", "success");
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (error) => {
+        showToast("Lỗi: Vui lòng cấp quyền vị trí cho trình duyệt.", "error");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   const handleTestAndAddRTSP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!camName) return showToast("Vui lòng nhập tên Camera.", "error");
@@ -71,6 +107,37 @@ export default function IncidentsPage() {
 
     setIsTesting(true);
     try {
+      // 1. Kiểm tra Hồ Sơ Sức Khỏe xem đã có số điện thoại người thân chưa
+      let hasContact = false;
+      try {
+        const profileRes = await fetch('http://localhost:8080/api/v1/health-profiles', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          if (profileData.contacts && profileData.contacts.length > 0) {
+            hasContact = true;
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi fetch health-profiles", err);
+      }
+
+      if (!hasContact) {
+        const goToSetup = await confirm(
+          "Yêu cầu thông tin Y tế",
+          "BẮT BUỘC: Hệ thống cần có Số Điện Thoại Người Thân để tự động gọi khi xảy ra sự cố. Vui lòng quay lại trang 'Hồ Sơ Y Tế' và thêm ít nhất 1 liên hệ trước khi cài đặt Camera.",
+          "Đến phần setup",
+          "primary"
+        );
+        if (goToSetup) {
+          router.push('/profile');
+        }
+        setIsTesting(false);
+        return;
+      }
+
+      // 2. Tiếp tục thêm Camera nếu hợp lệ
       const body: any = {
         name: camName,
         location: camLocation || "Mặc định",
@@ -199,6 +266,14 @@ export default function IncidentsPage() {
                 placeholder="Vị trí lắp đặt" 
                 value={camLocation} onChange={e => setCamLocation(e.target.value)}
               />
+              <button 
+                type="button" 
+                onClick={handleGetLocation} 
+                className="btn-locate"
+                title="Tự động lấy vị trí hiện tại"
+              >
+                {isLocating ? <Loader2 size={16} className="spin" /> : <Crosshair size={16} />}
+              </button>
             </div>
             <div className="input-field wide">
               <LinkIcon size={18} className="field-icon" />
@@ -208,7 +283,7 @@ export default function IncidentsPage() {
               />
             </div>
             <button type="submit" className={`btn-save-config ${editingCamId ? 'editing' : ''}`} disabled={isTesting}>
-              {isTesting ? 'Đang xử lý...' : (editingCamId ? 'Cập nhật ngay' : 'Lưu Config')}
+              {isTesting ? 'Đang xử lý...' : (editingCamId ? 'Cập nhật ngay' : 'Thêm Camera Mới')}
             </button>
           </form>
 
@@ -417,33 +492,69 @@ export default function IncidentsPage() {
         }
 
         .input-field {
-          position: relative;
           display: flex;
           align-items: center;
-        }
-
-        .field-icon {
-          position: absolute;
-          left: 16px;
-          color: #94a3b8;
-        }
-
-        .input-field input {
+          gap: 12px;
           width: 100%;
-          padding: 14px 16px 14px 48px;
           background: rgba(255, 255, 255, 0.6);
-          border: 1px solid rgba(0, 0, 0, 0.05);
+          border: 1px solid rgba(0, 0, 0, 0.1);
           border-radius: 16px;
-          font-size: 0.95rem;
-          color: #1e293b;
+          padding: 0 16px;
           transition: all 0.3s ease;
+          box-sizing: border-box;
         }
 
-        .input-field input:focus {
+        .input-field:focus-within {
           background: white;
           border-color: #3b82f6;
           box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+
+        .field-icon {
+          color: #94a3b8;
+          margin-right: 12px;
+          flex-shrink: 0;
+        }
+
+        .input-field input {
+          flex: 1;
+          width: 100%;
+          border: none;
+          background: transparent;
+          padding: 14px 0;
+          font-size: 0.95rem;
+          color: #1e293b;
           outline: none;
+        }
+
+        .btn-locate {
+          background: rgba(59, 130, 246, 0.1);
+          color: #3b82f6;
+          border: none;
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .btn-locate:hover {
+          background: #3b82f6;
+          color: white;
+          transform: scale(1.05);
+        }
+
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
 
         .btn-save-config {
