@@ -3,10 +3,8 @@ package alert
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 
 	"go-backend/internal/logger"
