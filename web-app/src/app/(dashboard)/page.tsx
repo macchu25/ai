@@ -9,7 +9,6 @@ import Footer from '@/components/Footer';
 import HeroSection from '@/components/dashboard/HeroSection';
 import LiveCameraSection from '@/components/dashboard/LiveCameraSection';
 import MedicalSection from '@/components/dashboard/MedicalSection';
-import StatsSection from '@/components/dashboard/StatsSection';
 import FeedbackSection from '@/components/dashboard/FeedbackSection';
 
 // Styles
@@ -65,15 +64,8 @@ export default function Dashboard() {
         onlineCams={onlineCams} 
         activeAlerts={activeAlerts} 
       />
-
-      <LiveCameraSection 
-        cameras={cameras} 
-        token={(session?.user as any)?.accessToken}
-      />
       
       <MedicalSection />
-      
-      <StatsSection />
       
       <FeedbackSection />
       

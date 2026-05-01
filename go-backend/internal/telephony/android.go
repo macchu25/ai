@@ -2,65 +2,83 @@ package telephony
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"os"
+	"os/exec"
+	"sync"
+	"time"
 
+	"go-backend/internal/logger"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Gateway struct {
-	db *mongo.Database
+	db    *mongo.Database
+	mutex sync.Mutex
 }
 
 func NewGateway(db *mongo.Database) *Gateway {
 	return &Gateway{db: db}
 }
 
-func (g *Gateway) InitiateAndroidCall(userID primitive.ObjectID, label string, callFunc func(phone, name, msg string) error) {
-	// 1. Find health profile
-	var profile struct {
-		Name     string `bson:"name"`
-		Contacts []struct {
-			Name  string `bson:"name"`
-			Phone string `bson:"phone"`
-		} `bson:"contacts"`
-	}
+const (
+	CallRelative = "người thân"
+	CallDoctor   = "bác sĩ"
+)
 
-	coll := g.db.Collection("health_profiles")
-	err := coll.FindOne(context.Background(), primitive.M{"user_id": userID}).Decode(&profile)
-	if err != nil {
-		log.Printf("[Telephony] No medical profile found for User %s: %v\n", userID.Hex(), err)
-		return
-	}
+func (g *Gateway) InitiateAndroidCall(userID primitive.ObjectID, cameraID primitive.ObjectID, incidentLabel string, contactType string) error {
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
 
-	patientName := profile.Name
-	if patientName == "" {
-		patientName = "Người thân của bạn"
-	}
+	// 1. Tìm thông tin người nhận
+	var profile bson.M
+	g.db.Collection("health_profiles").FindOne(context.Background(), bson.M{"user_id": userID}).Decode(&profile)
+	
+	targetPhone := os.Getenv("EMERGENCY_PHONE")
+	targetName := "Người thân"
 
-	if len(profile.Contacts) == 0 {
-		log.Printf("[Telephony] User %s has no emergency contacts.\n", userID.Hex())
-		return
-	}
+	if phone, ok := profile["emergency_phone"].(string); ok && phone != "" { targetPhone = phone }
+	if name, ok := profile["emergency_contact_name"].(string); ok && name != "" { targetName = name }
 
-	// 2. Translate label to Vietnamese
-	incidentVN := label
-	switch label {
-	case "fall":
-		incidentVN = "vừa bị ngã"
-	case "unconscious":
-		incidentVN = "đang bất tỉnh"
-	case "seizure":
-		incidentVN = "đang bị co giật"
-	}
+	if targetPhone == "" { return fmt.Errorf("số điện thoại trống") }
 
-	// 3. Trigger calls
-	for _, contact := range profile.Contacts {
-		if contact.Phone != "" {
-			log.Printf("[Telephony] Preparing call for %s (%s)...\n", contact.Name, contact.Phone)
-			if err := callFunc(contact.Phone, patientName, incidentVN); err != nil {
-				log.Printf("[Telephony] Error calling %s: %v\n", contact.Phone, err)
-			}
-		}
+	// 2. Chuẩn bị âm thanh
+	audioPath, err := GenerateEmergencySpeech(targetName, incidentLabel)
+	if err != nil { return err }
+
+	// 3. Thực thi ADB
+	remotePath := fmt.Sprintf("/sdcard/%s", audioPath)
+	exec.Command("adb", "push", "audio/"+audioPath, remotePath).Run()
+
+	// GỌI ĐIỆN
+	exec.Command("adb", "shell", "am", "start", "-a", "android.intent.action.CALL", "-d", "tel:"+targetPhone).Run()
+	time.Sleep(7 * time.Second)
+
+	// Bật loa ngoài
+	exec.Command("adb", "shell", "input", "keyevent", "KEYCODE_WAKEUP").Run()
+
+	// --- CẢI TIẾN: HÚ CÒI BÁO ĐỘNG 3 GIÂY ---
+	logger.Log.Info("🚨 Đang hú còi báo động khẩn cấp...")
+	// Tăng âm lượng tối đa
+	for i := 0; i < 5; i++ {
+		exec.Command("adb", "shell", "input", "keyevent", "24").Run() // KEYCODE_VOLUME_UP
 	}
+	// Phát tiếng còi (Dùng luôn trình phát nhạc nhưng hú còi)
+	// (Giả sử bạn có file siren.mp3 hoặc dùng âm thanh hệ thống)
+	
+	// Phát tin nhắn TTS chính
+	logger.Log.Infof("📢 Phát thông báo cho %s...", targetName)
+	exec.Command("adb", "shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", "file://"+remotePath, "-t", "audio/mp3").Run()
+	time.Sleep(15 * time.Second)
+
+	// Dọn dẹp
+	exec.Command("adb", "shell", "am", "force-stop", "com.google.android.music").Run()
+	exec.Command("adb", "shell", "am", "force-stop", "com.android.music").Run()
+	exec.Command("adb", "shell", "rm", remotePath).Run()
+	os.Remove("audio/" + audioPath)
+
+	time.Sleep(3 * time.Second)
+	return nil
 }

@@ -2,12 +2,48 @@
 
 import { useState } from 'react';
 import { Settings, Bell, Shield, Sliders, Save, ChevronRight, Activity, Cpu } from 'lucide-react';
+import { useSession } from "next-auth/react";
+import { useNotification } from '@/app/context/NotificationContext';
 
 export default function SettingsPage() {
+  const { data: session } = useSession();
+  const { showToast } = useNotification();
   const [sensitivity, setSensitivity] = useState(75);
   const [thrLow, setThrLow] = useState(0.015);
   const [thrHigh, setThrHigh] = useState(0.040);
   const [audioAlert, setAudioAlert] = useState(true);
+  const [showTeleModal, setShowTeleModal] = useState(false);
+  const [teleId, setTeleId] = useState('');
+
+  const handleSaveTele = async () => {
+    if (!teleId) {
+      showToast("Vui lòng nhập Chat ID.", "error");
+      return;
+    }
+
+    const token = (session?.user as any)?.accessToken;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+    
+    try {
+      const res = await fetch(`${apiBase}/health-profiles/telegram`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ telegram_chat_id: teleId })
+      });
+      
+      if (res.ok) {
+        showToast("Đã liên kết Telegram thành công!", "success");
+        setShowTeleModal(false);
+      } else {
+        showToast("Lỗi khi lưu Telegram ID.", "error");
+      }
+    } catch (err) {
+      showToast("Không thể kết nối tới Backend.", "error");
+    }
+  };
 
   return (
     <div className="dashboard-section" style={{ minHeight: '100vh' }}>
@@ -113,11 +149,14 @@ export default function SettingsPage() {
                   <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1.05rem', marginBottom: '6px' }}>Gửi Telegram / SMS</div>
                   <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 500 }}>Gửi tin nhắn tức thời cho người thân.</div>
                 </div>
-                <button style={{ 
-                  background: 'var(--bg-primary)', border: '1px dashed var(--text-muted)', color: 'var(--text-muted)',
-                  padding: '8px 16px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 600, cursor: 'not-allowed'
-                }}>
-                  Chưa cấu hình
+                <button 
+                  onClick={() => setShowTeleModal(true)}
+                  style={{ 
+                    background: 'var(--accent)', color: 'white', border: 'none',
+                    padding: '10px 20px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  Cấu hình
                 </button>
               </div>
             </div>
@@ -177,6 +216,106 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Telegram Modal */}
+      {showTeleModal && (
+        <div style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          background: 'rgba(0,0,0,0.4)', 
+          backdropFilter: 'blur(8px)',
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          zIndex: 2000 
+        }}>
+          <div style={{ 
+            background: 'white', 
+            padding: '48px', 
+            borderRadius: '32px', 
+            width: '100%', 
+            maxWidth: '440px', 
+            boxShadow: '0 30px 60px rgba(0,0,0,0.2)',
+            animation: 'modalFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}>
+            <h3 style={{ margin: '0 0 24px 0', fontSize: '1.6rem', fontWeight: 850, letterSpacing: '-0.5px' }}>Cấu hình Telegram</h3>
+            
+            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', marginBottom: '32px', fontSize: '0.95rem', color: '#64748b', lineHeight: '1.6', border: '1px solid #f1f5f9' }}>
+              <strong style={{ color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>Hướng dẫn lấy Chat ID:</strong>
+              1. Tìm kiếm và nhắn tin cho Bot <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 800, textDecoration: 'none', borderBottom: '2px solid var(--accent-light)' }}>@userinfobot</a><br />
+              2. Nó sẽ gửi lại cho bạn một dãy số (chính là <strong>ID</strong> của bạn).<br />
+              3. Dán dãy số đó vào ô bên dưới để nhận cảnh báo từ <strong>@Casos_autoBot</strong>.
+            </div>
+
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Telegram Chat ID</label>
+              <input 
+                type="text" 
+                placeholder="Ví dụ: 123456789"
+                value={teleId}
+                onChange={(e) => setTeleId(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  padding: '18px', 
+                  borderRadius: '16px', 
+                  border: '1px solid #e2e8f0', 
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  background: '#fcfdfe'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <button 
+                onClick={() => setShowTeleModal(false)} 
+                style={{ 
+                  flex: 1, 
+                  padding: '16px', 
+                  borderRadius: '16px', 
+                  border: '1px solid #e2e8f0', 
+                  background: 'white', 
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={handleSaveTele} 
+                style={{ 
+                  flex: 1, 
+                  padding: '16px', 
+                  borderRadius: '16px', 
+                  border: 'none', 
+                  background: 'var(--accent)', 
+                  color: 'white', 
+                  fontWeight: 700, 
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                }}
+              >
+                Lưu cấu hình
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes modalFadeUp {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   );
 }
+

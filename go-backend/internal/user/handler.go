@@ -79,6 +79,35 @@ func (h *Handler) UpdateContacts(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Thành công", "contacts": contacts})
 }
 
+func (h *Handler) UpdateTelegramID(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	var body struct {
+		TelegramChatID string `json:"telegram_chat_id"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dữ liệu không hợp lệ"})
+		return
+	}
+
+	coll := h.db.Collection("health_profiles")
+	objID, _ := primitive.ObjectIDFromHex(userID.(string))
+	_, err := coll.UpdateOne(
+		context.Background(),
+		bson.M{"user_id": objID},
+		bson.M{"$set": bson.M{"telegram_chat_id": body.TelegramChatID}},
+		options.Update().SetUpsert(true),
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể cập nhật Telegram ID"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Cập nhật Telegram ID thành công"})
+}
+
 func (h *Handler) UpdateProfile(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {

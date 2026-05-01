@@ -16,7 +16,7 @@ const handler = NextAuth({
   callbacks: {
     async signIn({ user, account, profile }) {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+        const apiBase = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
         const res = await fetch(`${apiBase}/auth/social-login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

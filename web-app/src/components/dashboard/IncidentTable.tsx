@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Download } from 'lucide-react';
+import { Database, Download, Cloud } from 'lucide-react';
 
 interface Incident {
   id: string;
@@ -38,6 +38,7 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
               <th>Loại hình</th>
               <th>Độ tin cậy</th>
               <th>Thời gian</th>
+              <th>Lưu trữ</th>
               <th>Trạng thái</th>
             </tr>
           </thead>
@@ -66,6 +67,11 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
                 </td>
                 <td className="time-cell">{incident.createdAt}</td>
                 <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 700 }}>
+                    <Cloud size={14} /> Synced
+                  </div>
+                </td>
+                <td>
                   <div className={`status-pill ${incident.status.toLowerCase()}`}>
                     <div className="pulse-dot"></div>
                     {incident.status === 'Active' ? 'Đang xử lý' : 'Đã hoàn thành'}
@@ -75,7 +81,7 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
             ))}
             {incidents.length === 0 && (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
                   Chưa có nhật ký sự cố nào được ghi nhận.
                 </td>
               </tr>

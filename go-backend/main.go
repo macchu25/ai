@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-backend/internal/alert"
+	"go-backend/internal/analytics"
 	"go-backend/internal/auth"
 	"go-backend/internal/camera"
 	"go-backend/internal/logger"
@@ -80,10 +81,8 @@ func main() {
 	r.Static("/audio", "./audio")
 	r.GET("/ws", auth.JWTMiddleware(), func(c *gin.Context) { ws.ServeWs(hub, c) })
 
-	// Secure Streams with JWT
-	streamGroup := r.Group("/streams")
-	streamGroup.Use(auth.JWTMiddleware())
-	streamGroup.StaticFS("/", gin.Dir(hlsServer.OutputDir, false))
+	// Streams (Public for video player compatibility)
+	r.StaticFS("/streams", gin.Dir(hlsServer.OutputDir, false))
 
 	// Handlers
 	authHandler := auth.NewHandler(db)
@@ -107,6 +106,8 @@ func main() {
 			private.GET("/health-profiles", userHandler.GetProfile)
 			private.PUT("/health-profiles", userHandler.UpdateProfile)
 			private.PUT("/health-profiles/contacts", userHandler.UpdateContacts)
+			private.PUT("/health-profiles/telegram", userHandler.UpdateTelegramID)
+			analytics.RegisterRoutes(private, db)
 		}
 	}
 

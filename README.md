@@ -125,3 +125,7 @@ c:\cardiac-alert\
 ├── inference.py        # AI Prediction Script (Secured)
 └── models/             # AI Model weights & Definition
 ```
+
+ rm server.exe
+ go build -o server.exe
+.\server.exe

@@ -91,19 +91,39 @@ func (s *HLSServer) StartHLS(ctx context.Context, camID string, rtspURL string) 
 
 			playlistPath := filepath.Join(camDir, "stream.m3u8")
 			
-			args := []string{
-				"-y",
-				"-rtsp_transport", "tcp",
-				"-i", rtspURL,
-				"-c:v", "libx264",
-				"-preset", "ultrafast",
-				"-tune", "zerolatency",
-				"-b:v", "1000k",
-				"-hls_time", "2",
-				"-hls_list_size", "60", // Giữ 2 phút video gần nhất làm buffer
-				"-hls_flags", "delete_segments+append_list",
-				"-f", "hls",
-				playlistPath,
+			var args []string
+			if len(rtspURL) >= 4 && rtspURL[:4] == "http" {
+				// Cấu hình tối ưu cho luồng HTTP/MJPEG từ AI
+				args = []string{
+					"-y",
+					"-f", "mjpeg",
+					"-i", rtspURL,
+					"-c:v", "libx264",
+					"-preset", "ultrafast",
+					"-tune", "zerolatency",
+					"-b:v", "1000k",
+					"-hls_time", "2",
+					"-hls_list_size", "60",
+					"-hls_flags", "delete_segments+append_list",
+					"-f", "hls",
+					playlistPath,
+				}
+			} else {
+				// Cấu hình mặc định cho camera RTSP
+				args = []string{
+					"-y",
+					"-rtsp_transport", "tcp",
+					"-i", rtspURL,
+					"-c:v", "libx264",
+					"-preset", "ultrafast",
+					"-tune", "zerolatency",
+					"-b:v", "1000k",
+					"-hls_time", "2",
+					"-hls_list_size", "60",
+					"-hls_flags", "delete_segments+append_list",
+					"-f", "hls",
+					playlistPath,
+				}
 			}
 
 			logger.Log.Infof("[HLS] Bắt đầu FFMPEG cho camera %s", camID)

@@ -14,6 +14,7 @@ type CameraState struct {
 	SuspectStart   time.Time `json:"suspect_start"`
 	LastAlert      time.Time `json:"last_alert"`
 	LocalAlertSent bool      `json:"local_alert_sent"`
+	AlertPaused    bool      `json:"alert_paused"`
 }
 
 type StateStorage interface {

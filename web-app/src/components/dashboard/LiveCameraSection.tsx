@@ -33,13 +33,33 @@ const LiveCameraSection: React.FC<LiveCameraSectionProps> = ({ cameras, token })
       <div className="cameras-preview-grid">
         {displayCams.length > 0 ? (
           displayCams.map(cam => {
-            const streamUrl = `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8?token=${token}`;
+            // Kiểm tra xem đây có phải luồng từ AI (MJPEG) không
+            const isMJPEG = cam.rtsp_url && (cam.rtsp_url.startsWith('http') || cam.rtsp_url.includes(':5000'));
+            
+            // Nếu là MJPEG, dùng URL trực tiếp. Nếu không, qua Proxy HLS của Backend
+            const streamUrl = isMJPEG 
+              ? (cam.rtsp_url.startsWith('http') ? cam.rtsp_url : `http://${cam.rtsp_url}`)
+              : `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8?token=${token}`;
+            
             return (
-              <VideoPlayer 
-                key={cam.id} 
-                url={streamUrl} 
-                name={cam.name} 
-              />
+              <div key={cam.id} className="camera-card-wrapper">
+                <div className="camera-label-tag">
+                  <div className="live-dot"></div>
+                  {isMJPEG ? 'REAL-TIME AI' : 'LIVE'} - {cam.name}
+                </div>
+                {isMJPEG ? (
+                  <img 
+                    src={streamUrl} 
+                    alt={cam.name} 
+                    style={{ width: '100%', borderRadius: '24px', aspectRatio: '16/9', objectFit: 'cover', background: '#111' }} 
+                    onError={(e) => {
+                      (e.target as any).src = 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&q=80&w=640';
+                    }}
+                  />
+                ) : (
+                  <VideoPlayer url={streamUrl} name={cam.name} />
+                )}
+              </div>
             );
           })
         ) : (
@@ -97,6 +117,46 @@ const LiveCameraSection: React.FC<LiveCameraSectionProps> = ({ cameras, token })
           border-radius: 12px;
           text-decoration: none;
           font-weight: 700;
+        }
+
+        .camera-card-wrapper {
+          position: relative;
+          border-radius: 32px;
+          overflow: hidden;
+          background: #000;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .camera-label-tag {
+          position: absolute;
+          top: 20px;
+          left: 20px;
+          z-index: 10;
+          background: rgba(255, 255, 255, 0.9);
+          backdrop-filter: blur(8px);
+          padding: 6px 14px;
+          border-radius: 10px;
+          font-weight: 800;
+          font-size: 0.75rem;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #1e293b;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .live-dot {
+          width: 8px;
+          height: 8px;
+          background: #ef4444;
+          border-radius: 50%;
+          animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.5); opacity: 0.5; }
+          100% { transform: scale(1); opacity: 1; }
         }
 
         @media (max-width: 900px) {

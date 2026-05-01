@@ -39,13 +39,38 @@ export default function LoginPage() {
         backgroundPosition: 'center'
       }}>
         <div className="overlay-left"></div>
-        <div className="branding" style={{ position: 'relative', zIndex: 2 }}>
-          <ShieldCheck size={28} color="#fff" />
-          <span className="brand-name" style={{ color: '#fff' }}>CASOS<span style={{ color: '#60a5fa' }}>.ai</span></span>
+        <div className="branding" style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '30px', marginBottom: '60px' }}>
+          <img src="/logo.png" alt="Casos Logo" style={{ width: '120px', height: '120px', objectFit: 'contain', filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.3))' }} />
+          <span className="brand-name" style={{ color: '#fff', fontSize: '3.5rem', fontWeight: 950, letterSpacing: '-2px' }}>CASOS<span style={{ color: '#60a5fa' }}>.ai</span></span>
         </div>
         
         <div className="hero-text" style={{ position: 'relative', zIndex: 2 }}>
           <h1 style={{ color: '#fff' }}>Bảo vệ tối đa bằng <br/>các <span style={{ background: 'linear-gradient(90deg, #60a5fa, #93c5fd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>mô hình AI</span> <br/>với CASOS ngay.</h1>
+        </div>
+
+        <div className="camera-marquee-container">
+          <div className="marquee-track">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="marquee-slide" style={{ backgroundImage: "url('/security_camera_film_strip_collage_1777637681962.png')" }}>
+                <div className="scan-line"></div>
+                <div className="digital-overlay">
+                  <span>REC • CAM_0{i}</span>
+                  <span>LIVE // 24.0 FPS</span>
+                </div>
+              </div>
+            ))}
+            {[1, 2, 3, 4].map((i) => (
+              <div key={`dup-${i}`} className="marquee-slide" style={{ backgroundImage: "url('/security_camera_film_strip_collage_1777637681962.png')" }}>
+                <div className="scan-line"></div>
+                <div className="digital-overlay">
+                  <span>REC • CAM_0{i}</span>
+                  <span>LIVE // 24.0 FPS</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="marquee-fade left"></div>
+          <div className="marquee-fade right"></div>
         </div>
       </div>
 
@@ -380,53 +405,98 @@ export default function LoginPage() {
         .footer-links a { color: inherit; text-decoration: none; }
         .language-selector { display: flex; align-items: center; gap: 8px; }
 
-        /* Already Logged In Overlay */
-        .already-logged-in-overlay {
+        /* Camera Marquee Styles */
+        .camera-marquee-container {
           position: absolute;
-          inset: -20px;
-          background: white;
-          z-index: 50;
+          bottom: 80px;
+          left: -5%;
+          width: 110%;
+          height: 180px;
+          background: rgba(0,0,0,0.4);
+          overflow: hidden;
+          border-top: 2px solid rgba(255,255,255,0.1);
+          border-bottom: 2px solid rgba(255,255,255,0.1);
+          z-index: 5;
+          backdrop-filter: blur(5px);
+          /* Perfectly Symmetrical 3D Curve */
+          transform: perspective(1000px) rotateX(8deg);
+          border-radius: 100px / 20px;
+          box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+        }
+
+        .marquee-track {
           display: flex;
-          align-items: center;
-          justify-content: center;
+          flex-direction: row;
+          width: max-content;
+          animation: marquee 30s linear infinite;
         }
 
-        .session-card {
-          width: 100%;
-          padding: 30px;
-          border: 1px solid #f1f5f9;
-          border-radius: 20px;
-          background: #fbfcfe;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+        .marquee-slide {
+          width: 450px;
+          height: 180px;
+          flex-shrink: 0;
+          background-size: cover;
+          background-position: center;
+          position: relative;
+          border-right: 2px solid #000;
+          opacity: 0.7;
+          transition: opacity 0.3s ease;
         }
 
-        .session-user {
+        .marquee-slide:hover {
+          opacity: 1;
+        }
+
+        .scan-line {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.1) 50%);
+          background-size: 100% 4px;
+          pointer-events: none;
+        }
+
+        .digital-overlay {
+          position: absolute;
+          inset: 0;
+          padding: 10px;
           display: flex;
-          align-items: center;
-          gap: 20px;
-          margin-bottom: 30px;
+          flex-direction: column;
+          justify-content: space-between;
+          font-family: 'Courier New', monospace;
+          font-size: 0.6rem;
+          color: #10b981;
+          text-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+          pointer-events: none;
         }
 
-        .session-user img { width: 56px; height: 56px; border-radius: 16px; object-fit: cover; }
-        .welcome { font-size: 0.85rem; color: #64748b; margin: 0; }
-        .username { font-size: 1.2rem; font-weight: 900; color: #1e293b; margin: 0; }
+        .marquee-fade {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 150px;
+          z-index: 10;
+          pointer-events: none;
+        }
 
-        .session-actions { display: flex; flex-direction: column; gap: 12px; }
-        .go-btn {
-          background: #0052d9; color: white; height: 52px; border-radius: 12px;
-          display: flex; align-items: center; justify-content: center; gap: 10px;
-          text-decoration: none; font-weight: 800; transition: all 0.2s ease;
+        .marquee-fade.left {
+          left: 0;
+          background: linear-gradient(to right, rgba(15, 23, 42, 0.95) 0%, transparent 100%);
         }
-        .go-btn:hover { background: #0045b8; transform: translateY(-2px); }
-        .out-btn {
-          background: white; color: #ef4444; height: 48px; border: 1px solid #fee2e2;
-          border-radius: 12px; cursor: pointer; transition: all 0.2s ease; font-weight: 600;
+
+        .marquee-fade.right {
+          right: 0;
+          background: linear-gradient(to left, rgba(15, 23, 42, 0.3) 0%, transparent 100%);
         }
-        .out-btn:hover { background: #fef2f2; }
+
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(calc(-450px * 4)); }
+        }
 
         @media (max-width: 1024px) {
           .left-panel { display: none; }
           .right-panel { flex: 1; }
+          .marquee-fade.left, .marquee-fade.right { display: none; }
         }
       `}</style>
     </div>

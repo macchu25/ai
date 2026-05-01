@@ -26,6 +26,8 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongodb:27017/fall_detection
       - REDIS_URL=redis:6379
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./go-backend/tmp:/app/tmp
       - ./go-backend/storage:/app/storage
@@ -42,6 +44,7 @@ services:
       - ./web-app/.env
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+      - BACKEND_INTERNAL_URL=http://backend:8080/api/v1
       - NEXT_PUBLIC_STREAM_URL=http://localhost:8080/streams
     depends_on:
       - backend

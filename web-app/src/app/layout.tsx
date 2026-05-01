@@ -4,8 +4,11 @@ import "./dashboard.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Fall Guard Medical Console",
-  description: "Hệ thống giám sát và bảo vệ y tế thông minh",
+  title: "Casos - Hệ Thống Cảnh Báo Ngã AI",
+  description: "Giám sát sức khỏe thông minh bằng trí tuệ nhân tạo",
+  icons: {
+    icon: '/logo.png',
+  },
 };
 
 export default function RootLayout({
