@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -64,6 +65,7 @@ func (r *RedisStorage) Delete(ctx context.Context, camID primitive.ObjectID) err
 // MemoryStorage implements StateStorage using an in-memory map (Fallback)
 type MemoryStorage struct {
 	states map[primitive.ObjectID]*CameraState
+	mu     sync.RWMutex
 }
 
 func NewMemoryStorage() *MemoryStorage {
@@ -71,15 +73,21 @@ func NewMemoryStorage() *MemoryStorage {
 }
 
 func (m *MemoryStorage) Get(ctx context.Context, camID primitive.ObjectID) (*CameraState, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.states[camID], nil
 }
 
 func (m *MemoryStorage) Set(ctx context.Context, camID primitive.ObjectID, state *CameraState) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.states[camID] = state
 	return nil
 }
 
 func (m *MemoryStorage) Delete(ctx context.Context, camID primitive.ObjectID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	delete(m.states, camID)
 	return nil
 }

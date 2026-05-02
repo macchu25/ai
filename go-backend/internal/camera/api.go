@@ -2,6 +2,7 @@ package camera
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -67,17 +68,66 @@ func (a *API) AddCamera(c *gin.Context) {
 	}
 	
 	// Gán camera cho người dùng hiện tại
-	objID, _ := primitive.ObjectIDFromHex(userID.(string))
+	userIDStr, ok := userID.(string)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Session không hợp lệ"})
+		return
+	}
+	objID, err := primitive.ObjectIDFromHex(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID người dùng không hợp lệ"})
+		return
+	}
 	cam.UserID = objID
+
+	// 1. Lấy thông tin gói cước của người dùng
+	var user model.User
+	err = a.db.Collection("users").FindOne(context.Background(), bson.M{"_id": objID}).Decode(&user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể xác định thông tin gói cước"})
+		return
+	}
+
+	// 2. Định nghĩa giới hạn cho từng gói
+	planLimits := map[string]int64{
+		"free":    1,
+		"starter": 3,
+		"creator": 10,
+		"pro":     25,
+		"scale":   1000,
+	}
+
+	limit, ok := planLimits[user.SubscriptionPlan]
+	if !ok {
+		limit = 1 // Mặc định là gói Free nếu không xác định được
+	}
+
+	// 3. Đếm số camera hiện có của người dùng
+	count, err := a.db.Collection("cameras").CountDocuments(context.Background(), bson.M{"user_id": objID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi khi kiểm tra số lượng camera"})
+		return
+	}
 
 	// Security: Kiểm tra quyền sở hữu nếu ID camera đã tồn tại
 	filter := bson.M{"_id": cam.ID}
 	var existingCam model.Camera
-	err := a.db.Collection("cameras").FindOne(context.Background(), filter).Decode(&existingCam)
+	err = a.db.Collection("cameras").FindOne(context.Background(), filter).Decode(&existingCam)
 	
+	isNewCamera := err != nil // Nếu không tìm thấy thì là camera mới
+
+	// 4. Kiểm tra giới hạn nếu là camera mới
+	if isNewCamera && count >= limit {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Giới hạn gói cước",
+			"message": fmt.Sprintf("Bạn đã đạt giới hạn tối đa của gói %s (%d camera). Vui lòng nâng cấp để thêm mới.", user.SubscriptionPlan, limit),
+		})
+		return
+	}
+
 	// Nếu camera đã tồn tại và KHÔNG thuộc về user hiện tại -> Từ chối
 	if err == nil && existingCam.UserID != objID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Bạn không có quyền cập nhật camera của người khác (Hijacking detected)"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Bạn không có quyền cập nhật camera của người khác"})
 		return
 	}
 

@@ -8,8 +8,8 @@ type PrivateMessage struct {
 // Hub duy trì danh sách các client đang kết nối và xử lý logic phát tin nhắn 
 // Broadcast đến các client thuộc về User cụ thể.
 type Hub struct {
-	// Quản lý các client web socket đang connect
-	clients map[*Client]bool
+	// Quản lý các client theo UserID để tối ưu broadcast (O(1) lookup user)
+	userClients map[string]map[*Client]bool
 
 	// Channel nhận dữ liệu cần push xuống cho các Client cụ thể
 	Broadcast chan PrivateMessage
@@ -23,10 +23,10 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		Broadcast:  make(chan PrivateMessage),
-		Register:   make(chan *Client),
-		Unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
+		Broadcast:   make(chan PrivateMessage),
+		Register:    make(chan *Client),
+		Unregister:  make(chan *Client),
+		userClients: make(map[string]map[*Client]bool),
 	}
 }
 
@@ -34,21 +34,33 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
-			h.clients[client] = true
-		case client := <-h.Unregister:
-			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
-				close(client.send)
+			if h.userClients[client.UserID] == nil {
+				h.userClients[client.UserID] = make(map[*Client]bool)
 			}
+			h.userClients[client.UserID][client] = true
+
+		case client := <-h.Unregister:
+			if clients, ok := h.userClients[client.UserID]; ok {
+				if _, exists := clients[client]; exists {
+					delete(clients, client)
+					close(client.send)
+					if len(clients) == 0 {
+						delete(h.userClients, client.UserID)
+					}
+				}
+			}
+
 		case pm := <-h.Broadcast:
-			for client := range h.clients {
-				// Privacy Check: Only send if client's UserID matches the target
-				if client.UserID == pm.UserID {
+			if clients, ok := h.userClients[pm.UserID]; ok {
+				for client := range clients {
 					select {
 					case client.send <- pm.Data:
 					default:
 						close(client.send)
-						delete(h.clients, client)
+						delete(clients, client)
+						if len(clients) == 0 {
+							delete(h.userClients, pm.UserID)
+						}
 					}
 				}
 			}

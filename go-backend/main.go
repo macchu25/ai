@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"go-backend/internal/alert"
@@ -10,7 +12,10 @@ import (
 	"go-backend/internal/auth"
 	"go-backend/internal/camera"
 	"go-backend/internal/logger"
+	"go-backend/internal/mail"
 	"go-backend/internal/stream"
+	"go-backend/internal/payment"
+	"go-backend/internal/billing"
 	"go-backend/internal/user"
 	"go-backend/internal/ws"
 
@@ -61,7 +66,10 @@ func main() {
 	hub := ws.NewHub()
 	go hub.Run()
 
-	hlsServer := stream.NewHLSServer()
+	hlsServer, err := stream.NewHLSServer()
+	if err != nil {
+		logger.Log.Fatalf("Lỗi khởi tạo HLS Server: %v", err)
+	}
 	alertEngine := alert.NewEngine(db, hub, hlsServer)
 	alertEngine.Start()
 
@@ -70,10 +78,39 @@ func main() {
 
 	// 4. Setup HTTP Server
 	r := gin.Default()
+	
+	// CẤU HÌNH CORS AN TOÀN
 	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowAllOrigins = true
+	corsConfig.AllowOrigins = []string{"http://localhost:3000", "http://127.0.0.1:3000"} // Chỉ cho phép Frontend của bạn
 	corsConfig.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
+	corsConfig.AllowCredentials = true
 	r.Use(cors.New(corsConfig))
+
+	// RATE LIMITER TÙY CHỈNH (Ngăn chặn spam API)
+	// Giới hạn mỗi IP tối đa 60 yêu cầu / phút
+	rateLimitMap := make(map[string]int)
+	var mu sync.RWMutex
+	lastReset := time.Now()
+	
+	r.Use(func(c *gin.Context) {
+		ip := c.ClientIP()
+		
+		mu.Lock()
+		if time.Since(lastReset) > time.Minute {
+			rateLimitMap = make(map[string]int)
+			lastReset = time.Now()
+		}
+		rateLimitMap[ip]++
+		count := rateLimitMap[ip]
+		mu.Unlock()
+
+		if count > 60 { // Cho phép 60 req/min
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau 1 phút."})
+			c.Abort()
+			return
+		}
+		c.Next()
+	})
 
 	// 5. Register Routes
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -81,37 +118,44 @@ func main() {
 	r.Static("/audio", "./audio")
 	r.GET("/ws", auth.JWTMiddleware(), func(c *gin.Context) { ws.ServeWs(hub, c) })
 
-	// Streams (Public for video player compatibility)
-	r.StaticFS("/streams", gin.Dir(hlsServer.OutputDir, false))
-
 	// Handlers
 	authHandler := auth.NewHandler(db)
-	userHandler := user.NewHandler(db)
+	mailService := mail.NewService()
+	userHandler := user.NewHandler(db, mailService, hub)
+	billingAPI := billing.NewAPI(db)
 	camAPI := camera.NewAPI(db, camManager)
 	alertAPI := alert.NewAPI(db, alertEngine)
+	paymentHandler := payment.NewHandler(db, hub, mailService)
 
-	// API Routes
-	api := r.Group("/api/v1")
+	// 6. Register Public Routes
+	authHandler.RegisterRoutes(r.Group("/api/v1/auth"))
+	r.POST("/api/v1/payment/webhook", paymentHandler.SePayWebhook)
+
+	// 7. Register Private Routes (Yêu cầu JWT)
+	private := r.Group("/api/v1")
+	private.Use(auth.JWTMiddleware())
 	{
-		api.POST("/auth/social-login", authHandler.SocialLogin)
-		api.POST("/ai-result", alertAPI.AIResult)
-		api.GET("/answer", alertAPI.Answer)
-
-		private := api.Group("/")
-		private.Use(auth.JWTMiddleware())
-		{
-			camAPI.RegisterRoutes(private)
-			private.GET("/incidents", alertAPI.GetIncidents)
-			private.POST("/test-call", alertAPI.TestCall)
-			private.GET("/health-profiles", userHandler.GetProfile)
-			private.PUT("/health-profiles", userHandler.UpdateProfile)
-			private.PUT("/health-profiles/contacts", userHandler.UpdateContacts)
-			private.PUT("/health-profiles/telegram", userHandler.UpdateTelegramID)
-			analytics.RegisterRoutes(private, db)
-		}
+		billingAPI.RegisterRoutes(private)
+		camAPI.RegisterRoutes(private)
+		private.GET("/incidents", alertAPI.GetIncidents)
+		private.POST("/test-call", alertAPI.TestCall)
+		private.GET("/health-profiles", userHandler.GetProfile)
+		private.PUT("/health-profiles", userHandler.UpdateProfile)
+		private.PUT("/health-profiles/contacts", userHandler.UpdateContacts)
+		private.PUT("/health-profiles/telegram", userHandler.UpdateTelegramID)
+		private.POST("/user/upgrade", userHandler.UpgradePlan)
+		private.POST("/user/simulate-payment", userHandler.SimulatePayment)
+		analytics.RegisterRoutes(private, db)
 	}
 
-	logger.Log.Info("🚀 Cardiac Alert Server hiện đang chạy...")
+	r.GET("/api/v1/user/check-payment", userHandler.CheckPayment)
+
+	// 8. Static Streams (Bảo vệ bằng JWT)
+	// Dùng Group để đảm bảo Middleware chạy trước khi phục vụ Static Files
+	r.Group("/streams").Use(auth.JWTMiddleware()).StaticFS("/", http.Dir(hlsServer.OutputDir))
+
+	// 9. Start Server
+	logger.Log.Info("🚀 Cardiac Alert Server hiện đang chạy tại cổng :8080")
 	if err := r.Run(":8080"); err != nil {
 		logger.Log.Fatalf("Server bị crash: %v", err)
 	}

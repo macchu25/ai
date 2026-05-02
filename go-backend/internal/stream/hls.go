@@ -14,13 +14,18 @@ type HLSServer struct {
 	ArchiveDir string
 }
 
-func NewHLSServer() *HLSServer {
+func NewHLSServer() (*HLSServer, error) {
 	dir := filepath.Join(".", "tmp", "streams")
 	archiveDir := filepath.Join(".", "storage", "archives")
 	
-	os.RemoveAll(dir)
-	os.MkdirAll(dir, 0755)
-	os.MkdirAll(archiveDir, 0755)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, err
+		}
+	}
+	if err := os.MkdirAll(archiveDir, 0755); err != nil {
+		return nil, err
+	}
 	
 	logger.Log.Infof("[HLS] Init Server. Stream: %s | Archive: %s", dir, archiveDir)
 	s := &HLSServer{
@@ -28,7 +33,7 @@ func NewHLSServer() *HLSServer {
 		ArchiveDir: archiveDir,
 	}
 	go s.StartCleanupWorker()
-	return s
+	return s, nil
 }
 
 func (s *HLSServer) StartCleanupWorker() {

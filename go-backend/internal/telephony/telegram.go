@@ -5,87 +5,142 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
-	"path/filepath"
-	"log"
-	"time"
-	"strings"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type InlineButton struct {
 	Text         string `json:"text"`
 	CallbackData string `json:"callback_data,omitempty"`
 }
+
 type InlineKeyboardMarkup struct {
 	InlineKeyboard [][]InlineButton `json:"inline_keyboard"`
 }
 
-var httpClient = &http.Client{ Timeout: 10 * time.Second }
+var httpClient = &http.Client{Timeout: 15 * time.Second}
 
-// SendTelegramAlertCustom gửi tin nhắn bảo mật
+// SendTelegramAlertCustom gửi tin nhắn văn bản với các nút bấm tùy chọn
 func SendTelegramAlertCustom(chatID string, message string, buttons interface{}) error {
 	token := os.Getenv("TELEGRAM_BOT_TOKEN")
-	if token == "" || chatID == "" { return nil }
+	if token == "" || chatID == "" {
+		return nil
+	}
 
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", token)
 	payload := map[string]interface{}{
-		"chat_id": chatID,
-		"text": message,
-		"parse_mode": "HTML",
+		"chat_id":                  chatID,
+		"text":                     message,
+		"parse_mode":               "HTML",
 		"disable_web_page_preview": true,
 	}
-	if buttons != nil { payload["reply_markup"] = buttons }
+	if buttons != nil {
+		payload["reply_markup"] = buttons
+	}
 
-	body, _ := json.Marshal(payload)
-	httpClient.Post(url, "application/json", bytes.NewBuffer(body))
+	body, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("[Telegram] Lỗi marshal payload: %v\n", err)
+		return err
+	}
+
+	resp, err := httpClient.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("[Telegram] Lỗi kết nối HTTP: %v\n", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[Telegram] Telegram trả về Status %d cho Chat %s\n", resp.StatusCode, chatID)
+		return fmt.Errorf("telegram status: %d", resp.StatusCode)
+	}
+
 	return nil
 }
 
-// SendTelegramPhotoCustom gửi ảnh bảo mật
-func SendTelegramPhotoCustom(chatID string, caption string, imagePath string, buttons interface{}) error {
+// SendTelegramPhotoCustom gửi ảnh bằng byte data
+func SendTelegramPhotoCustom(chatID string, caption string, imgData []byte, buttons interface{}) error {
 	token := os.Getenv("TELEGRAM_BOT_TOKEN")
-	if token == "" || chatID == "" { return nil }
-
-	file, err := os.Open(imagePath)
-	if err != nil { return err }
-	defer file.Close()
+	if token == "" || chatID == "" {
+		return nil
+	}
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	part, _ := writer.CreateFormFile("photo", filepath.Base(imagePath))
-	io.Copy(part, file)
 
-	writer.WriteField("chat_id", chatID)
-	writer.WriteField("caption", caption)
-	writer.WriteField("parse_mode", "HTML")
+	part, err := writer.CreateFormFile("photo", "alert.jpg")
+	if err != nil {
+		log.Printf("[Telegram] Lỗi tạo form file: %v\n", err)
+		return err
+	}
+	if _, err := io.Copy(part, bytes.NewReader(imgData)); err != nil {
+		log.Printf("[Telegram] Lỗi copy ảnh vào form: %v\n", err)
+		return err
+	}
+
+	_ = writer.WriteField("chat_id", chatID)
+	_ = writer.WriteField("caption", caption)
+	_ = writer.WriteField("parse_mode", "HTML")
+
 	if buttons != nil {
-		buttonsJSON, _ := json.Marshal(buttons)
-		writer.WriteField("reply_markup", string(buttonsJSON))
+		btnData, err := json.Marshal(buttons)
+		if err != nil {
+			log.Printf("[Telegram] Lỗi marshal buttons: %v\n", err)
+		} else {
+			_ = writer.WriteField("reply_markup", string(btnData))
+		}
 	}
 	writer.Close()
 
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendPhoto", token)
-	req, _ := http.NewRequest("POST", url, body)
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return err
+	}
+
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	httpClient.Do(req)
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		log.Printf("[Telegram] Lỗi gửi ảnh: %v\n", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[Telegram] Lỗi gửi ảnh, status: %d\n", resp.StatusCode)
+		return fmt.Errorf("telegram status: %d", resp.StatusCode)
+	}
 	return nil
 }
 
-// StartBotListener lắng nghe kèm XÁC THỰC NGƯỜI GỬI (Security)
+// StartBotListener lắng nghe các sự kiện callback từ Telegram
 func StartBotListener(onAction func(senderChatID string, action, data string)) {
 	token := os.Getenv("TELEGRAM_BOT_TOKEN")
-	if token == "" { return }
+	if token == "" {
+		return
+	}
 
-	log.Println("🛡️ [Casos Security] Bot Listener đang hoạt động với lớp xác thực...")
+	log.Println("🛡️ [Telegram] Bot Listener đang hoạt động...")
 	offset := 0
 
 	for {
 		url := fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates?offset=%d&timeout=30", token, offset)
 		resp, err := httpClient.Get(url)
 		if err != nil {
+			log.Printf("[Telegram] Lỗi GetUpdates: %v\n", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("[Telegram] GetUpdates trả về status %d\n", resp.StatusCode)
+			resp.Body.Close()
 			time.Sleep(10 * time.Second)
 			continue
 		}
@@ -104,19 +159,31 @@ func StartBotListener(onAction func(senderChatID string, action, data string)) {
 			} `json:"result"`
 		}
 
-		json.NewDecoder(resp.Body).Decode(&result)
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			log.Printf("[Telegram] Lỗi decode update: %v\n", err)
+			resp.Body.Close()
+			time.Sleep(5 * time.Second)
+			continue
+		}
 		resp.Body.Close()
+
+		if !result.Ok {
+			log.Printf("[Telegram] GetUpdates trả về lỗi Ok=false\n")
+			time.Sleep(5 * time.Second)
+			continue
+		}
 
 		for _, update := range result.Result {
 			if update.CallbackQuery.Data != "" {
 				senderID := strconv.FormatInt(update.CallbackQuery.From.ID, 10)
 				parts := strings.SplitN(update.CallbackQuery.Data, ":", 2)
 				if len(parts) == 2 {
-					// Truyền thêm senderID để Backend kiểm tra quyền
 					onAction(senderID, parts[0], parts[1])
-					
+
 					ackURL := fmt.Sprintf("https://api.telegram.org/bot%s/answerCallbackQuery?callback_query_id=%s", token, update.CallbackQuery.ID)
-					httpClient.Get(ackURL)
+					if ackResp, err := httpClient.Get(ackURL); err == nil {
+						ackResp.Body.Close()
+					}
 				}
 			}
 			offset = update.UpdateID + 1

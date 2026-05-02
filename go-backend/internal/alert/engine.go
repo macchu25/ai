@@ -3,6 +3,8 @@ package alert
 import (
 	"context"
 	"fmt"
+	"html"
+	"log"
 	"os"
 	"time"
 
@@ -57,11 +59,16 @@ func NewEngine(db *mongo.Database, hub *ws.Hub, hls *stream.HLSServer) *Engine {
 		ctx := context.Background()
 		var targetUserID primitive.ObjectID
 		if action == "call" {
-			targetUserID, _ = primitive.ObjectIDFromHex(data)
+			id, err := primitive.ObjectIDFromHex(data)
+			if err != nil { return }
+			targetUserID = id
 		} else {
-			camID, _ := primitive.ObjectIDFromHex(data)
+			camID, err := primitive.ObjectIDFromHex(data)
+			if err != nil { return }
 			var camera model.Camera
-			engine.db.Collection("cameras").FindOne(ctx, bson.M{"_id": camID}).Decode(&camera)
+			if err := engine.db.Collection("cameras").FindOne(ctx, bson.M{"_id": camID}).Decode(&camera); err != nil {
+				return
+			}
 			targetUserID = camera.UserID
 		}
 
@@ -74,10 +81,14 @@ func NewEngine(db *mongo.Database, hub *ws.Hub, hls *stream.HLSServer) *Engine {
 		switch action {
 		case "call":
 			var camera model.Camera
-			engine.db.Collection("cameras").FindOne(ctx, bson.M{"user_id": targetUserID}).Decode(&camera)
+			if err := engine.db.Collection("cameras").FindOne(ctx, bson.M{"user_id": targetUserID}).Decode(&camera); err != nil {
+				log.Printf("[Bot] Lỗi tìm camera cho user %s: %v\n", targetUserID.Hex(), err)
+				return
+			}
 			engine.gateway.InitiateAndroidCall(targetUserID, camera.ID, "yêu cầu khẩn cấp", telephony.CallRelative)
 		case "pause":
-			camID, _ := primitive.ObjectIDFromHex(data)
+			camID, err := primitive.ObjectIDFromHex(data)
+			if err != nil { return }
 			state, _ := engine.storage.Get(ctx, camID)
 			if state != nil {
 				state.AlertPaused = true
@@ -127,7 +138,7 @@ func (e *Engine) getMedicalSummary(userID primitive.ObjectID) string {
 	history, _ := profile["medical_history"].(string)
 	if bloodType == "" { bloodType = "Chưa rõ" }
 	if history == "" { history = "Không có" }
-	return fmt.Sprintf("🩸 <b>Nhóm máu:</b> %s\n💊 <b>Tiền sử:</b> %s", bloodType, history)
+	return fmt.Sprintf("🩸 <b>Nhóm máu:</b> %s\n💊 <b>Tiền sử:</b> %s", html.EscapeString(bloodType), html.EscapeString(history))
 }
 
 func (e *Engine) Process(camID primitive.ObjectID, label string, conf float32) {
@@ -141,9 +152,12 @@ func (e *Engine) Process(camID primitive.ObjectID, label string, conf float32) {
 			state.AlertPaused = false
 			metrics.ActiveAlerts.Inc()
 			var camera model.Camera
-			e.db.Collection("cameras").FindOne(ctx, bson.M{"_id": camID}).Decode(&camera)
+			if err := e.db.Collection("cameras").FindOne(ctx, bson.M{"_id": camID}).Decode(&camera); err != nil {
+				log.Printf("[Engine] Lỗi tìm camera %s: %v\n", camID.Hex(), err)
+				return
+			}
 			_, patientName := e.getDetailedInfo(camID, camera.UserID)
-			msg := fmt.Sprintf("🔍 <b>[Casos - THEO DÕI]</b>\n👤 <b>Đối tượng:</b> %s\n⚠️ <b>Dấu hiệu:</b> %s", patientName, label)
+			msg := fmt.Sprintf("🔍 <b>[Casos - THEO DÕI]</b>\n👤 <b>Đối tượng:</b> %s\n⚠️ <b>Dấu hiệu:</b> %s", html.EscapeString(patientName), html.EscapeString(label))
 			telephony.SendTelegramAlertCustom(e.getUserChatID(camera.UserID), msg, nil)
 		}
 		if state.AlertPaused { return }
@@ -167,12 +181,15 @@ func (e *Engine) Process(camID primitive.ObjectID, label string, conf float32) {
 
 func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float32) {
 	var cameraDoc model.Camera
-	e.db.Collection("cameras").FindOne(context.Background(), bson.M{"_id": camID}).Decode(&cameraDoc)
+	if err := e.db.Collection("cameras").FindOne(context.Background(), bson.M{"_id": camID}).Decode(&cameraDoc); err != nil {
+		log.Printf("[Engine] Lỗi triggerAlert: không tìm thấy camera %s: %v\n", camID.Hex(), err)
+		return
+	}
 	camName, patientName := e.getDetailedInfo(camID, cameraDoc.UserID)
 	chatID := e.getUserChatID(cameraDoc.UserID)
 	medical := e.getMedicalSummary(cameraDoc.UserID)
 
-	msg := fmt.Sprintf("🚨 <b>[Casos - KHẨN CẤP]</b>\n🆘 <b>SỰ CỐ:</b> %s\n👤 <b>Nạn nhân:</b> %s\n📍 <b>Tại:</b> %s\n📋 <b>HỒ SƠ Y TẾ:</b>\n%s", label, patientName, camName, medical)
+	msg := fmt.Sprintf("🚨 <b>[Casos - KHẨN CẤP]</b>\n🆘 <b>SỰ CỐ:</b> %s\n👤 <b>Nạn nhân:</b> %s\n📍 <b>Tại:</b> %s\n📋 <b>HỒ SƠ Y TẾ:</b>\n%s", html.EscapeString(label), html.EscapeString(patientName), html.EscapeString(camName), medical)
 	buttons := telephony.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telephony.InlineButton{
 			{{Text: "📖 HƯỚNG DẪN XỬ LÝ", CallbackData: "guide:" + camID.Hex()}},
@@ -181,7 +198,13 @@ func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float
 		},
 	}
 	go telephony.SendTelegramAlertCustom(chatID, msg, buttons)
-	go telephony.SendTelegramPhotoCustom(chatID, "🚨 BẰNG CHỨNG", "audio/mockup.png", buttons)
+	
+	imgData, err := os.ReadFile("audio/mockup.png")
+	if err == nil {
+		go telephony.SendTelegramPhotoCustom(chatID, "🚨 BẰNG CHỨNG", imgData, buttons)
+	} else {
+		log.Printf("[Engine] Không thể đọc ảnh bằng chứng: %v\n", err)
+	}
 	metrics.EmergencyCalls.Inc()
 	go e.gateway.InitiateAndroidCall(cameraDoc.UserID, camID, label, telephony.CallRelative)
 
@@ -194,7 +217,9 @@ func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float
 func (e *Engine) getDetailedInfo(camID, userID primitive.ObjectID) (string, string) {
 	camName := camID.Hex()
 	var camera model.Camera
-	e.db.Collection("cameras").FindOne(context.Background(), bson.M{"_id": camID}).Decode(&camera)
+	if err := e.db.Collection("cameras").FindOne(context.Background(), bson.M{"_id": camID}).Decode(&camera); err != nil {
+		log.Printf("[Engine] Lỗi getDetailedInfo cho camera %s: %v\n", camID.Hex(), err)
+	}
 	if camera.Name != "" { camName = camera.Name }
 	patientName := "Người thân"
 	var profile bson.M
@@ -207,7 +232,9 @@ func (e *Engine) getDetailedInfo(camID, userID primitive.ObjectID) (string, stri
 func (e *Engine) broadcastToOwner(camID primitive.ObjectID, data []byte) {
 	if e.hub == nil { return }
 	var cameraDoc model.Camera
-	e.db.Collection("cameras").FindOne(context.Background(), bson.M{"_id": camID}).Decode(&cameraDoc)
+	if err := e.db.Collection("cameras").FindOne(context.Background(), bson.M{"_id": camID}).Decode(&cameraDoc); err != nil {
+		return
+	}
 	if !cameraDoc.UserID.IsZero() {
 		e.hub.Broadcast <- ws.PrivateMessage{UserID: cameraDoc.UserID.Hex(), Data: data}
 	}
@@ -215,7 +242,10 @@ func (e *Engine) broadcastToOwner(camID primitive.ObjectID, data []byte) {
 
 func (e *Engine) CallTestManual(userID primitive.ObjectID) {
 	var camera model.Camera
-	e.db.Collection("cameras").FindOne(context.Background(), bson.M{"user_id": userID}).Decode(&camera)
+	if err := e.db.Collection("cameras").FindOne(context.Background(), bson.M{"user_id": userID}).Decode(&camera); err != nil {
+		log.Printf("[Engine] Lỗi CallTestManual: không có camera cho user %s: %v\n", userID.Hex(), err)
+		return
+	}
 	camName, patientName := e.getDetailedInfo(camera.ID, userID)
 	msg := fmt.Sprintf("🚨 <b>[Casos - TEST]</b>\n👤 <b>Nạn nhân:</b> %s\n📍 <b>Tại:</b> %s", patientName, camName)
 	buttons := telephony.InlineKeyboardMarkup{

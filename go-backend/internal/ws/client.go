@@ -10,17 +10,16 @@ import (
 )
 
 const (
-	writeWait  = 10 * time.Second
-	pongWait   = 60 * time.Second
+	writeWait  = 60 * time.Second
+	pongWait   = 120 * time.Second
 	pingPeriod = (pongWait * 9) / 10
 )
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	// (CheckOrigin cho phép các Frontend domain khác như localhost:3000 kết nối vào ko bị chặn CORS)
+	ReadBufferSize:  2048,
+	WriteBufferSize: 2048,
 	CheckOrigin: func(r *http.Request) bool {
-		return true
+		return true // Cho phép mọi Origin trong môi trường Dev để ổn định kết nối
 	},
 }
 

@@ -14,7 +14,8 @@ import (
 func getSecretKey() []byte {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "default_unsafe_secret_key"
+		// BẮT BUỘC PHẢI CÓ SECRET KEY TRÊN PRODUCTION
+		panic("CRITICAL ERROR: JWT_SECRET environment variable is not set! System stopped for security.")
 	}
 	return []byte(secret)
 }
@@ -42,9 +43,12 @@ func JWTMiddleware() gin.HandlerFunc {
 			}
 		}
 
-		// Nếu không có header, thử tìm trong query parameter (dùng cho luồng Stream/Video)
+		// Nếu không có header, chỉ cho phép lấy từ query parameter cho các luồng đặc thù (Stream/WS)
 		if tokenString == "" {
-			tokenString = c.Query("token")
+			path := c.Request.URL.Path
+			if path == "/ws" || (len(path) >= 9 && path[:9] == "/streams/") || (len(path) >= 8 && path[:8] == "/streams") {
+				tokenString = c.Query("token")
+			}
 		}
 
 		if tokenString == "" {
@@ -65,7 +69,12 @@ func JWTMiddleware() gin.HandlerFunc {
 
 		// Trích xuất userID từ claims và lưu vào context của Gin
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			c.Set("userID", claims["userID"])
+			userID, ok := claims["userID"].(string)
+			if !ok || userID == "" {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "JWT Token thiếu userID hợp lệ"})
+				return
+			}
+			c.Set("userID", userID)
 		}
 
 		c.Next()

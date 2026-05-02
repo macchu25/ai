@@ -129,10 +129,23 @@ export default function IncidentsPage() {
         }),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
         showToast(editingCamId ? "Đã cập nhật!" : "Đã thêm mới!", "success");
         setEditingCamId(null); setCamName(''); setCamLocation(''); setRtspUrl('');
         loadData();
+      } else if (res.status === 403 && data.error === "Giới hạn gói cước") {
+        // Hiển thị hộp thoại nâng cấp gói cước
+        const goToUpgrade = await confirm(
+          "Giới hạn gói cước Free", 
+          data.message || "Bạn đã đạt giới hạn tối đa của gói Free. Vui lòng nâng cấp để thêm nhiều camera hơn.",
+          "Nâng cấp ngay",
+          "primary"
+        );
+        if (goToUpgrade) router.push('/subscription');
+      } else {
+        showToast(data.message || data.error || "Có lỗi xảy ra", "error");
       }
     } catch (err) {
       showToast("Lỗi kết nối.", "error");

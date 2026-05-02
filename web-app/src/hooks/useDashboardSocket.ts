@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export function useDashboardSocket(apiBase: string, token: string) {
+export function useDashboardSocket(apiBase: string, token: string, onSubscriptionUpdate?: () => void) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<NodeJS.Timeout | null>(null);
   const [alertState, setAlertState] = useState<Record<string, boolean>>({});
@@ -26,10 +26,16 @@ export function useDashboardSocket(apiBase: string, token: string) {
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
-          if (data.event === 'alert') {
+          // Match by event OR type (backend uses Type for messages)
+          const eventType = data.event || data.type;
+
+          if (eventType === 'alert') {
             setAlertState(prev => ({...prev, [data.camera_id]: true}));
-          } else if (data.event === 'clear_alert') {
+          } else if (eventType === 'clear_alert') {
             setAlertState(prev => ({...prev, [data.camera_id]: false}));
+          } else if (eventType === 'subscription_updated') {
+            console.log('%c[Socket] Subscription Updated! 🚀', 'color: #3b82f6; font-weight: bold;');
+            if (onSubscriptionUpdate) onSubscriptionUpdate();
           }
         } catch(err) {
           console.error('[Socket] Message Parse Error');

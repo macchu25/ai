@@ -3,82 +3,86 @@ package telephony
 import (
 	"context"
 	"fmt"
-	"os"
+	"log"
 	"os/exec"
-	"sync"
 	"time"
 
-	"go-backend/internal/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+type CallType string
+
+const (
+	CallRelative CallType = "người thân"
+	CallDoctor   CallType = "bác sĩ"
+)
+
 type Gateway struct {
-	db    *mongo.Database
-	mutex sync.Mutex
+	db *mongo.Database
 }
 
 func NewGateway(db *mongo.Database) *Gateway {
 	return &Gateway{db: db}
 }
 
-const (
-	CallRelative = "người thân"
-	CallDoctor   = "bác sĩ"
-)
-
-func (g *Gateway) InitiateAndroidCall(userID primitive.ObjectID, cameraID primitive.ObjectID, incidentLabel string, contactType string) error {
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
-
-	// 1. Tìm thông tin người nhận
-	var profile bson.M
-	g.db.Collection("health_profiles").FindOne(context.Background(), bson.M{"user_id": userID}).Decode(&profile)
-	
-	targetPhone := os.Getenv("EMERGENCY_PHONE")
-	targetName := "Người thân"
-
-	if phone, ok := profile["emergency_phone"].(string); ok && phone != "" { targetPhone = phone }
-	if name, ok := profile["emergency_contact_name"].(string); ok && name != "" { targetName = name }
-
-	if targetPhone == "" { return fmt.Errorf("số điện thoại trống") }
-
-	// 2. Chuẩn bị âm thanh
-	audioPath, err := GenerateEmergencySpeech(targetName, incidentLabel)
-	if err != nil { return err }
-
-	// 3. Thực thi ADB
-	remotePath := fmt.Sprintf("/sdcard/%s", audioPath)
-	exec.Command("adb", "push", "audio/"+audioPath, remotePath).Run()
-
-	// GỌI ĐIỆN
-	exec.Command("adb", "shell", "am", "start", "-a", "android.intent.action.CALL", "-d", "tel:"+targetPhone).Run()
-	time.Sleep(7 * time.Second)
-
-	// Bật loa ngoài
-	exec.Command("adb", "shell", "input", "keyevent", "KEYCODE_WAKEUP").Run()
-
-	// --- CẢI TIẾN: HÚ CÒI BÁO ĐỘNG 3 GIÂY ---
-	logger.Log.Info("🚨 Đang hú còi báo động khẩn cấp...")
-	// Tăng âm lượng tối đa
-	for i := 0; i < 5; i++ {
-		exec.Command("adb", "shell", "input", "keyevent", "24").Run() // KEYCODE_VOLUME_UP
+func (g *Gateway) InitiateAndroidCall(userID primitive.ObjectID, camID primitive.ObjectID, reason string, callType CallType) {
+	phone := g.getUserPhone(userID)
+	if phone == "" {
+		log.Printf("[Android] BỎ QUA: Không tìm thấy số điện thoại cho user %s\n", userID.Hex())
+		return
 	}
-	// Phát tiếng còi (Dùng luôn trình phát nhạc nhưng hú còi)
-	// (Giả sử bạn có file siren.mp3 hoặc dùng âm thanh hệ thống)
-	
-	// Phát tin nhắn TTS chính
-	logger.Log.Infof("📢 Phát thông báo cho %s...", targetName)
-	exec.Command("adb", "shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", "file://"+remotePath, "-t", "audio/mp3").Run()
-	time.Sleep(15 * time.Second)
 
-	// Dọn dẹp
-	exec.Command("adb", "shell", "am", "force-stop", "com.google.android.music").Run()
-	exec.Command("adb", "shell", "am", "force-stop", "com.android.music").Run()
-	exec.Command("adb", "shell", "rm", remotePath).Run()
-	os.Remove("audio/" + audioPath)
+	log.Printf("[Android] ĐANG GỌI 📞 %s (%s) từ Camera %s. Lý do: %s\n", phone, string(callType), camID.Hex(), reason)
 
-	time.Sleep(3 * time.Second)
-	return nil
+	// Tạo context với timeout 30 giây cho toàn bộ tiến trình ADB
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 1. Đẩy file âm thanh cảnh báo vào điện thoại
+	audioPath := "/sdcard/alert.mp3"
+	if err := exec.CommandContext(ctx, "adb", "push", "audio/emergency_vi.mp3", audioPath).Run(); err != nil {
+		log.Printf("[Android] Lỗi adb push: %v. Hãy kiểm tra kết nối thiết bị!\n", err)
+	}
+
+	// 2. Kích hoạt cuộc gọi qua Intent (yêu cầu Android đã root hoặc có quyền shell đặc biệt)
+	callCmd := fmt.Sprintf("am start -a android.intent.action.CALL -d tel:%s", phone)
+	if err := exec.CommandContext(ctx, "adb", "shell", callCmd).Run(); err != nil {
+		log.Printf("[Android] Lỗi kích hoạt cuộc gọi: %v\n", err)
+	}
+
+	// 3. (Optional) Phát âm thanh cảnh báo nếu máy đang trong cuộc gọi
+	go func() {
+		time.Sleep(3 * time.Second)
+		playCtx, playCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer playCancel()
+		
+		// Tăng âm lượng tối đa trước khi phát
+		exec.CommandContext(playCtx, "adb", "shell", "input", "keyevent", "24").Run()
+		exec.CommandContext(playCtx, "adb", "shell", "input", "keyevent", "24").Run()
+
+		if err := exec.CommandContext(playCtx, "adb", "shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", "file://"+audioPath, "-t", "audio/mp3").Run(); err != nil {
+			log.Printf("[Android] Lỗi phát âm thanh: %v\n", err)
+		}
+	}()
+}
+
+func (g *Gateway) getUserPhone(userID primitive.ObjectID) string {
+	var profile bson.M
+	err := g.db.Collection("health_profiles").FindOne(context.Background(), bson.M{"user_id": userID}).Decode(&profile)
+	if err != nil {
+		return ""
+	}
+
+	// Ưu tiên lấy từ contacts nếu có
+	if contacts, ok := profile["contacts"].(primitive.A); ok && len(contacts) > 0 {
+		if first, ok := contacts[0].(bson.M); ok {
+			if phone, ok := first["phone"].(string); ok && phone != "" {
+				return phone
+			}
+		}
+	}
+
+	return ""
 }

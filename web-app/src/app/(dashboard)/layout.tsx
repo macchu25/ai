@@ -1,17 +1,31 @@
 "use client"
 
 import Link from 'next/link';
+import { useDashboardSocket } from '@/hooks/useDashboardSocket';
 import { signOut, useSession } from 'next-auth/react';
 import { 
   Home, Video, Activity, HeartPulse, Settings, UserCircle, 
   ShieldCheck, LogIn, Monitor, LayoutGrid, BarChart3, 
-  AlertTriangle, Cpu, FileText, Send, Terminal, Zap, LogOut, ChevronDown, Bell
+  AlertTriangle, Cpu, FileText, Send, Terminal, Zap, LogOut, ChevronDown, Bell, Sparkles
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ScrollToTop from '@/components/ScrollToTop';
 import { NotificationProvider } from '@/app/context/NotificationContext';
 import { usePathname, useRouter } from 'next/navigation';
 import Loading from './loading';
+
+function formatRelativeVi(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return '';
+  const diff = Math.max(0, Date.now() - t);
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'Vừa xong';
+  if (m < 60) return `${m} phút trước`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} giờ trước`;
+  const d = Math.floor(h / 24);
+  return `${d} ngày trước`;
+}
 
 export default function DashboardLayout({
   children,
@@ -20,22 +34,92 @@ export default function DashboardLayout({
 }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+  const [realtimePlan, setRealtimePlan] = useState<string>('');
+  const [expiryDate, setExpiryDate] = useState<string>('');
+  const [expiryFromApiHydrated, setExpiryFromApiHydrated] = useState(false);
+
+  const fetchPlan = async () => {
+    const token = (session as any)?.accessToken;
+    if (!token) return;
+    try {
+      const res = await fetch(`${apiBase}/health-profiles`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setExpiryFromApiHydrated(true);
+      if (data.subscription_plan) {
+        setRealtimePlan(data.subscription_plan);
+      }
+      if (Object.prototype.hasOwnProperty.call(data, 'plan_expires_at')) {
+        const v = data.plan_expires_at;
+        setExpiryDate(v ? String(v) : '');
+      }
+    } catch (e) {}
+  };
+
+  type InboxRow = { id: string; kind: string; title: string; body: string; read: boolean; created_at: string };
+  const [inboxItems, setInboxItems] = useState<InboxRow[]>([]);
+
+  const fetchNotifications = async () => {
+    const token = (session as any)?.accessToken;
+    if (!token) return;
+    try {
+      const res = await fetch(`${apiBase}/notifications`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.notifications)) {
+        setInboxItems(data.notifications);
+      }
+    } catch (e) {}
+  };
+
+  const markAllNotificationsRead = async (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const token = (session as any)?.accessToken;
+    if (!token) return;
+    try {
+      await fetch(`${apiBase}/notifications/mark-read`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true })
+      });
+      await fetchNotifications();
+    } catch (err) {}
+  };
+
+  useDashboardSocket(apiBase, (session as any)?.accessToken || '', async () => {
+    alert('Chúc mừng! Tài khoản của bạn đã được nâng cấp thành công. 🎉');
+    await update();
+    fetchPlan();
+    fetchNotifications();
+  });
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchPlan();
+      fetchNotifications();
+    }
+  }, [status, session]);
+
+  const currentPlan = (realtimePlan || (session?.user as any)?.subscription_plan || 'free').toLowerCase();
+  const rawExpiry =
+    expiryFromApiHydrated
+      ? expiryDate
+      : (expiryDate || ((session?.user as any)?.plan_expires_at as string | undefined) || '');
+  const currentExpiry =
+    typeof rawExpiry === 'string' && rawExpiry !== '' ? rawExpiry : '';
   const [time, setTime] = useState(new Date());
   const [mounted, setMounted] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-
-  // Hiệu ứng loading khi chuyển trang
-  useEffect(() => {
-    setIsNavigating(true);
-    const timer = setTimeout(() => {
-      setIsNavigating(false);
-    }, 600); // Hiển thị loading trong 600ms để tạo cảm giác mượt mà
-    return () => clearTimeout(timer);
-  }, [pathname]);
-
+  
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.push('/login');
@@ -102,13 +186,29 @@ export default function DashboardLayout({
     <NotificationProvider>
       <div className="dashboard-layout" style={{ display: 'flex', width: '100%', height: '100vh', overflow: 'hidden' }}>
             <aside className="sidebar-slim">
-              <div className="logo-section">
-                <span className="logo-text">IICasos</span>
+              <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 0', width: '100%', borderBottom: '1.5px solid #e2e8f0', marginBottom: '16px' }}>
+                <img src="/logo.png" alt="Casos Logo" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
+                <span className="logo-text" style={{ fontSize: '1.6rem', fontWeight: 950, letterSpacing: '-1.2px', color: '#1e293b', whiteSpace: 'nowrap' }}>
+                  Casos<span style={{ color: 'var(--accent)' }}>.ai</span>
+                </span>
               </div>
 
-              <div className="project-selector">
-                <div className="project-icon"></div>
-                <span className="project-name">CasosCreative</span>
+              <div className="project-selector" style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '12px', 
+                padding: '12px 16px', 
+                background: '#fff', 
+                borderRadius: '16px', 
+                marginBottom: '24px', 
+                cursor: 'pointer', 
+                boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                border: '1px solid #f1f5f9',
+                transition: 'all 0.2s ease',
+                margin: '0 8px 24px 8px'
+              }}>
+                <img src="/image.png" alt="Studio Icon" style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover' }} />
+                <span className="project-name" style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e293b', flex: 1 }}>MacchuStudio</span>
                 <ChevronDown size={16} color="#94a3b8" />
               </div>
               
@@ -119,7 +219,7 @@ export default function DashboardLayout({
                 </Link>
                  <Link href="/profile" className={`nav-link ${pathname === '/profile' ? 'active' : ''}`}>
                    <UserCircle size={20} />
-                   <span>Hồ Sơ</span>
+                   <span>Profile</span>
                  </Link>
                  <Link href="/cameras" className={`nav-link ${pathname === '/cameras' ? 'active' : ''}`}>
                    <Video size={20} />
@@ -139,7 +239,7 @@ export default function DashboardLayout({
                   <Cpu size={20} />
                   <span>AI Models</span>
                 </Link>
-                <Link href="/reports" className="nav-link">
+                <Link href="/reports" className={`nav-link ${pathname === '/reports' ? 'active' : ''}`}>
                   <FileText size={20} />
                   <span>Reports</span>
                 </Link>
@@ -158,10 +258,10 @@ export default function DashboardLayout({
                   <p className="invite-desc">Bring your team in to collaborate.</p>
                 </div>
                 
-                <button className="upgrade-btn">
+                <Link href="/subscription" className="upgrade-btn" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   <Zap size={18} fill="#1e293b" />
                   <span>Upgrade</span>
-                </button>
+                </Link>
                 
                 <button onClick={() => setShowLogoutModal(true)} className="nav-link logout-btn" style={{ marginTop: '8px', color: '#ef4444', width: '100%', justifyContent: 'flex-start', background: 'none', border: 'none', cursor: 'pointer' }}>
                    <LogOut size={20} />
@@ -200,43 +300,132 @@ export default function DashboardLayout({
                        style={{ cursor: 'pointer', position: 'relative' }}
                      >
                        <Bell size={18} strokeWidth={2.5} />
-                       <span className="badge-dot"></span>
+                       {inboxItems.some(i => !i.read) ? <span className="badge-dot"></span> : null}
 
                        {showNotifications && (
-                         <div className="notification-dropdown">
+                         <div className="notification-dropdown" onClick={(e) => e.stopPropagation()}>
                            <div className="notification-header">
-                             <h3>Trung Tâm Cảnh Báo</h3>
-                             <span className="mark-read">Đánh dấu đã đọc</span>
+                             <h3>Thông báo</h3>
+                             <span
+                               className="mark-read"
+                               role="button"
+                               tabIndex={0}
+                               onClick={markAllNotificationsRead}
+                               onKeyDown={(ev) => { if (ev.key === 'Enter') void markAllNotificationsRead(ev); }}
+                             >
+                               Đánh dấu đã đọc
+                             </span>
                            </div>
                            <div className="notification-list">
-                             <div className="notification-item critical">
-                               <div className="notif-icon">🚨</div>
-                               <div className="notif-content">
-                                 <div className="notif-title">CẢNH BÁO: Người bị ngã!</div>
-                                 <div className="notif-desc">Phát hiện sự cố tại Khu vực Hành lang 1.</div>
-                                 <div className="notif-time">2 phút trước</div>
+                             {inboxItems.length === 0 ? (
+                               <div className="notification-item" style={{ cursor: 'default' }}>
+                                 <div className="notif-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                   <Bell size={18} color="#64748b" />
+                                 </div>
+                                 <div className="notif-content">
+                                   <div className="notif-title">Chưa có thông báo</div>
+                                   <div className="notif-desc">Khi bạn đăng ký gói hoặc có thanh toán, tin nhắn sẽ xuất hiện tại đây.</div>
+                                 </div>
                                </div>
-                             </div>
-                             <div className="notification-item">
-                               <div className="notif-icon">📡</div>
-                               <div className="notif-content">
-                                 <div className="notif-title">Hệ thống AI Active</div>
-                                 <div className="notif-desc">Bắt đầu giám sát 12 camera thành công.</div>
-                                 <div className="notif-time">1 giờ trước</div>
-                               </div>
-                             </div>
+                             ) : (
+                               inboxItems.map((n) => (
+                                 <div
+                                   key={n.id}
+                                   className={`notification-item${n.read ? '' : ' subscription-unread'}`}
+                                   style={{ cursor: 'default' }}
+                                 >
+                                   <div className="notif-icon">
+                                     {n.kind === 'subscription_activated'
+                                       ? <Sparkles size={18} style={{ color: '#3b82f6' }} />
+                                       : '📬'}
+                                   </div>
+                                   <div className="notif-content">
+                                     <div className="notif-title">{n.title}</div>
+                                     <div className="notif-desc">{n.body}</div>
+                                     {n.created_at ? (
+                                       <div className="notif-time">{formatRelativeVi(n.created_at)}</div>
+                                     ) : null}
+                                   </div>
+                                 </div>
+                               ))
+                             )}
                            </div>
-                           <div className="notification-footer">
-                             Xem tất cả vụ việc
-                           </div>
+                           <Link href="/subscription" className="notification-footer" style={{ textDecoration: 'none', display: 'block' }}>
+                             Lịch sử thanh toán trong Gói đăng ký
+                           </Link>
                          </div>
                        )}
                      </div>
-                     <div className="user-avatar">
-                       <img 
-                         src={session?.user?.image || `https://ui-avatars.com/api/?name=${session?.user?.name || 'User'}&background=3b82f6&color=fff`} 
-                         alt="User Profile" 
-                       />
+                     <div className="user-profile-container" style={{ position: 'relative' }}>
+                        <div className="user-avatar" style={{ 
+                          position: 'relative',
+                          padding: '3px',
+                          borderRadius: '50%',
+                          background: currentPlan === 'pro' || currentPlan === 'scale'
+                            ? 'linear-gradient(45deg, #f59e0b, #fbbf24)' // Gold
+                            : currentPlan === 'starter' || currentPlan === 'creator'
+                              ? 'linear-gradient(45deg, #3b82f6, #60a5fa)' // Blue
+                              : 'linear-gradient(45deg, #cbd5e1, #94a3b8)', // Gray/Silver
+                          cursor: 'pointer'
+                        }}>
+                          <img 
+                            src={session?.user?.image || `https://ui-avatars.com/api/?name=${session?.user?.name || 'User'}&background=3b82f6&color=fff`} 
+                            alt="User Profile" 
+                            style={{ 
+                              width: '38px', height: '38px', borderRadius: '50%', 
+                              border: '2px solid white', objectFit: 'cover'
+                            }}
+                          />
+                        </div>
+
+                        {/* Hover Info Tooltip (ElevenLabs Style) */}
+                        <div className="avatar-tooltip">
+                           <div className="tooltip-header">
+                              <div className="user-name">{(session?.user as any)?.name || 'Thành viên'}</div>
+                              <div className="user-email-sub" style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>{session?.user?.email}</div>
+                           </div>
+                           
+                           <div className="tooltip-divider"></div>
+                           
+                           <div className="tooltip-section">
+                              <div className="plan-status-row">
+                                 <div className="plan-badge-v2" style={{ 
+                                   background: currentPlan === 'pro' || currentPlan === 'scale' ? '#fef3c7' : '#e0e7ff',
+                                   color: currentPlan === 'pro' || currentPlan === 'scale' ? '#92400e' : '#4338ca'
+                                 }}>
+                                   {currentPlan.toUpperCase()}
+                                 </div>
+                                 <span className="plan-expiry-v2">
+                                   {(() => {
+                                     const paidPlans = ['starter', 'creator', 'pro', 'scale'];
+                                     const isPaid = paidPlans.includes(currentPlan);
+                                     if (!currentExpiry) {
+                                       return isPaid ? 'Đang đồng bộ…' : 'Vô thời hạn';
+                                     }
+                                     const d = new Date(currentExpiry);
+                                     if (Number.isNaN(d.getTime())) {
+                                       return isPaid ? 'Đang đồng bộ…' : 'Vô thời hạn';
+                                     }
+                                     return d.toLocaleDateString('vi-VN');
+                                   })()}
+                                 </span>
+                              </div>
+                           </div>
+
+                           <div className="tooltip-divider"></div>
+
+                           <div className="tooltip-links">
+                              <Link href="/profile" className="tooltip-link">
+                                 <UserCircle size={16} /> <span>Tài khoản của tôi</span>
+                              </Link>
+                              <Link href="/subscription" className="tooltip-link">
+                                 <Zap size={16} /> <span>Gói đăng ký</span>
+                              </Link>
+                              <div className="tooltip-link" style={{ color: '#ef4444' }} onClick={() => setShowLogoutModal(true)}>
+                                 <LogOut size={16} /> <span>Đăng xuất</span>
+                              </div>
+                           </div>
+                        </div>
                      </div>
                   </div>
                 </div>
@@ -244,7 +433,7 @@ export default function DashboardLayout({
 
               <div className="workspace-area">
                 <div className="workspace-content-wrapper">
-                   {isNavigating ? <Loading /> : children}
+                   {children}
                 </div>
               </div>
             </main>

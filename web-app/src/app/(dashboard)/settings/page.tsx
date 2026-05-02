@@ -1,19 +1,75 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, Bell, Shield, Sliders, Save, ChevronRight, Activity, Cpu } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import { useNotification } from '@/app/context/NotificationContext';
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { showToast } = useNotification();
-  const [sensitivity, setSensitivity] = useState(75);
+  
   const [thrLow, setThrLow] = useState(0.015);
   const [thrHigh, setThrHigh] = useState(0.040);
   const [audioAlert, setAudioAlert] = useState(true);
   const [showTeleModal, setShowTeleModal] = useState(false);
   const [teleId, setTeleId] = useState('');
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      const fetchProfile = async () => {
+        const token = (session?.user as any)?.accessToken;
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+        try {
+          const res = await fetch(`${apiBase}/health-profiles`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.telegram_chat_id) {
+              setTeleId(data.telegram_chat_id);
+            }
+            if (data.thrLow !== undefined) setThrLow(data.thrLow);
+            if (data.thrHigh !== undefined) setThrHigh(data.thrHigh);
+            if (data.audioAlert !== undefined) setAudioAlert(data.audioAlert);
+          }
+          setIsLoaded(true);
+        } catch (err) {
+          console.error("Lỗi lấy hồ sơ:", err);
+        }
+      };
+      fetchProfile();
+    }
+  }, [status, session]);
+
+  const handleSaveSettings = async () => {
+    const token = (session?.user as any)?.accessToken;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+    
+    try {
+      const res = await fetch(`${apiBase}/health-profiles`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          thrLow,
+          thrHigh,
+          audioAlert
+        })
+      });
+
+      if (res.ok) {
+        showToast("Đã lưu cấu hình thành công!", "success");
+      } else {
+        showToast("Không thể lưu cấu hình.", "error");
+      }
+    } catch (err) {
+      showToast("Lỗi kết nối server.", "error");
+    }
+  };
 
   const handleSaveTele = async () => {
     if (!teleId) {
@@ -152,11 +208,19 @@ export default function SettingsPage() {
                 <button 
                   onClick={() => setShowTeleModal(true)}
                   style={{ 
-                    background: 'var(--accent)', color: 'white', border: 'none',
-                    padding: '10px 20px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer'
+                    background: teleId ? '#10b981' : 'var(--accent)', 
+                    color: 'white', 
+                    border: 'none',
+                    padding: '12px 24px', 
+                    borderRadius: '14px', 
+                    fontWeight: 700, 
+                    cursor: 'pointer',
+                    fontSize: '0.9rem', 
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    boxShadow: teleId ? '0 4px 12px rgba(16, 185, 129, 0.2)' : '0 4px 12px rgba(37, 99, 235, 0.2)'
                   }}
                 >
-                  Cấu hình
+                  {teleId ? `ID: ${teleId}` : 'Cấu hình ngay'}
                 </button>
               </div>
             </div>
@@ -178,12 +242,15 @@ export default function SettingsPage() {
             <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: '1.6', fontWeight: 500, marginBottom: '24px' }}>
               Sử dụng <strong>Webcam Local</strong> để calibrate ngưỡng Variance trước khi áp dụng cho camera giám sát treo tường để đảm bảo tính chính xác tuyệt đối.
             </p>
-            <button style={{ 
-              width: '100%', background: 'var(--accent)', color: 'var(--bg-secondary)', 
-              border: 'none', padding: '16px', borderRadius: '16px', fontSize: '1.05rem', 
-              fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-              cursor: 'pointer', transition: 'transform 0.2s var(--ease-out-quint), box-shadow 0.2s var(--ease-out-quint)'
-            }}>
+            <button 
+              onClick={handleSaveSettings}
+              style={{ 
+                width: '100%', background: 'var(--accent)', color: 'var(--bg-secondary)', 
+                border: 'none', padding: '16px', borderRadius: '16px', fontSize: '1.05rem', 
+                fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                cursor: 'pointer', transition: 'transform 0.2s var(--ease-out-quint), box-shadow 0.2s var(--ease-out-quint)'
+              }}
+            >
               <Save size={20} /> LƯU CẤU HÌNH
             </button>
           </div>
@@ -212,6 +279,7 @@ export default function SettingsPage() {
                   </span>
                 </div>
               ))}
+
             </div>
           </div>
         </div>
