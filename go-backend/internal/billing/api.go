@@ -87,6 +87,31 @@ func (a *API) ListPayments(c *gin.Context) {
 		})
 	}
 
+	if len(out) == 0 {
+		var u bson.M
+		if err := a.db.Collection(collUsers).FindOne(ctx, bson.M{"_id": uid}).Decode(&u); err == nil {
+			if plan, ok := u["subscription_plan"].(string); ok && plan != "" && plan != "free" {
+				paidAt := formatBSONTime(u["last_payment_at"])
+				expires := formatBSONTime(u["plan_expires_at"])
+				ref, _ := u["last_payment_ref"].(string)
+				if paidAt != "" {
+					out = append(out, gin.H{
+						"id":              uid.Hex() + "-legacy",
+						"plan":            plan,
+						"reference_code": ref,
+						"paid_at":         paidAt,
+						"plan_expires_at": expires,
+						"source":          "legacy_record",
+					})
+				}
+			}
+		}
+	}
+
+	if out == nil {
+		out = []gin.H{}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"payments": out})
 }
 

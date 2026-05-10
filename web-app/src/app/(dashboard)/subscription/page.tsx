@@ -1,8 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Check, Zap, Shield, Globe, 
+import {
+  Check, Zap, Shield, Globe,
   BarChart3, Settings, ChevronRight,
   Sparkles, CreditCard, Users, HelpCircle,
   ArrowRight, HeartPulse, ShieldCheck, Lock, Loader2, PartyPopper, X, QrCode,
@@ -29,16 +29,16 @@ const PlanCard = ({ name, id, price, period, description, features, buttonText, 
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div 
+    <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      style={{ 
-        background: '#fff', 
-        borderRadius: '24px', 
-        padding: '40px 32px', 
+      style={{
+        background: '#fff',
+        borderRadius: '24px',
+        padding: '40px 32px',
         border: isPopular ? '2px solid #3b82f6' : '1px solid #f1f5f9',
-        boxShadow: isHovered 
-          ? '0 20px 40px rgba(0, 0, 0, 0.04)' 
+        boxShadow: isHovered
+          ? '0 20px 40px rgba(0, 0, 0, 0.04)'
           : '0 4px 12px rgba(0, 0, 0, 0.02)',
         position: 'relative',
         display: 'flex',
@@ -47,15 +47,16 @@ const PlanCard = ({ name, id, price, period, description, features, buttonText, 
         transform: isHovered ? 'translateY(-8px)' : 'translateY(0)',
         cursor: isCurrent ? 'default' : 'pointer',
         zIndex: isHovered ? 10 : 1,
-        flex: 1
+        flex: 1,
+        fontFamily: '"Inter", sans-serif'
       }}
       onClick={() => !isCurrent && onUpgrade(id)}
     >
       {isPopular && (
-        <div style={{ 
+        <div style={{
           position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)',
-          background: '#3b82f6', color: '#fff', 
-          padding: '6px 16px', borderRadius: '20px', 
+          background: '#3b82f6', color: '#fff',
+          padding: '6px 16px', borderRadius: '20px',
           fontSize: '0.65rem', fontWeight: 900, letterSpacing: '1px',
           whiteSpace: 'nowrap',
           zIndex: 20
@@ -63,31 +64,32 @@ const PlanCard = ({ name, id, price, period, description, features, buttonText, 
           ✨ PHỔ BIẾN NHẤT
         </div>
       )}
-      
+
       <div style={{ marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '8px', color: '#1e293b' }}>{name}</h3>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '8px', color: '#1e293b' }}>{name}</h3>
         <p style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600, lineHeight: 1.5 }}>{description}</p>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '24px' }}>
-        <span style={{ fontSize: '2.8rem', fontWeight: 1000, color: '#1e293b', letterSpacing: '-1.5px' }}>{price}</span>
+        <span style={{ fontSize: '2.8rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-1.5px' }}>{price}</span>
         <span style={{ color: '#94a3b8', fontSize: '1rem', fontWeight: 700 }}>/{period}</span>
       </div>
-      
-      <button style={{ 
-        width: '100%', padding: '14px', borderRadius: '14px', 
+
+      <button style={{
+        width: '100%', padding: '14px', borderRadius: '14px',
         border: isCurrent ? '1.5px solid #f1f5f9' : 'none',
         background: isCurrent ? 'transparent' : (isPopular ? '#3b82f6' : '#1e293b'),
         color: isCurrent ? '#94a3b8' : '#fff',
-        fontWeight: 850, cursor: isCurrent ? 'default' : 'pointer',
+        fontWeight: 700, cursor: isCurrent ? 'default' : 'pointer',
         marginBottom: '32px', transition: 'all 0.2s ease',
-        fontSize: '0.9rem'
+        fontSize: '0.9rem',
+        fontFamily: '"Inter", sans-serif'
       }}>
         {isCurrent ? 'Gói hiện tại' : buttonText}
       </button>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-         <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '1px' }}>Tính năng</p>
+        <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '1px' }}>Tính năng</p>
         {features.map((f, i) => (
           <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <Check size={14} strokeWidth={3} color={isPopular ? '#3b82f6' : '#1e293b'} />
@@ -131,12 +133,33 @@ export default function SubscriptionPage() {
   const [copied, setCopied] = useState(false);
   const [pollCount, setPollCount] = useState(0);
   const [paymentHistory, setPaymentHistory] = useState<PaymentRow[]>([]);
+  const [currentPlanInfo, setCurrentPlanInfo] = useState<{ plan: string, status: string, expiresAt: string, paidAt: string } | null>(null);
   const [celebratePlan, setCelebratePlan] = useState<string | undefined>();
   const router = useRouter();
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
+  const fetchCurrentPlan = async () => {
+    const tok = (session?.user as any)?.accessToken;
+    if (!tok) return;
+    try {
+      const res = await fetch(`${apiBase}/health-profiles`, {
+        headers: { Authorization: `Bearer ${tok}` },
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentPlanInfo({
+          plan: data.subscription_plan || 'free',
+          status: data.subscription_status || 'active',
+          expiresAt: data.plan_expires_at || '',
+          paidAt: data.last_payment_at || ''
+        });
+      }
+    } catch { }
+  };
+
   const loadPaymentHistory = async () => {
-    const tok = (session as any)?.accessToken;
+    const tok = (session?.user as any)?.accessToken;
     if (!tok) return;
     try {
       const res = await fetch(`${apiBase}/billing/payments`, {
@@ -150,14 +173,15 @@ export default function SubscriptionPage() {
   };
 
   useEffect(() => {
-    if ((session as any)?.accessToken) {
+    if ((session?.user as any)?.accessToken) {
       loadPaymentHistory();
+      fetchCurrentPlan();
     }
   }, [session]);
 
   useEffect(() => {
     const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap';
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
 
@@ -175,11 +199,11 @@ export default function SubscriptionPage() {
         try {
           const response = await fetch(`${apiBase}/user/check-payment?code=${getPaymentCode()}`, {
             headers: {
-              'Authorization': `Bearer ${(session as any)?.accessToken}`
+              'Authorization': `Bearer ${(session?.user as any)?.accessToken}`
             }
           });
           const data = await response.json();
-          
+
           if (data.status === 'confirmed') {
             handleSuccess();
           }
@@ -197,7 +221,7 @@ export default function SubscriptionPage() {
   }, [selectedPlan, showSuccess]);
 
   const getVNDPrice = (planId: string) => {
-    switch(planId) {
+    switch (planId) {
       case 'starter': return 5000;
       case 'creator': return 10000;
       case 'pro': return 20000;
@@ -219,6 +243,7 @@ export default function SubscriptionPage() {
     setSelectedPlan(null);
     await update();
     await loadPaymentHistory();
+    await fetchCurrentPlan();
     setTimeout(() => {
       setShowSuccess(false);
       setCelebratePlan(undefined);
@@ -229,14 +254,14 @@ export default function SubscriptionPage() {
   const handleConfirmPayment = async () => {
     if (!selectedPlan) return;
     setIsProcessing(true);
-    
+
     try {
       // Manual trigger for testing
       const response = await fetch(`${apiBase}/user/upgrade`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(session as any)?.accessToken}`
+          'Authorization': `Bearer ${(session?.user as any)?.accessToken}`
         },
         body: JSON.stringify({ plan: selectedPlan })
       });
@@ -257,24 +282,87 @@ export default function SubscriptionPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [isOTPSent, setIsOTPSent] = useState(false);
+  const [cancelOTP, setCancelOTP] = useState('');
+  const [cancelStatus, setCancelStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  const handleCancelPlan = () => {
+    setShowCancelModal(true);
+    setIsOTPSent(false);
+    initiateCancelRequest(); // Send OTP immediately when opening modal
+  };
+
+  const initiateCancelRequest = async () => {
+    setIsProcessing(true);
+    try {
+      const tok = (session?.user as any)?.accessToken;
+      const res = await fetch(`${apiBase}/user/cancel-plan/request`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tok}` }
+      });
+      if (res.ok) {
+        setIsOTPSent(true);
+      } else {
+        const data = await res.json();
+        setCancelStatus({ type: 'error', message: data.error || 'Có lỗi xảy ra khi yêu cầu mã xác nhận' });
+      }
+    } catch (err) {
+      setCancelStatus({ type: 'error', message: 'Không thể kết nối tới máy chủ' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const confirmCancelPlan = async () => {
+    if (!cancelOTP) return;
+    setIsProcessing(true);
+    try {
+      const tok = (session?.user as any)?.accessToken;
+      const res = await fetch(`${apiBase}/user/cancel-plan`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tok}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ otp: cancelOTP })
+      });
+      if (res.ok) {
+        setShowCancelModal(false);
+        setCancelOTP('');
+        setIsOTPSent(false);
+        setCancelStatus({ type: 'success', message: 'Đã hủy gói cước thành công. Trạng thái của bạn đã chuyển sang "Canceled".' });
+        await update();
+        await fetchCurrentPlan();
+      } else {
+        const data = await res.json();
+        setCancelStatus({ type: 'error', message: data.error || 'Mã xác nhận không chính xác hoặc đã hết hạn' });
+      }
+    } catch (err) {
+      setCancelStatus({ type: 'error', message: 'Không thể kết nối tới máy chủ' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
-    <div className="subscription-page" style={{ 
-      padding: '0 40px', background: 'transparent', height: '100%', 
+    <div className="subscription-page" style={{
+      padding: '0 40px', background: 'transparent', height: '100%',
       display: 'flex', flexDirection: 'column', justifyContent: 'center',
-      alignItems: 'center', position: 'relative', fontFamily: '"Plus Jakarta Sans", sans-serif'
+      alignItems: 'center', position: 'relative', fontFamily: '"Inter", sans-serif'
     }}>
-      
+
       {showSuccess && (
-        <div style={{ 
-          position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.95)', 
-          backdropFilter: 'blur(20px)', zIndex: 2000, 
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(20px)', zIndex: 2000,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           animation: 'fadeIn 0.5s ease'
         }}>
           <div style={{ textAlign: 'center', animation: 'scaleUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
-            <div style={{ 
-              width: '100px', height: '100px', background: '#22c55e', 
-              borderRadius: '50%', display: 'flex', alignItems: 'center', 
+            <div style={{
+              width: '100px', height: '100px', background: '#22c55e',
+              borderRadius: '50%', display: 'flex', alignItems: 'center',
               justifyContent: 'center', margin: '0 auto 30px',
               boxShadow: '0 20px 40px rgba(34, 197, 94, 0.3)'
             }}>
@@ -287,19 +375,152 @@ export default function SubscriptionPage() {
         </div>
       )}
 
-      {selectedPlan && (
+      {showCancelModal && (
         <div style={{ 
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', 
-          backdropFilter: 'blur(8px)', zIndex: 1000, 
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.7)', 
+          backdropFilter: 'blur(16px)', zIndex: 1100, 
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          animation: 'fadeIn 0.3s ease'
         }}>
           <div style={{ 
-            background: '#fff', borderRadius: '32px', width: '100%', maxWidth: '820px', 
+            background: '#fff', borderRadius: '36px', width: '100%', maxWidth: '460px', 
+            padding: isOTPSent ? '48px' : '40px', textAlign: 'center', boxShadow: '0 30px 60px -12px rgba(0,0,0,0.3)',
+            animation: 'modalSlideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            position: 'relative',
+            transition: 'all 0.4s ease'
+          }}>
+             <>
+               <div style={{ 
+                 width: '64px', height: '64px', background: '#fee2e2', borderRadius: '50%',
+                 display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px'
+               }}>
+                  <ShieldCheck size={32} color="#dc2626" />
+               </div>
+               <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', marginBottom: '12px', letterSpacing: '-0.8px', fontFamily: '"Inter", sans-serif' }}>Xác nhận hủy gói</h3>
+               <p style={{ fontSize: '0.95rem', color: '#64748b', fontWeight: 600, marginBottom: '28px', lineHeight: 1.5, fontFamily: '"Inter", sans-serif' }}>
+                 Chúng tôi đã gửi mã xác nhận 6 số đến email của bạn. Vui lòng nhập mã để hoàn tất việc hủy gói.
+               </p>
+
+               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '32px', position: 'relative' }}>
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} style={{
+                      width: '45px', height: '56px', borderRadius: '14px',
+                      border: `2px solid ${cancelOTP[i] ? '#dc2626' : '#f1f5f9'}`,
+                      background: cancelOTP[i] ? '#fff' : '#f8fafc',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '1.5rem', fontWeight: 700, color: '#1e293b',
+                      transition: 'all 0.2s ease',
+                      boxShadow: cancelOTP[i] ? '0 8px 20px rgba(220, 38, 38, 0.1)' : 'none',
+                      fontFamily: '"Inter", sans-serif'
+                    }}>
+                      {cancelOTP[i] || ''}
+                    </div>
+                  ))}
+                  <input 
+                    type="text" 
+                    maxLength={6}
+                    autoFocus
+                    value={cancelOTP}
+                    onChange={(e) => setCancelOTP(e.target.value.replace(/[^0-9]/g, ''))}
+                    style={{
+                      position: 'absolute', opacity: 0, inset: 0, cursor: 'pointer', width: '100%'
+                    }}
+                  />
+               </div>
+               
+               <div style={{ display: 'flex', gap: '16px' }}>
+                  <button 
+                    onClick={() => { setShowCancelModal(false); setCancelOTP(''); }}
+                    style={{ flex: 1, padding: '16px', borderRadius: '18px', border: '1.5px solid #e2e8f0', background: '#fff', fontWeight: 700, cursor: 'pointer', color: '#64748b', fontFamily: '"Inter", sans-serif' }}
+                  >
+                    Bỏ qua
+                  </button>
+                  <button 
+                    onClick={confirmCancelPlan}
+                    disabled={isProcessing || cancelOTP.length < 6}
+                    style={{ 
+                      flex: 1, padding: '16px', borderRadius: '18px', border: 'none', 
+                      background: cancelOTP.length === 6 ? '#dc2626' : '#cbd5e1', 
+                      color: '#fff', fontWeight: 700, cursor: 'pointer', 
+                      boxShadow: cancelOTP.length === 6 ? '0 10px 20px rgba(220, 38, 38, 0.2)' : 'none', 
+                      fontFamily: '"Inter", sans-serif',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                  >
+                    {isProcessing ? <Loader2 className="animate-spin" size={20} /> : 'Xác nhận hủy'}
+                  </button>
+               </div>
+               
+               {!isOTPSent && isProcessing && (
+                 <div style={{ marginTop: '16px', fontSize: '0.8rem', color: '#3b82f6', fontWeight: 600 }}>
+                   Đang gửi mã xác nhận...
+                 </div>
+               )}
+             </>
+          </div>
+        </div>
+      )}
+
+      {cancelStatus && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(12px)', zIndex: 1200,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '32px', width: '100%', maxWidth: '400px',
+            padding: '40px', textAlign: 'center', boxShadow: '0 30px 60px rgba(0,0,0,0.15)',
+            animation: 'scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          }}>
+            <div style={{
+              width: '64px', height: '64px',
+              background: cancelStatus.type === 'success' ? '#dcfce7' : '#fee2e2',
+              borderRadius: '50%', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', margin: '0 auto 24px'
+            }}>
+              {cancelStatus.type === 'success' ?
+                <PartyPopper size={32} color="#16a34a" /> :
+                <X size={32} color="#dc2626" strokeWidth={3} />
+              }
+            </div>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e293b', marginBottom: '12px', letterSpacing: '-0.5px', fontFamily: '"Inter", sans-serif' }}>
+              {cancelStatus.type === 'success' ? 'Thành công!' : 'Có lỗi'}
+            </h3>
+            <p style={{ fontSize: '0.95rem', color: '#64748b', fontWeight: 600, marginBottom: '32px', lineHeight: 1.5 }}>
+              {cancelStatus.message}
+            </p>
+            <button
+              onClick={() => {
+                setCancelStatus(null);
+                if (cancelStatus.type === 'success') router.push('/');
+              }}
+              style={{
+                width: '100%', padding: '16px', borderRadius: '18px', border: 'none',
+                background: cancelStatus.type === 'success' ? '#16a34a' : '#1e293b',
+                color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '1rem', fontFamily: '"Inter", sans-serif',
+                boxShadow: '0 10px 20px rgba(0,0,0,0.05)'
+              }}
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
+
+      {selectedPlan && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(8px)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '32px', width: '100%', maxWidth: '820px',
             padding: '48px', position: 'relative', textAlign: 'left',
             boxShadow: '0 30px 60px rgba(0,0,0,0.2)',
             animation: 'modalSlideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1)'
           }}>
-            <button 
+            <button
               onClick={() => setSelectedPlan(null)}
               style={{ position: 'absolute', top: '24px', right: '24px', background: '#f1f5f9', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer' }}
             >
@@ -311,153 +532,153 @@ export default function SubscriptionPage() {
                 <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#1e293b', marginBottom: '8px' }}>Xác nhận thanh toán</h3>
                 <p style={{ fontSize: '0.95rem', color: '#64748b', fontWeight: 600 }}>Hệ thống đang tự động kiểm tra giao dịch của bạn...</p>
               </div>
-              <div style={{ 
-                display: 'flex', alignItems: 'center', gap: '8px', 
-                padding: '8px 16px', background: '#eff6ff', borderRadius: '100px' 
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 16px', background: '#eff6ff', borderRadius: '100px'
               }}>
-                 <div className="pulse-dot"></div>
-                 <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#3b82f6' }}>Đang chờ thanh toán</span>
+                <div className="pulse-dot"></div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#3b82f6' }}>Đang chờ thanh toán</span>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
-               <div style={{ flex: '1', maxWidth: '340px' }}>
-                  <div style={{ display: 'flex', gap: '10px', background: '#f1f5f9', padding: '6px', borderRadius: '16px', marginBottom: '20px' }}>
-                    <button 
-                        onClick={() => setPaymentMethod('bank')}
-                        style={{ 
-                          flex: 1, padding: '10px', borderRadius: '12px', border: 'none',
-                          background: paymentMethod === 'bank' ? '#fff' : 'transparent',
-                          color: paymentMethod === 'bank' ? '#1e293b' : '#64748b',
-                          fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                          boxShadow: paymentMethod === 'bank' ? '0 4px 10px rgba(0,0,0,0.05)' : 'none'
-                        }}
-                    >
-                        <Building2 size={16} /> Ngân hàng
-                    </button>
-                    <button 
-                        onClick={() => setPaymentMethod('momo')}
-                        style={{ 
-                          flex: 1, padding: '10px', borderRadius: '12px', border: 'none',
-                          background: paymentMethod === 'momo' ? '#fff' : 'transparent',
-                          color: paymentMethod === 'momo' ? '#a50064' : '#64748b',
-                          fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                          boxShadow: paymentMethod === 'momo' ? '0 4px 10px rgba(0,0,0,0.05)' : 'none'
-                        }}
-                    >
-                        <Smartphone size={16} /> Ví MoMo
-                    </button>
-                  </div>
+              <div style={{ flex: '1', maxWidth: '340px' }}>
+                <div style={{ display: 'flex', gap: '10px', background: '#f1f5f9', padding: '6px', borderRadius: '16px', marginBottom: '20px' }}>
+                  <button
+                    onClick={() => setPaymentMethod('bank')}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: '12px', border: 'none',
+                      background: paymentMethod === 'bank' ? '#fff' : 'transparent',
+                      color: paymentMethod === 'bank' ? '#1e293b' : '#64748b',
+                      fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      boxShadow: paymentMethod === 'bank' ? '0 4px 10px rgba(0,0,0,0.05)' : 'none'
+                    }}
+                  >
+                    <Building2 size={16} /> Ngân hàng
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod('momo')}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: '12px', border: 'none',
+                      background: paymentMethod === 'momo' ? '#fff' : 'transparent',
+                      color: paymentMethod === 'momo' ? '#a50064' : '#64748b',
+                      fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      boxShadow: paymentMethod === 'momo' ? '0 4px 10px rgba(0,0,0,0.05)' : 'none'
+                    }}
+                  >
+                    <Smartphone size={16} /> Ví MoMo
+                  </button>
+                </div>
 
-                  <div style={{ 
-                    background: '#fff', borderRadius: '24px', padding: '12px', 
-                    border: '1.5px solid #f1f5f9', boxShadow: '0 10px 25px rgba(0,0,0,0.03)',
-                    position: 'relative'
-                  }}>
-                    {paymentMethod === 'bank' ? (
-                      <img 
-                        src={`https://img.vietqr.io/image/mb-0905304143-compact.png?amount=${getVNDPrice(selectedPlan)}&addInfo=${encodeURIComponent(getPaymentCode())}&accountName=NHU%20HUU%20MAC`}
-                        alt="Bank QR"
-                        style={{ width: '100%', borderRadius: '12px', display: 'block' }}
+                <div style={{
+                  background: '#fff', borderRadius: '24px', padding: '12px',
+                  border: '1.5px solid #f1f5f9', boxShadow: '0 10px 25px rgba(0,0,0,0.03)',
+                  position: 'relative'
+                }}>
+                  {paymentMethod === 'bank' ? (
+                    <img
+                      src={`https://img.vietqr.io/image/mb-0905304143-compact.png?amount=${getVNDPrice(selectedPlan)}&addInfo=${encodeURIComponent(getPaymentCode())}&accountName=NHU%20HUU%20MAC`}
+                      alt="Bank QR"
+                      style={{ width: '100%', borderRadius: '12px', display: 'block' }}
+                    />
+                  ) : (
+                    <div style={{ padding: '10px' }}>
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://nhantien.momo.vn/0905177808/${getVNDPrice(selectedPlan)}`}
+                        alt="MoMo QR"
+                        style={{ width: '100%', borderRadius: '12px', display: 'block', border: '4px solid #a50064' }}
                       />
-                    ) : (
-                      <div style={{ padding: '10px' }}>
-                        <img 
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://nhantien.momo.vn/0905177808/${getVNDPrice(selectedPlan)}`}
-                          alt="MoMo QR"
-                          style={{ width: '100%', borderRadius: '12px', display: 'block', border: '4px solid #a50064' }}
-                        />
-                        <p style={{ marginTop: '12px', color: '#a50064', fontWeight: 900, fontSize: '0.85rem', textAlign: 'center' }}>Quét bằng ứng dụng MoMo</p>
-                      </div>
-                    )}
-                  </div>
-               </div>
+                      <p style={{ marginTop: '12px', color: '#a50064', fontWeight: 900, fontSize: '0.85rem', textAlign: 'center' }}>Quét bằng ứng dụng MoMo</p>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-               <div style={{ flex: '1.2', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '24px', border: '1px solid #f1f5f9' }}>
-                     <div style={{ marginBottom: '20px' }}>
-                        <p style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }}>Số tiền cần thanh toán</p>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                           <span style={{ fontSize: '2.2rem', fontWeight: 1000, color: '#1e293b' }}>{getVNDPrice(selectedPlan).toLocaleString()}</span>
-                           <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#64748b' }}>VND</span>
-                        </div>
-                     </div>
-
-                     <div>
-                        <p style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }}>Nội dung chuyển khoản</p>
-                        <div style={{ 
-                           background: '#fff', padding: '16px', borderRadius: '16px', 
-                           border: '1.5px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                        }}>
-                           <span style={{ fontSize: '1.05rem', fontWeight: 900, color: '#1e293b' }}>{getPaymentCode()}</span>
-                           <button 
-                              onClick={() => copyToClipboard(getPaymentCode())}
-                              style={{ background: '#f1f5f9', border: 'none', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                           >
-                              <Copy size={14} color={copied ? '#22c55e' : '#3b82f6'} />
-                              <span style={{ fontSize: '0.7rem', fontWeight: 850, color: copied ? '#22c55e' : '#3b82f6' }}>{copied ? 'Đã chép' : 'Sao chép'}</span>
-                           </button>
-                        </div>
-                     </div>
+              <div style={{ flex: '1.2', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '24px', border: '1px solid #f1f5f9' }}>
+                  <div style={{ marginBottom: '20px' }}>
+                    <p style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }}>Số tiền cần thanh toán</p>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                      <span style={{ fontSize: '2.2rem', fontWeight: 1000, color: '#1e293b' }}>{getVNDPrice(selectedPlan).toLocaleString()}</span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#64748b' }}>VND</span>
+                    </div>
                   </div>
 
-                  <div style={{ 
-                    padding: '20px', borderRadius: '20px', background: '#f0f9ff', 
-                    border: '1px solid #e0f2fe', display: 'flex', gap: '16px' 
+                  <div>
+                    <p style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }}>Nội dung chuyển khoản</p>
+                    <div style={{
+                      background: '#fff', padding: '16px', borderRadius: '16px',
+                      border: '1.5px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                    }}>
+                      <span style={{ fontSize: '1.05rem', fontWeight: 900, color: '#1e293b' }}>{getPaymentCode()}</span>
+                      <button
+                        onClick={() => copyToClipboard(getPaymentCode())}
+                        style={{ background: '#f1f5f9', border: 'none', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Copy size={14} color={copied ? '#22c55e' : '#3b82f6'} />
+                        <span style={{ fontSize: '0.7rem', fontWeight: 850, color: copied ? '#22c55e' : '#3b82f6' }}>{copied ? 'Đã chép' : 'Sao chép'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  padding: '20px', borderRadius: '20px', background: '#f0f9ff',
+                  border: '1px solid #e0f2fe', display: 'flex', gap: '16px'
+                }}>
+                  <div style={{
+                    width: '40px', height: '40px', background: '#3b82f6',
+                    borderRadius: '12px', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', flexShrink: 0
                   }}>
-                     <div style={{ 
-                       width: '40px', height: '40px', background: '#3b82f6', 
-                       borderRadius: '12px', display: 'flex', alignItems: 'center', 
-                       justifyContent: 'center', flexShrink: 0 
-                     }}>
-                        <Search size={20} color="white" className="ping-animate" />
-                     </div>
-                     <div>
-                        <p style={{ fontSize: '0.85rem', color: '#0369a1', fontWeight: 800, marginBottom: '4px' }}>Hệ thống đang tự động dò tìm...</p>
-                        <p style={{ fontSize: '0.75rem', color: '#0ea5e9', fontWeight: 600, lineHeight: 1.4 }}>
-                           Màn hình này sẽ tự động đóng ngay khi chúng tôi nhận được chuyển khoản của bạn. Vui lòng giữ nguyên màn hình.
-                        </p>
-                     </div>
+                    <Search size={20} color="white" className="ping-animate" />
                   </div>
-
-                  <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <button 
-                      onClick={handleConfirmPayment}
-                      disabled={isProcessing}
-                      style={{ 
-                        width: '100%', padding: '18px', borderRadius: '18px', border: 'none',
-                        background: isProcessing ? '#94a3b8' : '#1e293b', 
-                        color: '#fff', fontWeight: 850, fontSize: '1.05rem',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                        boxShadow: '0 10px 20px rgba(30, 41, 59, 0.1)'
-                      }}
-                    >
-                      {isProcessing ? <Loader2 size={22} className="animate-spin" /> : 'Xác nhận đã chuyển khoản'}
-                    </button>
-                    <p style={{ textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>
-                      Không muốn chờ? Bạn có thể nhấn nút xác nhận thủ công.
+                  <div>
+                    <p style={{ fontSize: '0.85rem', color: '#0369a1', fontWeight: 800, marginBottom: '4px' }}>Hệ thống đang tự động dò tìm...</p>
+                    <p style={{ fontSize: '0.75rem', color: '#0ea5e9', fontWeight: 600, lineHeight: 1.4 }}>
+                      Màn hình này sẽ tự động đóng ngay khi chúng tôi nhận được chuyển khoản của bạn. Vui lòng giữ nguyên màn hình.
                     </p>
                   </div>
-               </div>
+                </div>
+
+                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <button
+                    onClick={handleConfirmPayment}
+                    disabled={isProcessing}
+                    style={{
+                      width: '100%', padding: '18px', borderRadius: '18px', border: 'none',
+                      background: isProcessing ? '#94a3b8' : '#1e293b',
+                      color: '#fff', fontWeight: 850, fontSize: '1.05rem',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                      boxShadow: '0 10px 20px rgba(30, 41, 59, 0.1)'
+                    }}
+                  >
+                    {isProcessing ? <Loader2 size={22} className="animate-spin" /> : 'Xác nhận đã chuyển khoản'}
+                  </button>
+                  <p style={{ textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>
+                    Không muốn chờ? Bạn có thể nhấn nút xác nhận thủ công.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
-      
+
       {/* HEADER SECTION */}
       <div style={{ textAlign: 'center', marginBottom: '40px', position: 'relative', zIndex: 1 }}>
-        <div style={{ 
-          display: 'inline-flex', alignItems: 'center', gap: '8px', 
-          background: 'rgba(255,255,255,0.8)', padding: '6px 14px', 
-          borderRadius: '100px', border: '1px solid #f1f5f9', 
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: '8px',
+          background: 'rgba(255,255,255,0.8)', padding: '6px 14px',
+          borderRadius: '100px', border: '1px solid #f1f5f9',
           marginBottom: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)'
         }}>
           <Sparkles size={14} color="#3b82f6" />
           <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', letterSpacing: '1px' }}>PRICING PLANS</span>
         </div>
-        <h1 style={{ fontSize: '3rem', fontWeight: 1000, color: '#1e293b', marginBottom: '8px', letterSpacing: '-2px', lineHeight: 1.1 }}>
+        <h1 style={{ fontSize: '3rem', fontWeight: 800, color: '#1e293b', marginBottom: '8px', letterSpacing: '-2px', lineHeight: 1.1 }}>
           Đầu tư cho sự <span style={{ color: '#3b82f6' }}>an tâm</span>
         </h1>
         <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 600 }}>
@@ -466,44 +687,44 @@ export default function SubscriptionPage() {
       </div>
 
       {/* PRICING GRID */}
-      <div style={{ 
-        display: 'flex', gap: '20px', width: '100%', maxWidth: '1440px', position: 'relative', 
+      <div style={{
+        display: 'flex', gap: '20px', width: '100%', maxWidth: '1440px', position: 'relative',
         zIndex: 1, transform: 'scale(0.9)', transformOrigin: 'center center'
       }}>
-        <PlanCard 
-          id="free" name="Free" price="$0" period="mo" description="Giám sát cơ bản tại 1 khu vực." 
-          buttonText="Gói hiện tại" isCurrent onUpgrade={() => {}}
-          features={['1 Camera AI', 'Cảnh báo Telegram', 'Lưu trữ 24h']} 
+        <PlanCard
+          id="free" name="Free" price="$0" period="mo" description="Giám sát cơ bản tại 1 khu vực."
+          buttonText="Gói hiện tại" isCurrent onUpgrade={() => { }}
+          features={['1 Camera AI', 'Cảnh báo Telegram', 'Lưu trữ 24h']}
         />
-        <PlanCard 
-          id="starter" name="Starter" price="$6" period="mo" description="Dành cho gia đình nhỏ." 
+        <PlanCard
+          id="starter" name="Starter" price="$6" period="mo" description="Dành cho gia đình nhỏ."
           buttonText="Nâng cấp" onUpgrade={(id) => setSelectedPlan(id)}
-          features={['3 Cameras AI', 'Nhận diện té ngã', 'Cảnh báo cuộc gọi']} 
+          features={['3 Cameras AI', 'Nhận diện té ngã', 'Cảnh báo cuộc gọi']}
         />
-        <PlanCard 
-          id="creator" name="Creator" price="$11" period="mo" description="Bảo vệ toàn diện ngôi nhà." 
+        <PlanCard
+          id="creator" name="Creator" price="$11" period="mo" description="Bảo vệ toàn diện ngôi nhà."
           buttonText="Nâng cấp ngay" isPopular onUpgrade={(id) => setSelectedPlan(id)}
-          features={['10 Cameras AI', 'Phân tích hành vi', 'Gọi khẩn cấp 5 số']} 
+          features={['10 Cameras AI', 'Phân tích hành vi', 'Gọi khẩn cấp 5 số']}
         />
-        <PlanCard 
-          id="pro" name="Pro" price="$99" period="mo" description="Dành cho các cơ sở chăm sóc." 
+        <PlanCard
+          id="pro" name="Pro" price="$99" period="mo" description="Dành cho các cơ sở chăm sóc."
           buttonText="Nâng cấp" onUpgrade={(id) => setSelectedPlan(id)}
-          features={['25 Cameras AI', 'API tích hợp', 'Hỗ trợ ưu tiên']} 
+          features={['25 Cameras AI', 'API tích hợp', 'Hỗ trợ ưu tiên']}
         />
-        <PlanCard 
-          id="scale" name="Scale" price="$299" period="mo" description="Doanh nghiệp quy mô lớn." 
+        <PlanCard
+          id="scale" name="Scale" price="$299" period="mo" description="Doanh nghiệp quy mô lớn."
           buttonText="Liên hệ Sales" onUpgrade={(id) => setSelectedPlan(id)}
-          features={['Không giới hạn Camera', 'Hệ thống AI riêng', 'Bảo mật Enterprise']} 
+          features={['Không giới hạn Camera', 'Hệ thống AI riêng', 'Bảo mật Enterprise']}
         />
       </div>
 
       <section style={{
         marginTop: '48px',
         width: '100%',
-        maxWidth: '980px',
+        maxWidth: '99%',
         background: '#fff',
-        borderRadius: '24px',
-        padding: '28px 32px',
+        borderRadius: '8px',
+        padding: '24px',
         border: '1px solid #f1f5f9',
         boxShadow: '0 12px 32px rgba(0,0,0,0.04)',
       }}>
@@ -514,8 +735,105 @@ export default function SubscriptionPage() {
           </h2>
         </div>
         <p style={{ margin: '0 0 20px', fontSize: '0.82rem', color: '#64748b', fontWeight: 600, lineHeight: 1.5 }}>
-          Mỗi lần gói được kích hoạt hoặc gia hạn từ lần thanh toán được ghi lại đây. Thông báo trong chuông cũng trùng với các sự kiện đã đồng bộ.
+          Lưu ý: Khi huỷ gói đăng ký Casos không thể hoàn tiền lại cho bạn, mọi thắc mắc liên hệ vào hotline.
         </p>
+
+        {currentPlanInfo && (
+          <div style={{
+            background: 'linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%)',
+            border: '1px solid #bae6fd',
+            borderRadius: '12px',
+            padding: '20px 24px',
+            marginBottom: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.05)'
+          }}>
+            <div>
+              <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0369a1', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>
+                Gói hiện tại của bạn
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '2px' }}>
+                <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', margin: 0, textTransform: 'capitalize', lineHeight: 1, fontFamily: '"Inter", sans-serif' }}>
+                  {currentPlanInfo.plan === 'free' ? 'Cơ Bản (Free)' : currentPlanInfo.plan}
+                </h3>
+                {currentPlanInfo.plan !== 'free' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      background: currentPlanInfo.status === 'canceled' ? '#fee2e2' : '#dcfce7',
+                      color: currentPlanInfo.status === 'canceled' ? '#dc2626' : '#15803d',
+                      padding: '8px 16px',
+                      borderRadius: '100px',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      fontFamily: '"Inter", sans-serif',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+                    }}>
+                      <div style={{
+                        width: '6px', height: '6px', borderRadius: '50%',
+                        background: currentPlanInfo.status === 'canceled' ? '#ef4444' : '#22c55e',
+                        boxShadow: currentPlanInfo.status === 'canceled' ? 'none' : '0 0 8px #22c55e',
+                        animation: currentPlanInfo.status === 'canceled' ? 'none' : 'pulse 2s infinite'
+                      }}></div>
+                      {currentPlanInfo.status === 'canceled' ? 'ĐÃ HỦY' : 'ĐANG HOẠT ĐỘNG'}
+                    </div>
+                    {currentPlanInfo.status === 'active' && (
+                      <button
+                        onClick={handleCancelPlan}
+                        style={{
+                          background: '#fff',
+                          border: '1.5px solid #f1f5f9',
+                          color: '#94a3b8',
+                          padding: '8px 16px',
+                          borderRadius: '100px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          fontFamily: '"Inter", sans-serif',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#fef2f2';
+                          e.currentTarget.style.borderColor = '#fee2e2';
+                          e.currentTarget.style.color = '#dc2626';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#fff';
+                          e.currentTarget.style.borderColor = '#f1f5f9';
+                          e.currentTarget.style.color = '#94a3b8';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.02)';
+                        }}
+                      >
+                        <X size={12} strokeWidth={3} />
+                        Hủy gói
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600, margin: '0 0 6px 0' }}>
+                Đăng ký lúc: <span style={{ color: '#0f172a', fontWeight: 800 }}>{currentPlanInfo.paidAt ? new Date(currentPlanInfo.paidAt).toLocaleString('vi-VN') : '—'}</span>
+              </p>
+              <p style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600, margin: 0 }}>
+                Hết hạn: <span style={{ color: '#0f172a', fontWeight: 800 }}>{currentPlanInfo.expiresAt ? new Date(currentPlanInfo.expiresAt).toLocaleString('vi-VN') : 'Vô thời hạn'}</span>
+              </p>
+            </div>
+          </div>
+        )}
+
         {paymentHistory.length === 0 ? (
           <div style={{
             padding: '28px',
@@ -531,14 +849,14 @@ export default function SubscriptionPage() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #f1f5f9', textAlign: 'left', color: '#94a3b8', fontWeight: 800 }}>
-                  <th style={{ padding: '10px 8px', textTransform: 'uppercase', fontSize: '0.62rem', letterSpacing: '0.08em' }}>Gói</th>
-                  <th style={{ padding: '10px 8px', textTransform: 'uppercase', fontSize: '0.62rem', letterSpacing: '0.08em' }}>Thanh toán</th>
-                  <th style={{ padding: '10px 8px', textTransform: 'uppercase', fontSize: '0.62rem', letterSpacing: '0.08em' }}>Hết hạn</th>
-                  <th style={{ padding: '10px 8px', textTransform: 'uppercase', fontSize: '0.62rem', letterSpacing: '0.08em' }}>Mã GD</th>
-                  <th style={{ padding: '10px 8px', textTransform: 'uppercase', fontSize: '0.62rem', letterSpacing: '0.08em' }}>Nguồn</th>
+                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>Gói</th>
+                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>Thanh toán</th>
+                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>Hết hạn</th>
+                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>Mã GD</th>
+                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>Nguồn</th>
                 </tr>
               </thead>
               <tbody>
@@ -551,7 +869,7 @@ export default function SubscriptionPage() {
                     <td style={{ padding: '12px 8px' }}>
                       {row.plan_expires_at ? new Date(row.plan_expires_at).toLocaleString('vi-VN') : '—'}
                     </td>
-                    <td style={{ padding: '12px 8px', fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all', fontSize: '0.75rem' }}>
+                    <td style={{ padding: '12px 8px', fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all', fontSize: '0.8rem' }}>
                       {row.reference_code || '—'}
                     </td>
                     <td style={{ padding: '12px 8px' }}>{billingSourceLabelVi(row.source)}</td>

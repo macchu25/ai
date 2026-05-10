@@ -1,0 +1,65 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.cardiac.alert"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="34" />
+10
+11    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+11-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:5:5-80
+11-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:5:22-77
+12    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+12-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:6:5-80
+12-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:6:22-77
+13    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+13-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:7:5-77
+13-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:7:22-74
+14    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+14-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:8:5-92
+14-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:8:22-89
+15
+16    <application
+16-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:10:5-31:19
+17        android:allowBackup="false"
+17-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:12:9-36
+18        android:debuggable="true"
+19        android:extractNativeLibs="false"
+20        android:label="AlertPlayer" >
+20-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:11:9-36
+21
+22        <!-- Activity để có icon trên màn hình -->
+23        <activity
+23-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:15:9-23:20
+24            android:name="com.cardiac.alert.AlertPlayer"
+24-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:16:13-40
+25            android:exported="true"
+25-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:17:13-36
+26            android:theme="@android:style/Theme.Translucent.NoTitleBar" >
+26-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:18:13-72
+27            <intent-filter>
+27-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:19:13-22:29
+28                <action android:name="android.intent.action.MAIN" />
+28-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:20:17-69
+28-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:20:25-66
+29
+30                <category android:name="android.intent.category.LAUNCHER" />
+30-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:21:17-77
+30-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:21:27-74
+31            </intent-filter>
+32        </activity>
+33
+34        <!-- Service chính để phát âm thanh, không bị kill -->
+35        <service
+35-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:26:9-29:61
+36            android:name="com.cardiac.alert.AlertService"
+36-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:27:13-41
+37            android:exported="true"
+37-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:28:13-36
+38            android:foregroundServiceType="mediaPlayback" />
+38-->C:\cardiac-alert\android-alert-player\app\src\main\AndroidManifest.xml:29:13-58
+39    </application>
+40
+41</manifest>

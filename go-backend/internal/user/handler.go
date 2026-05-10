@@ -30,6 +30,8 @@ type UserDoc struct {
 	PlanExpiresAt      interface{}        `bson:"plan_expires_at" json:"plan_expires_at"`
 	LastPaymentAt      interface{}        `bson:"last_payment_at" json:"last_payment_at"`
 	LastPaymentRef     string             `bson:"last_payment_ref" json:"last_payment_ref"`
+	CancelOTP          string             `bson:"cancel_otp,omitempty" json:"-"`
+	CancelOTPExpires   time.Time          `bson:"cancel_otp_expires,omitempty" json:"-"`
 }
 
 type Handler struct {
@@ -93,15 +95,29 @@ func (h *Handler) GetProfile(c *gin.Context) {
 		return t.Format("02/01/2006")
 	}
 
+	plan := user.SubscriptionPlan
+	status := user.SubscriptionStatus
+	if status == "canceled" {
+		plan = "free"
+		status = "active"
+	}
+
+	expiresAtISO := formatDateISO(user.PlanExpiresAt)
+	expiresAtDisplay := formatDateDisplay(user.PlanExpiresAt)
+	if plan == "free" {
+		expiresAtISO = ""
+		expiresAtDisplay = "Vô thời hạn"
+	}
+
 	// Hợp nhất dữ liệu
 	result := gin.H{
 		"id":                        user.ID.Hex(),
 		"name":                      user.Name,
 		"email":                     user.Email,
-		"subscription_plan":         user.SubscriptionPlan,
-		"subscription_status":       user.SubscriptionStatus,
-		"plan_expires_at":           formatDateISO(user.PlanExpiresAt),
-		"plan_expires_at_display":   formatDateDisplay(user.PlanExpiresAt),
+		"subscription_plan":         plan,
+		"subscription_status":       status,
+		"plan_expires_at":           expiresAtISO,
+		"plan_expires_at_display":   expiresAtDisplay,
 		"last_payment_at":           formatDateISO(user.LastPaymentAt),
 		"last_payment_ref":          user.LastPaymentRef,
 		"age":                       0,
@@ -471,6 +487,129 @@ func (h *Handler) SimulatePayment(c *gin.Context) {
 }
 
 
+
+func (h *Handler) RequestCancelOTP(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, _ := userID.(string)
+	objID, _ := primitive.ObjectIDFromHex(userIDStr)
+
+	userColl := h.db.Collection("users")
+	var user UserDoc
+	if err := userColl.FindOne(context.Background(), bson.M{"_id": objID}).Decode(&user); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	if user.SubscriptionPlan == "free" || user.SubscriptionPlan == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Bạn đang dùng gói Free, không cần hủy"})
+		return
+	}
+
+	// Generate 6-digit OTP
+	otp := fmt.Sprintf("%06d", (time.Now().UnixNano()/1000)%1000000)
+	expires := time.Now().Add(10 * time.Minute)
+
+	_, err := userColl.UpdateOne(
+		context.Background(),
+		bson.M{"_id": objID},
+		bson.M{"$set": bson.M{
+			"cancel_otp":         otp,
+			"cancel_otp_expires": expires,
+		}},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể tạo mã xác nhận"})
+		return
+	}
+
+	if h.mail != nil && user.Email != "" {
+		fmt.Printf("📧 [DEBUG] Đang gửi OTP hủy gói tới: %s\n", user.Email)
+		_ = h.mail.SendOTPCancelEmail(user.Email, user.Name, otp)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Mã xác nhận đã được gửi về email của bạn"})
+}
+
+func (h *Handler) CancelPlan(c *gin.Context) {
+	var body struct {
+		OTP string `json:"otp"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Vui lòng nhập mã xác nhận"})
+		return
+	}
+
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, ok := userID.(string)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Session không hợp lệ"})
+		return
+	}
+	objID, _ := primitive.ObjectIDFromHex(userIDStr)
+
+	userColl := h.db.Collection("users")
+	var user UserDoc
+	if err := userColl.FindOne(context.Background(), bson.M{"_id": objID}).Decode(&user); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Verify OTP
+	if user.CancelOTP == "" || user.CancelOTP != body.OTP {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Mã xác nhận không chính xác"})
+		return
+	}
+	if time.Now().After(user.CancelOTPExpires) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Mã xác nhận đã hết hạn"})
+		return
+	}
+
+	currentPlan := user.SubscriptionPlan
+	if currentPlan == "free" || currentPlan == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Bạn đang sử dụng gói Free, không thể hủy"})
+		return
+	}
+
+	_, err := userColl.UpdateOne(
+		context.Background(),
+		bson.M{"_id": objID},
+		bson.M{
+			"$set": bson.M{
+				"subscription_plan":   "free",
+				"subscription_status": "active",
+				"plan_expires_at":     nil,
+			},
+			"$unset": bson.M{"cancel_otp": "", "cancel_otp_expires": ""},
+		},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể hủy gói cước"})
+		return
+	}
+
+	_ = billing.InsertSubscriptionCancelledNotification(context.Background(), h.db, objID, currentPlan)
+	
+	if h.hub != nil {
+		msgData, _ := json.Marshal(map[string]interface{}{
+			"type": "subscription_updated",
+			"payload": map[string]interface{}{
+				"plan":   "free",
+				"status": "active",
+			},
+		})
+		h.hub.Broadcast <- ws.PrivateMessage{UserID: objID.Hex(), Data: msgData}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Đã hủy gói cước thành công"})
+}
 
 func (h *Handler) ShouldBindJSON(c *gin.Context, obj interface{}) error {
 	return c.ShouldBindJSON(obj)

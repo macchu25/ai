@@ -1,21 +1,96 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { Cpu, Zap, Activity, ShieldCheck, Terminal, Layers, BarChart, Server, Play, Pause, RefreshCw } from 'lucide-react';
+import { Cpu, Zap, Activity, ShieldCheck, Terminal, Layers, BarChart, Server, Play, Pause, RefreshCw, Loader2 } from 'lucide-react';
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useNotification } from '@/app/context/NotificationContext';
 
 export default function AIModelsPage() {
+  const { data: session, status } = useSession();
+  const { showToast } = useNotification();
+  const router = useRouter();
+  
   const [mounted, setMounted] = useState(false);
-  const [activeModel, setActiveModel] = useState('Fall-v2');
-
-  const models = [
-    { id: 'Fall-v2', name: 'Fall Detection Engine', version: '2.1.0', status: 'Active', precision: '98.5%', speed: '12ms', type: 'YOLOv8-Pose' },
-    { id: 'Pose', name: 'Human Pose Estimation', version: '1.4.2', status: 'Active', precision: '94.2%', speed: '24ms', type: 'MediaPipe' },
-    { id: 'HR', name: 'Heart Rate Pulse Tracker', version: '0.9.5', status: 'Idle', precision: '89.1%', speed: '45ms', type: 'rPPG-Net' },
-  ];
+  const [models, setModels] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [adbTesting, setAdbTesting] = useState(false);
+  const [adbResult, setAdbResult] = useState<any>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+      return;
+    }
+    if (status === "authenticated") {
+      fetchModels();
+    }
+  }, [status]);
+
+  const fetchModels = async () => {
+    setLoading(true);
+    try {
+      const token = (session?.user as any)?.accessToken;
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+      const res = await fetch(`${apiBase}/ai-models`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setModels(data);
+      }
+    } catch (err) {
+      console.error("Fetch models error:", err);
+      showToast("Không thể kết nối tới máy chủ AI.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleModel = async (id: string) => {
+    setTogglingId(id);
+    try {
+      const token = (session?.user as any)?.accessToken;
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+      const res = await fetch(`${apiBase}/ai-models/${id}/toggle`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        showToast(`Đã chuyển trạng thái sang: ${data.new_status}`, "success");
+        fetchModels();
+      }
+    } catch (err) {
+      showToast("Lỗi khi thay đổi trạng thái model.", "error");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const testADBPush = async () => {
+    setAdbTesting(true);
+    setAdbResult(null);
+    try {
+      const token = (session?.user as any)?.accessToken;
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+      const res = await fetch(`${apiBase}/test-adb-push`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setAdbResult(data);
+    } catch (err: any) {
+      setAdbResult({ error: err.message });
+    } finally {
+      setAdbTesting(false);
+    }
+  };
 
   if (!mounted) return null;
 
@@ -37,9 +112,12 @@ export default function AIModelsPage() {
                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '12px' }}>
                  <Layers size={22} color="var(--accent)" /> Danh sách Model
                </h2>
-               <button style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                 <RefreshCw size={14} /> Quét lại
-               </button>
+               <button 
+                  onClick={fetchModels}
+                  disabled={loading}
+                  style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Quét lại
+                </button>
             </div>
             
             <div style={{ overflowX: 'auto' }}>
@@ -54,8 +132,15 @@ export default function AIModelsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {models.map((model) => (
-                    <tr key={model.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }}>
+                  {loading && models.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <Loader2 size={40} className="animate-spin" style={{ margin: '0 auto 16px auto', opacity: 0.5 }} />
+                        <div>Đang kết nối tới AI Cluster...</div>
+                      </td>
+                    </tr>
+                  ) : models.map((model) => (
+                    <tr key={model._id || model.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s', opacity: togglingId === (model._id || model.id) ? 0.6 : 1 }}>
                       <td style={{ padding: '24px 32px' }}>
                         <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '1.05rem' }}>{model.name}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>v{model.version} • {model.type}</div>
@@ -70,14 +155,21 @@ export default function AIModelsPage() {
                         </span>
                       </td>
                       <td style={{ padding: '24px 32px', fontWeight: 600, color: 'var(--text-main)' }}>{model.precision}</td>
-                      <td style={{ padding: '24px 32px', fontWeight: 600, color: 'var(--text-main)' }}>{model.speed}</td>
+                      <td style={{ padding: '24px 32px', fontWeight: 600, color: 'var(--text-main)' }}>{model.latency || model.speed}</td>
                       <td style={{ padding: '24px 32px' }}>
-                        <button style={{ 
-                          background: model.status === 'Active' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(37, 99, 235, 0.05)',
-                          color: model.status === 'Active' ? 'var(--danger)' : 'var(--accent)',
-                          border: 'none', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-                        }}>
-                          {model.status === 'Active' ? <Pause size={18} /> : <Play size={18} />}
+                        <button 
+                          onClick={() => toggleModel(model._id || model.id)}
+                          disabled={togglingId === (model._id || model.id)}
+                          style={{ 
+                            background: model.status === 'Active' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(37, 99, 235, 0.05)',
+                            color: model.status === 'Active' ? 'var(--danger)' : 'var(--accent)',
+                            border: 'none', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                          }}>
+                          {togglingId === (model._id || model.id) ? (
+                            <Loader2 size={18} className="animate-spin" />
+                          ) : (
+                            model.status === 'Active' ? <Pause size={18} /> : <Play size={18} />
+                          )}
                         </button>
                       </td>
                     </tr>
@@ -155,6 +247,68 @@ export default function AIModelsPage() {
                  </div>
                </div>
             </div>
+          </div>
+
+          {/* ADB Push Test Panel */}
+          <div className="overview-card" style={{ padding: '28px 32px' }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Terminal size={20} color="var(--accent)" /> Kiểm tra ADB Push
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 20px 0' }}>
+              Test push file âm thanh cảnh báo lên thiết bị Android đang kết nối.
+            </p>
+            <button
+              id="btn-test-adb-push"
+              onClick={testADBPush}
+              disabled={adbTesting}
+              style={{
+                background: adbTesting ? 'var(--bg-primary)' : 'var(--accent)',
+                color: adbTesting ? 'var(--text-muted)' : 'white',
+                border: 'none', padding: '12px 24px', borderRadius: '12px',
+                fontWeight: 700, fontSize: '0.9rem', cursor: adbTesting ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s'
+              }}
+            >
+              {adbTesting ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+              {adbTesting ? 'Đang kiểm tra...' : 'Test ADB Push'}
+            </button>
+
+            {adbResult && (
+              <div style={{ marginTop: '20px', background: '#0f172a', borderRadius: '14px', padding: '20px', fontFamily: '"Fira Code", monospace', fontSize: '0.8rem' }}>
+                <div style={{ marginBottom: '12px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                  <span style={{
+                    background: adbResult.connected ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                    color: adbResult.connected ? '#22c55e' : '#ef4444',
+                    padding: '4px 12px', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem'
+                  }}>
+                    {adbResult.connected ? '✅ Thiết bị đã kết nối' : '❌ Không tìm thấy thiết bị'}
+                  </span>
+                  {adbResult.push_success !== undefined && (
+                    <span style={{
+                      background: adbResult.push_success ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                      color: adbResult.push_success ? '#22c55e' : '#ef4444',
+                      padding: '4px 12px', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem'
+                    }}>
+                      {adbResult.push_success ? '✅ Push thành công' : '❌ Push thất bại'}
+                    </span>
+                  )}
+                  {adbResult.play_success !== undefined && (
+                    <span style={{
+                      background: adbResult.play_success ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                      color: adbResult.play_success ? '#22c55e' : '#ef4444',
+                      padding: '4px 12px', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem'
+                    }}>
+                      {adbResult.play_success ? '✅ Phát âm thành công' : '❌ Phát âm thất bại'}
+                    </span>
+                  )}
+                </div>
+                {adbResult.devices_output && <div style={{ color: '#94a3b8', marginBottom: '8px', whiteSpace: 'pre-wrap' }}><span style={{ color: '#38bdf8' }}>$ adb devices</span><br />{adbResult.devices_output}</div>}
+                {adbResult.push_error && <div style={{ color: '#f87171', marginBottom: '8px' }}>Lỗi push: {adbResult.push_error}</div>}
+                {adbResult.push_output && <div style={{ color: '#94a3b8', marginBottom: '8px', whiteSpace: 'pre-wrap' }}><span style={{ color: '#38bdf8' }}>push output:</span><br />{adbResult.push_output}</div>}
+                {adbResult.file_check && <div style={{ color: '#94a3b8', whiteSpace: 'pre-wrap' }}><span style={{ color: '#38bdf8' }}>$ ls /sdcard/alert.mp3</span><br />{adbResult.file_check}</div>}
+                {adbResult.error && <div style={{ color: '#f87171' }}>❌ {adbResult.error}</div>}
+              </div>
+            )}
           </div>
 
           {/* Infrastructure Card */}

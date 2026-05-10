@@ -127,5 +127,4 @@ c:\cardiac-alert\
 ```
 
  rm server.exe
- go build -o server.exe
-.\server.exe
+ nexp mqoi mjon kybb

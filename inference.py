@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
-import json
 import time
+import requests
+import threading
 from collections import deque
 
 import torch
@@ -74,6 +75,71 @@ class FallDetector:
             print(f"   [ERROR] Failed to init PoseLandmarker: {e}")
             self.landmarker = None
         self.frame_ts = 0
+
+        # YOLO Furniture Detection (Toggleable)
+        self.yolo_enabled = False
+        self.yolo_model = None
+        self.furniture_classes = [56, 57, 59, 63] # chair, couch, bed, dining table
+        self.is_on_furniture = False
+        
+        # Bắt đầu luồng kiểm tra trạng thái Model từ Dashboard
+        threading.Thread(target=self._poll_model_status, daemon=True).start()
+
+    def _poll_model_status(self):
+        """Hỏi Backend xem các model có được bật không."""
+        api_base = "http://localhost:8080/api/v1"
+        headers = {"X-API-Key": "ai_secret_key_12345"}
+        
+        while True:
+            try:
+                res = requests.get(f"{api_base}/ai-models", headers=headers, timeout=5)
+                if res.status_code == 200:
+                    models = res.json()
+                    for m in models:
+                        if m.get("name") == "YOLO Furniture Detector":
+                            is_active = m.get("status") == "Active"
+                            if is_active and not self.yolo_enabled:
+                                print("   [AI] YOLO Furniture Detector ACTIVATED.")
+                                from ultralytics import YOLO
+                                self.yolo_model = YOLO("yolov11n.pt")
+                                self.yolo_enabled = True
+                            elif not is_active and self.yolo_enabled:
+                                print("   [AI] YOLO Furniture Detector DEACTIVATED.")
+                                self.yolo_enabled = False
+                                self.yolo_model = None
+                
+                # Kiểm tra cả trạng thái của chính mình
+                for m in models:
+                    if m.get("name") == "Fall Detection Engine":
+                        if m.get("status") != "Active":
+                            # Nếu bị tắt trên Web, ta vẫn chạy loop nhưng ko gửi alert (xử lý ở push_to_go)
+                            pass
+            except Exception as e:
+                print(f"   [WARN] Failed to poll model status: {e}")
+            
+            time.sleep(5) # Kiểm tra mỗi 5 giây
+
+    def _check_furniture_collision(self, frame, landmarks):
+        """Kiểm tra xem người có đang ở trên giường/ghế không."""
+        if not self.yolo_enabled or self.yolo_model is None or landmarks is None:
+            return False
+            
+        results = self.yolo_model(frame, verbose=False)[0]
+        
+        # Lấy tọa độ hông của người làm điểm tham chiếu (landmark 23, 24)
+        px = (landmarks[23].x + landmarks[24].x) / 2
+        py = (landmarks[23].y + landmarks[24].y) / 2
+        
+        for box in results.boxes:
+            cls = int(box.cls[0])
+            if cls in self.furniture_classes:
+                # xyxyn trả về tọa độ chuẩn hóa (0-1)
+                x1, y1, x2, y2 = box.xyxyn[0].tolist()
+                # Thêm biên độ an toàn 5%
+                margin = 0.05
+                if (x1-margin) < px < (x2+margin) and (y1-margin) < py < (y2+margin):
+                    return True
+        return False
     def _get_body_angles(self, landmarks):
         """Trả về góc của thân mình và đùi so với phương thẳng đứng."""
         if landmarks is None or len(landmarks) < 27:
@@ -207,8 +273,16 @@ class FallDetector:
                 # Nếu rơi quá nhanh, giảm ngưỡng tin cậy Model xuống để bắt kịp
                 model_conf_thr = 0.40 
 
+            # ── YOLO CHECK ──
+            # Nếu đang ở trên giường/ghế, ta bỏ qua việc đếm fall_streak để tránh báo động giả
+            self.is_on_furniture = self._check_furniture_collision(frame, landmarks)
+
             if label in ["fall", "unconscious", "seizure"] and conf > model_conf_thr:
-                # Đếm xem trong 2 giây qua có bao nhiêu khung hình là 'ngoi' (ngồi)
+                if self.is_on_furniture:
+                    self.fall_streak = 0
+                    if label == "fall": label = "on furniture"
+                else:
+                    # Đếm xem trong 2 giây qua có bao nhiêu khung hình là 'ngoi' (ngồi)
                 sitting_frames = list(self.pose_history).count("ngoi")
                 
                 # Nếu đã ngồi một lúc rồi mới nằm, ưu tiên coi là đi ngủ/ngồi nghỉ
@@ -498,6 +572,7 @@ if __name__ == "__main__":
             requests.post("http://localhost:8080/api/v1/ai-result", 
                 json={
                     "CameraID": target_cam_id,
+                    "ModelName": "Fall Detection Engine",
                     "Label": lbl,
                     "Confidence": float(cnf)
                 }, 
@@ -585,6 +660,13 @@ if __name__ == "__main__":
                 prog = detector.recovery_streak / detector.RECOVERY_THRESHOLD
                 cv2.putText(frame, f"RECOVERING: {prog:.0%}", (10, 100),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+            
+            # Hiển thị trạng thái YOLO
+            if detector.yolo_enabled:
+                yolo_text = "YOLO: ON"
+                if detector.is_on_furniture: yolo_text += " (FURNITURE DETECTED)"
+                cv2.putText(frame, yolo_text, (10, frame.shape[0] - 20),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (38, 189, 248), 1)
 
         # Variance bars (only in POST_FALL state)
         if state == State.POST_FALL and isinstance(extra, dict) and "total" in extra:

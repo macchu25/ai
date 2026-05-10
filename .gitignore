@@ -1,0 +1,44 @@
+# Environment variables
+.env
+*.env
+
+# Binaries and executables
+*.exe
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+vendor/
+
+# Android/Gradle
+.gradle/
+captures/
+**/build/
+*.apk
+*.aar
+*.jks
+local.properties
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Audio/Media
+audio/
+*.mp3
+*.wav

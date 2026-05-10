@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { User, Phone, MapPin, Heart, AlertCircle, Calendar, Plus, Edit2, Trash2, X } from 'lucide-react';
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useNotification } from '@/app/context/NotificationContext';
 
 export default function ProfilePage() {
@@ -23,6 +23,10 @@ export default function ProfilePage() {
     const res = await fetch(`${apiBase}/health-profiles`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
+    if (res.status === 401) {
+      signOut({ callbackUrl: '/login' });
+      return;
+    }
     if (res.ok) setPatient(await res.json());
   };
 
@@ -78,15 +82,16 @@ export default function ProfilePage() {
     }
   };
 
-  const handleTestCall = async () => {
+  const handleTestCall = async (phone: string) => {
     const token = (session?.user as any)?.accessToken;
-    showToast("Đang chuẩn bị cuộc gọi thử nghiệm...", "info");
+    showToast(`Đang chuẩn bị cuộc gọi thử nghiệm tới số ${phone}...`, "info");
     
     try {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
-    const res = await fetch(`${apiBase}/test-call`, {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+      const res = await fetch(`${apiBase}/test-call`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phone })
       });
       if (res.ok) {
         showToast("Cuộc gọi đã được kích hoạt! Hãy kiểm tra điện thoại.", "success");
@@ -212,7 +217,7 @@ export default function ProfilePage() {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
                       Gọi Tele
                     </a>
-                    <button onClick={handleTestCall} style={{ background: 'var(--accent)', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button onClick={() => handleTestCall(contact.phone)} style={{ background: 'var(--accent)', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Phone size={14} /> Test Gọi AI
                     </button>
                     <div style={{ height: '32px', width: '1px', background: 'var(--border)', margin: '0 8px' }}></div>

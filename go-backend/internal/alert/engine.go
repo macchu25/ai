@@ -21,6 +21,7 @@ import (
 
 type AIResult struct {
 	CameraID   primitive.ObjectID
+	ModelName  string
 	Label      string
 	Confidence float32
 }
@@ -85,7 +86,7 @@ func NewEngine(db *mongo.Database, hub *ws.Hub, hls *stream.HLSServer) *Engine {
 				log.Printf("[Bot] Lỗi tìm camera cho user %s: %v\n", targetUserID.Hex(), err)
 				return
 			}
-			engine.gateway.InitiateAndroidCall(targetUserID, camera.ID, "yêu cầu khẩn cấp", telephony.CallRelative)
+			engine.gateway.InitiateAndroidCall(targetUserID, camera.ID, "yêu cầu khẩn cấp", telephony.CallRelative, camera.Name)
 		case "pause":
 			camID, err := primitive.ObjectIDFromHex(data)
 			if err != nil { return }
@@ -117,7 +118,7 @@ func NewEngine(db *mongo.Database, hub *ws.Hub, hls *stream.HLSServer) *Engine {
 func (e *Engine) Start() {
 	go func() {
 		for result := range e.ResultCh {
-			e.Process(result.CameraID, result.Label, result.Confidence)
+			e.Process(result.CameraID, result.ModelName, result.Label, result.Confidence)
 		}
 	}()
 }
@@ -141,8 +142,32 @@ func (e *Engine) getMedicalSummary(userID primitive.ObjectID) string {
 	return fmt.Sprintf("🩸 <b>Nhóm máu:</b> %s\n💊 <b>Tiền sử:</b> %s", html.EscapeString(bloodType), html.EscapeString(history))
 }
 
-func (e *Engine) Process(camID primitive.ObjectID, label string, conf float32) {
+func (e *Engine) getMedicalSummaryPlain(userID primitive.ObjectID) string {
+	var profile bson.M
+	err := e.db.Collection("health_profiles").FindOne(context.Background(), bson.M{"user_id": userID}).Decode(&profile)
+	if err != nil { return "Chưa có thông tin y tế" }
+	bloodType, _ := profile["blood_type"].(string)
+	history, _ := profile["medical_history"].(string)
+	if bloodType == "" { bloodType = "Chưa rõ" }
+	if history == "" { history = "Không có" }
+	return fmt.Sprintf("Nhóm máu: %s. Tiền sử bệnh: %s.", bloodType, history)
+}
+
+func (e *Engine) Process(camID primitive.ObjectID, modelName string, label string, conf float32) {
 	ctx := context.Background()
+
+	// KIỂM TRA MODEL CÓ ĐANG ACTIVE KHÔNG
+	if modelName != "" {
+		var aiModel bson.M
+		err := e.db.Collection("ai_models").FindOne(ctx, bson.M{"name": modelName}).Decode(&aiModel)
+		if err == nil {
+			if status, ok := aiModel["status"].(string); ok && status != "Active" {
+				// Model bị tắt, bỏ qua kết quả
+				return
+			}
+		}
+	}
+
 	state, _ := e.storage.Get(ctx, camID)
 	if state == nil { state = &CameraState{} }
 
@@ -162,6 +187,16 @@ func (e *Engine) Process(camID primitive.ObjectID, label string, conf float32) {
 		}
 		if state.AlertPaused { return }
 		if time.Since(state.SuspectStart) >= 7*time.Second {
+			if !state.LocalAlertSent {
+				var camera model.Camera
+				if err := e.db.Collection("cameras").FindOne(ctx, bson.M{"_id": camID}).Decode(&camera); err == nil {
+					go e.gateway.TriggerLocalAlarm(camera.UserID, camID)
+				}
+				e.broadcastToOwner(camID, []byte(`{"event":"local_warning", "camera_id":"` + camID.Hex() + `"}`))
+				state.LocalAlertSent = true
+			}
+		}
+		if time.Since(state.SuspectStart) >= 10*time.Second {
 			if state.LastAlert.IsZero() || time.Since(state.LastAlert) >= 5*time.Minute {
 				e.triggerAlert(camID, label, conf)
 				state.LastAlert = time.Now()
@@ -172,6 +207,7 @@ func (e *Engine) Process(camID primitive.ObjectID, label string, conf float32) {
 		if !state.SuspectStart.IsZero() {
 			state.SuspectStart = time.Time{}
 			state.AlertPaused = false
+			state.LocalAlertSent = false
 			metrics.ActiveAlerts.Dec()
 			e.broadcastToOwner(camID, []byte(`{"event":"clear_alert", "camera_id":"` + camID.Hex() + `"}`))
 			e.storage.Set(ctx, camID, state)
@@ -206,7 +242,7 @@ func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float
 		log.Printf("[Engine] Không thể đọc ảnh bằng chứng: %v\n", err)
 	}
 	metrics.EmergencyCalls.Inc()
-	go e.gateway.InitiateAndroidCall(cameraDoc.UserID, camID, label, telephony.CallRelative)
+	go e.gateway.InitiateAndroidCall(cameraDoc.UserID, camID, label, telephony.CallRelative, camName)
 
 	// HYBRID CLOUD: Đẩy bằng chứng lên S3/Firebase
 	go func() {
@@ -240,7 +276,7 @@ func (e *Engine) broadcastToOwner(camID primitive.ObjectID, data []byte) {
 	}
 }
 
-func (e *Engine) CallTestManual(userID primitive.ObjectID) {
+func (e *Engine) CallTestManual(userID primitive.ObjectID, specificPhone string) {
 	var camera model.Camera
 	if err := e.db.Collection("cameras").FindOne(context.Background(), bson.M{"user_id": userID}).Decode(&camera); err != nil {
 		log.Printf("[Engine] Lỗi CallTestManual: không có camera cho user %s: %v\n", userID.Hex(), err)
@@ -256,5 +292,5 @@ func (e *Engine) CallTestManual(userID primitive.ObjectID) {
 		},
 	}
 	go telephony.SendTelegramAlertCustom(e.getUserChatID(userID), msg, buttons)
-	e.gateway.InitiateAndroidCall(userID, camera.ID, "đang bị ngã", telephony.CallRelative)
+	e.gateway.InitiateAndroidCall(userID, camera.ID, "đang bị ngã", telephony.CallRelative, camName, specificPhone)
 }

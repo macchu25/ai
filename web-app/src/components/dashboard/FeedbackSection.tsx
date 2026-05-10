@@ -13,7 +13,7 @@ const FeedbackSection: React.FC = () => {
 
   return (
     <div className="dashboard-section feedback-section-container" id="feedback-section" style={{ paddingBottom: '100px', backgroundColor: '#f8fafc', position: 'relative' }}>
-      <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '10px', color: '#1e293b' }}>
+      <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '10px', color: '#1e293b' }}>
         Góp Ý & Phản Hồi
       </h2>
       <p style={{ color: '#64748b', marginBottom: '40px' }}>
@@ -130,7 +130,7 @@ const FeedbackSection: React.FC = () => {
           color: white;
           border: none;
           border-radius: 16px;
-          font-weight: 800;
+          font-weight: 700;
           font-size: 1rem;
           display: flex;
           align-items: center;

@@ -269,7 +269,8 @@ body {
 }
 
 .hero-viewport {
-  min-height: calc(100vh - 80px); /* Sử dụng min-height để ép buộc hiển thị không gian */
+  min-height: calc(100vh - 80px);
+  /* Sử dụng min-height để ép buộc hiển thị không gian */
   width: 100%;
   position: relative;
   overflow: hidden;
@@ -365,9 +366,10 @@ body {
     min-height: auto !important;
     padding-bottom: 20px;
   }
-  
+
   .hero-spline-container {
-    display: none; /* Ẩn robot 3D trên mobile cho mượt */
+    display: none;
+    /* Ẩn robot 3D trên mobile cho mượt */
   }
 
   .hero-hud-overlay {
@@ -381,16 +383,19 @@ body {
   }
 
   .hero-main-title {
-    font-size: 2.2rem !important; /* Thu nhỏ chữ TRONG NGÀY */
+    font-size: 2.2rem !important;
+    /* Thu nhỏ chữ TRONG NGÀY */
     flex-wrap: wrap;
   }
 
   .casos-letter {
-    display: none; /* Ẩn chữ to CASOS */
+    display: none;
+    /* Ẩn chữ to CASOS */
   }
-  
+
   .connecting-lines {
-    display: none; /* Ẩn đường kẻ rối trên mobile */
+    display: none;
+    /* Ẩn đường kẻ rối trên mobile */
   }
 
   .widget-grid-container {

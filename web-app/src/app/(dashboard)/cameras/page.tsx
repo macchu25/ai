@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { LayoutGrid, Grid3X3, Monitor, Settings, RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-react';
 import VideoPlayer from '@/components/dashboard/VideoPlayer';
@@ -21,13 +21,17 @@ export default function CamerasGridPage() {
 
     if (status === "authenticated" && session?.user) {
       const token = (session.user as any).accessToken;
-      
+
       const fetchCams = async () => {
         try {
           const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
           const res = await fetch(`${apiBase}/cameras`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
+          if (res.status === 401) {
+            signOut({ callbackUrl: '/login' });
+            return;
+          }
           const data = await res.json();
           setCameras(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -45,67 +49,67 @@ export default function CamerasGridPage() {
     <div className="cameras-grid-page">
       <header className="grid-header">
         <div className="header-left">
-           <h1 className="title-premium">Phòng Điều Phối Cam</h1>
-           <p className="subtitle">Hệ thống giám sát đa luồng thời gian thực</p>
+          <h1 className="title-premium">Phòng Điều Phối Cam</h1>
+          <p className="subtitle">Hệ thống giám sát đa luồng thời gian thực</p>
         </div>
 
         <div className="header-actions">
-           <div className="view-toggle">
-              <button 
-                className={viewMode === 'grid2' ? 'active' : ''} 
-                onClick={() => setViewMode('grid2')}
-                title="Bố cục 2 cột"
-              >
-                <LayoutGrid size={18} />
-              </button>
-              <button 
-                className={viewMode === 'grid3' ? 'active' : ''} 
-                onClick={() => setViewMode('grid3')}
-                title="Bố cục 3 cột"
-              >
-                <Grid3X3 size={18} />
-              </button>
-           </div>
-           <button onClick={() => window.location.reload()} className="btn-refresh">
-              <RefreshCw size={18} />
-              <span>Làm mới</span>
-           </button>
+          <div className="view-toggle">
+            <button
+              className={viewMode === 'grid2' ? 'active' : ''}
+              onClick={() => setViewMode('grid2')}
+              title="Bố cục 2 cột"
+            >
+              <LayoutGrid size={18} />
+            </button>
+            <button
+              className={viewMode === 'grid3' ? 'active' : ''}
+              onClick={() => setViewMode('grid3')}
+              title="Bố cục 3 cột"
+            >
+              <Grid3X3 size={18} />
+            </button>
+          </div>
+          <button onClick={() => window.location.reload()} className="btn-refresh">
+            <RefreshCw size={18} />
+            <span>Làm mới</span>
+          </button>
         </div>
       </header>
 
       {isLoading ? (
         <div className="loading-grid">
-           <div className="spinner"></div>
-           <p>Đang khởi tạo các luồng stream...</p>
+          <div className="spinner"></div>
+          <p>Đang khởi tạo các luồng stream...</p>
         </div>
       ) : (
         <div className={`cameras-layout ${viewMode}`}>
           {cameras.length > 0 ? (
             cameras.map((cam: any) => (
-              <VideoPlayer 
-                key={cam.id} 
-                url={`${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8`} 
-                name={cam.name} 
+              <VideoPlayer
+                key={cam.id}
+                url={`${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8`}
+                name={cam.name}
               />
             ))
           ) : (
             <div className="empty-state">
-               <AlertTriangle size={48} color="#94a3b8" />
-               <h2>Chưa có Camera nào được cấu hình</h2>
-               <p>Vui lòng vào phần Quản Trị để thiết lập thiết bị mới.</p>
-               <button onClick={() => router.push('/incidents')} className="goto-config">
-                  Đi tới Cấu hình <Settings size={16} />
-               </button>
+              <AlertTriangle size={48} color="#94a3b8" />
+              <h2>Chưa có Camera nào được cấu hình</h2>
+              <p>Vui lòng vào phần Quản Trị để thiết lập thiết bị mới.</p>
+              <button onClick={() => router.push('/incidents')} className="goto-config">
+                Đi tới Cấu hình <Settings size={16} />
+              </button>
             </div>
           )}
         </div>
       )}
 
       <div className="security-footer">
-          <div className="security-badge">
-             <ShieldCheck size={16} />
-             <span>Mã hóa AES-256 nội bộ • Zero Latency Engine</span>
-          </div>
+        <div className="security-badge">
+          <ShieldCheck size={16} />
+          <span>Mã hóa AES-256 nội bộ • Zero Latency Engine</span>
+        </div>
       </div>
 
       <style jsx>{`

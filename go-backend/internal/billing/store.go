@@ -66,3 +66,15 @@ func InsertSubscriptionActivatedNotification(ctx context.Context, db *mongo.Data
 	_, err := db.Collection(collNotifications).InsertOne(ctx, doc)
 	return err
 }
+func InsertSubscriptionCancelledNotification(ctx context.Context, db *mongo.Database, userID primitive.ObjectID, plan string) error {
+	doc := bson.M{
+		"user_id":    userID,
+		"kind":       "subscription_cancelled",
+		"title":      "Đã hủy gói cước",
+		"body":       "Bạn đã hủy gói " + strings.ToUpper(plan) + ". Các tính năng Premium sẽ bị giới hạn sau khi hết hạn gói.",
+		"read":       false,
+		"created_at": time.Now().UTC(),
+	}
+	_, err := db.Collection(collNotifications).InsertOne(ctx, doc)
+	return err
+}

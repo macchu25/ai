@@ -139,14 +139,21 @@ func main() {
 		camAPI.RegisterRoutes(private)
 		private.GET("/incidents", alertAPI.GetIncidents)
 		private.POST("/test-call", alertAPI.TestCall)
+		private.POST("/test-adb-push", alertAPI.TestADBPush)
+		private.GET("/debug-call-state", alertAPI.DebugCallState)
 		private.GET("/health-profiles", userHandler.GetProfile)
 		private.PUT("/health-profiles", userHandler.UpdateProfile)
 		private.PUT("/health-profiles/contacts", userHandler.UpdateContacts)
 		private.PUT("/health-profiles/telegram", userHandler.UpdateTelegramID)
 		private.POST("/user/upgrade", userHandler.UpgradePlan)
+		private.POST("/user/cancel-plan/request", userHandler.RequestCancelOTP)
+		private.POST("/user/cancel-plan", userHandler.CancelPlan)
 		private.POST("/user/simulate-payment", userHandler.SimulatePayment)
+		private.POST("/ai-models/:id/toggle", alertAPI.ToggleAIModel)
 		analytics.RegisterRoutes(private, db)
 	}
+
+	r.GET("/api/v1/ai-models", alertAPI.GetAIModels)
 
 	r.GET("/api/v1/user/check-payment", userHandler.CheckPayment)
 
