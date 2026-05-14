@@ -72,9 +72,11 @@ export default function AnalyticsPage() {
           <Link href="/dashboard" style={{ background: '#fff', padding: '10px', borderRadius: '12px', color: '#1e293b', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', display: 'flex' }}>
             <ArrowLeft size={20} />
           </Link>
-          <div>
-            <h1 style={{ fontSize: '1.6rem', fontWeight: 950, color: '#1e293b', letterSpacing: '-1px', margin: 0 }}>CENTRAL INTELLIGENCE</h1>
-            <p style={{ color: '#64748b', margin: 0, fontSize: '0.8rem', fontWeight: 600 }}>Dữ liệu vận hành Casos thời gian thực.</p>
+          <div className="page-header-premium" style={{ marginBottom: '0' }}>
+            <div>
+              <h1 className="page-title-premium">CENTRAL INTELLIGENCE</h1>
+              <p className="page-subtitle-premium" style={{ fontSize: '0.85rem' }}>Dữ liệu vận hành Casos thời gian thực.</p>
+            </div>
           </div>
         </div>
 

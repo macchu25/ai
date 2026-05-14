@@ -127,11 +127,13 @@ export default function ProfilePage() {
 
   return (
     <div className="dashboard-section" style={{ minHeight: '100vh' }}>
-      <header style={{ marginBottom: '48px' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 12px 0', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Hồ Sơ Giám Sát Sức Khỏe</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', margin: 0 }}>
-          Thông tin chi tiết và danh bạ hỗ trợ khẩn cấp cho đối tượng được giám sát.
-        </p>
+      <header className="page-header-premium">
+        <div>
+          <h1 className="page-title-premium">Hồ Sơ Giám Sát Sức Khỏe</h1>
+          <p className="page-subtitle-premium">
+            Thông tin chi tiết và danh bạ hỗ trợ khẩn cấp cho đối tượng được giám sát.
+          </p>
+        </div>
       </header>
 
       <div className="profile-grid">

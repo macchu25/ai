@@ -189,12 +189,15 @@ export default function IncidentsPage() {
 
   return (
     <div className="incidents-container">
-      <header className="page-header">
-        <div className="header-text">
-          <h1 className="title-premium">Lịch Sử Sự Cố & Quản Trị</h1>
-          <p className="subtitle">Giám sát và cấu hình hạ tầng camera an ninh thông minh</p>
+      <header className="page-header-premium">
+        <div>
+          <h1 className="page-title-premium">Lịch Sử Sự Cố & Quản Trị</h1>
+          <p className="page-subtitle-premium">
+            Nhật ký các sự kiện té ngã và trạng thái hạ tầng hệ thống AI Core.
+          </p>
         </div>
-        <div className="stats-row">
+      </header>
+      <div className="stats-row">
           <div className="glass-stat-card">
              <div className="stat-icon alert"><ShieldAlert size={20} /></div>
              <div className="stat-info">
@@ -210,7 +213,7 @@ export default function IncidentsPage() {
              </div>
           </div>
         </div>
-      </header>
+
 
       <CameraManager 
         cameras={cameras}

@@ -208,10 +208,10 @@ export default function DashboardLayout({
     <NotificationProvider>
       <div className="dashboard-layout" style={{ display: 'flex', width: '100%', height: '100vh', overflow: 'hidden', fontFamily: '"Inter", sans-serif' }}>
         <aside className="sidebar-slim">
-          <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 0', width: '100%', borderBottom: '1.5px solid #e2e8f0', marginBottom: '16px' }}>
+          <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 0', margin: '0 20px', borderBottom: '1.5px solid #e2e8f0', marginBottom: '16px' }}>
             <img src="/logo.png" alt="Casos Logo" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
             <span className="logo-text" style={{ fontSize: '1.6rem', fontWeight: 950, letterSpacing: '-1.2px', color: '#1e293b', whiteSpace: 'nowrap' }}>
-              Casos<span style={{ color: 'var(--accent)' }}>.ai</span>
+               Casos<span style={{ color: 'var(--accent)' }}>.ai</span>
             </span>
           </div>
 
@@ -228,7 +228,7 @@ export default function DashboardLayout({
               boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
               border: '1px solid #f1f5f9',
               transition: 'all 0.2s ease',
-              margin: '0 8px 24px 8px'
+              margin: '0 20px 24px 20px'
             }}>
               <img src="/image.png" alt="Studio Icon" style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover' }} />
               <span className="project-name" style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e293b', flex: 1 }}>MacchuStudio</span>
@@ -287,8 +287,8 @@ export default function DashboardLayout({
               <p className="invite-desc">Bring your team in to collaborate.</p>
             </div>
 
-            <Link href="/subscription" className="upgrade-btn" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <Zap size={18} fill="#1e293b" />
+            <Link href="/subscription" className="upgrade-btn">
+              <Zap size={18} fill="currentColor" />
               <span>Upgrade</span>
             </Link>
 

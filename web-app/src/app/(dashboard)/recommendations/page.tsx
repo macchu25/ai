@@ -87,10 +87,10 @@ export default function CameraRecommendationsPage() {
 
   return (
     <div className="recommendations-page">
-      <header className="page-header">
-        <div className="header-content">
-          <h1 className="title">Gợi Ý Thiết Bị Camera</h1>
-          <p className="subtitle">
+      <header className="page-header-premium">
+        <div>
+          <h1 className="page-title-premium">Gợi Ý Thiết Bị Camera</h1>
+          <p className="page-subtitle-premium">
             Danh sách các dòng camera IP hỗ trợ chuẩn ONVIF/RTSP tương thích tốt nhất với hệ thống AI của Casos.
           </p>
         </div>
@@ -207,36 +207,11 @@ export default function CameraRecommendationsPage() {
 
       <style jsx>{`
         .recommendations-page {
-          padding: 30px;
+          padding: 20px;
           min-height: calc(100vh - 120px);
-          max-width: 1400px;
-          margin: 0 auto;
         }
 
-        .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 30px;
-          flex-wrap: wrap;
-          gap: 20px;
-        }
-
-        .title {
-          font-size: 2.2rem;
-          font-weight: 900;
-          color: #1e293b;
-          letter-spacing: -1px;
-          margin: 0 0 8px 0;
-        }
-
-        .subtitle {
-          color: #64748b;
-          font-size: 1.1rem;
-          margin: 0;
-          max-width: 600px;
-          line-height: 1.5;
-        }
+        /* Unified styles applied via globals.css */
 
         .header-badges {
           display: flex;

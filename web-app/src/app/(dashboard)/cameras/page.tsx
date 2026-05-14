@@ -71,10 +71,10 @@ export default function CamerasGridPage() {
 
   return (
     <div className="cameras-grid-page">
-      <header className="grid-header">
-        <div className="header-left">
-          <h1 className="title-premium">Phòng Điều Phối Cam</h1>
-          <p className="subtitle">Hệ thống giám sát đa luồng thời gian thực</p>
+      <header className="page-header-premium">
+        <div>
+          <h1 className="page-title-premium">Phòng Điều Phối Cam</h1>
+          <p className="page-subtitle-premium">Hệ thống giám sát đa luồng thời gian thực</p>
         </div>
 
         <div className="header-actions">
@@ -208,26 +208,6 @@ export default function CamerasGridPage() {
           min-height: calc(100vh - 120px);
           display: flex;
           flex-direction: column;
-        }
-
-        .grid-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 30px;
-        }
-
-        .title-premium {
-          font-size: 2.2rem;
-          font-weight: 900;
-          color: #1e293b;
-          letter-spacing: -1px;
-          margin: 0;
-        }
-
-        .subtitle {
-          color: #64748b;
-          margin-top: 4px;
         }
 
         .header-actions {

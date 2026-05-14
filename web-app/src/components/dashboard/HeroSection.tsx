@@ -8,7 +8,21 @@ interface HeroSectionProps {
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) => {
   return (
-    <div className="hero-viewport">
+    <div className="hero-viewport" style={{ position: 'relative' }}>
+      {/* Fading Veins Background */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundImage: "url('/veins.svg?v=2')",
+        backgroundSize: 'cover',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        zIndex: 0,
+        pointerEvents: 'none',
+        maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 60%, transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 60%, transparent 100%)'
+      }} />
+
       {/* Background SVG Lines */}
       <svg className="connecting-lines" width="100%" height="100%" style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 0 }} preserveAspectRatio="none">
         <polyline points="280,260 380,330 500,430" fill="none" />
@@ -21,7 +35,16 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
 
       {/* CASOS UNDER ROBOT */}
       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1, pointerEvents: 'none', width: '100%', textAlign: 'center' }}>
-        <h1 style={{ fontSize: 'clamp(4rem, 14vw, 18rem)', fontWeight: 900, margin: 0, lineHeight: 1, letterSpacing: '0.05em', textTransform: 'uppercase', userSelect: 'none' }}>
+        <h1 style={{ 
+          fontSize: 'max(5rem, 16vw)', 
+          fontWeight: 900, 
+          margin: 0, 
+          lineHeight: 1, 
+          letterSpacing: '0.05em', 
+          textTransform: 'uppercase', 
+          userSelect: 'none',
+          whiteSpace: 'nowrap'
+        }}>
           {['C', 'A', 'S', 'O', 'S'].map((letter, index) => (
             <span key={index} className="casos-letter">{letter}</span>
           ))}
@@ -35,7 +58,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
 
       {/* UI HUD OVERLAY */}
       <div className="hero-hud-overlay">
-        <div className="hero-title-wrap" style={{ padding: '60px 30px 20px', pointerEvents: 'auto' }}>
+        <div className="hero-title-wrap" style={{ padding: '20px 30px 10px', pointerEvents: 'auto' }}>
           <h2 style={{ fontSize: '1.2rem', color: '#94a3b8', fontWeight: 600, marginBottom: '2px' }}>Tổng quan trực tiếp,</h2>
           <h1 className="hero-main-title" style={{ fontSize: 'clamp(2rem, 5vw, 3.4rem)', color: '#1e293b', fontWeight: 950, letterSpacing: '-1.8px', margin: 0, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '12px' }}>
             TRONG NGÀY! <span style={{ color: 'var(--accent)', fontSize: '2.2rem', display: 'inline-block', transform: 'translateY(-4px)' }}>📡</span>

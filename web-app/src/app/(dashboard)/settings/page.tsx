@@ -103,11 +103,13 @@ export default function SettingsPage() {
 
   return (
     <div className="dashboard-section" style={{ minHeight: '100vh' }}>
-      <header style={{ marginBottom: '48px' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 12px 0', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Cấu Hình Toàn Hệ Thống</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', margin: 0 }}>
-          Tùy chỉnh các tham số AI và phương thức nhận cảnh báo.
-        </p>
+      <header className="page-header-premium">
+        <div>
+          <h1 className="page-title-premium">Cấu Hình Toàn Hệ Thống</h1>
+          <p className="page-subtitle-premium">
+            Tùy chỉnh các tham số AI và phương thức nhận cảnh báo.
+          </p>
+        </div>
       </header>
 
       <div className="settings-grid">
