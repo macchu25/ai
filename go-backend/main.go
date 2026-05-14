@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -130,6 +131,7 @@ func main() {
 	// 6. Register Public Routes
 	authHandler.RegisterRoutes(r.Group("/api/v1/auth"))
 	r.POST("/api/v1/payment/webhook", paymentHandler.SePayWebhook)
+	r.POST("/api/v1/bridge/register", camAPI.RegisterBridge)
 
 	// 7. Register Private Routes (Yêu cầu JWT)
 	private := r.Group("/api/v1")
@@ -157,9 +159,13 @@ func main() {
 
 	r.GET("/api/v1/user/check-payment", userHandler.CheckPayment)
 
-	// 8. Static Streams (Bảo vệ bằng JWT)
-	// Dùng Group để đảm bảo Middleware chạy trước khi phục vụ Static Files
-	r.Group("/streams").Use(auth.JWTMiddleware()).StaticFS("/", http.Dir(hlsServer.OutputDir))
+	// 8. Static Streams (Phục vụ luồng video HLS (Cấu hình không cho phép Cache để tránh lỗi nhảy hình))
+	r.GET("/streams/*filepath", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
+		c.File(filepath.Join(hlsServer.OutputDir, c.Param("filepath")))
+	})
 
 	// 9. Start Server
 	logger.Log.Info("🚀 Cardiac Alert Server hiện đang chạy tại cổng :8080")

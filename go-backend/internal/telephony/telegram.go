@@ -23,7 +23,7 @@ type InlineKeyboardMarkup struct {
 	InlineKeyboard [][]InlineButton `json:"inline_keyboard"`
 }
 
-var httpClient = &http.Client{Timeout: 15 * time.Second}
+var httpClient = &http.Client{Timeout: 35 * time.Second}
 
 // SendTelegramAlertCustom gửi tin nhắn văn bản với các nút bấm tùy chọn
 func SendTelegramAlertCustom(chatID string, message string, buttons interface{}) error {

@@ -24,8 +24,19 @@ func NewAPI(db *mongo.Database, manager *Manager) *API {
 
 func (a *API) RegisterRoutes(router *gin.RouterGroup) {
 	router.GET("/cameras", a.GetCameras)
+	router.GET("/cameras/discovery", a.DiscoverCameras) // Route mới
 	router.POST("/cameras", a.AddCamera)
 	router.DELETE("/cameras/:id", a.DeleteCamera)
+}
+
+// DiscoverCameras thực hiện quét mạng và trả về danh sách IP camera tìm thấy
+func (a *API) DiscoverCameras(c *gin.Context) {
+	ips := DiscoverCameras()
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"ips":     ips,
+		"count":   len(ips),
+	})
 }
 
 func (a *API) GetCameras(c *gin.Context) {
@@ -203,4 +214,50 @@ func (a *API) DeleteCamera(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Đã chặn stream và xóa camera thành công"})
+}
+
+// Xử lý POST đăng ký Bridge URL
+func (a *API) RegisterBridge(c *gin.Context) {
+	var payload struct {
+		UserID string `json:"user_id"`
+		URL    string `json:"url"`
+	}
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	objID, err := primitive.ObjectIDFromHex(payload.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id"})
+		return
+	}
+
+	// Cập nhật cấu hình camera là dạng 'bridge'
+	// url sẽ lưu stream HLS trực tiếp từ go2rtc qua Cloudflare Tunnel
+	streamURL := fmt.Sprintf("%s/api/stream.m3u8?src=camera", payload.URL)
+
+	filter := bson.M{"user_id": objID, "name": "Cardiac Sync Camera"}
+	update := bson.M{
+		"$set": bson.M{
+			"url":         streamURL,
+			"type":        "bridge",
+			"status":      "online",
+			"bridge_url":  payload.URL,
+		},
+		"$setOnInsert": bson.M{
+			"_id":     primitive.NewObjectID(),
+			"name":    "Cardiac Sync Camera",
+			"user_id": objID,
+		},
+	}
+	opts := options.Update().SetUpsert(true)
+
+	_, err = a.db.Collection("cameras").UpdateOne(context.Background(), filter, update, opts)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save bridge camera"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Bridge registered successfully", "stream_url": streamURL})
 }

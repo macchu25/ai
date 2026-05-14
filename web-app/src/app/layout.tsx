@@ -1,3 +1,5 @@
+
+
 import type { Metadata } from "next";
 import "./globals.css";
 import "./dashboard.css";
@@ -17,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi">
-      <body className="bg-slate-50 text-slate-900">
+    <html lang="vi" suppressHydrationWarning>
+      <body className="bg-slate-50 text-slate-900" suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>

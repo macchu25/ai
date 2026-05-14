@@ -7,13 +7,17 @@ import { Maximize2, RefreshCw, AlertCircle } from 'lucide-react';
 interface VideoPlayerProps {
   url: string;
   name: string;
+  isMJPEG?: boolean;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, name }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, name, isMJPEG }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
   const initPlayer = () => {
+    if (isMJPEG) return; // Không cần khởi tạo HLS cho MJPEG
+
     if (hlsRef.current) {
       hlsRef.current.destroy();
     }
@@ -68,28 +72,48 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, name }) => {
         hlsRef.current.destroy();
       }
     };
-  }, [url]);
+  }, [url, isMJPEG]);
+
+  const toggleFullScreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(err => console.log(err));
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   return (
     <div className="video-player-card">
       <div className="player-header">
         <div className="status-indicator">
           <div className="dot pulse"></div>
-          <span>LIVE - {name}</span>
+          <span>{isMJPEG ? 'REAL-TIME AI' : 'LIVE'} - {name}</span>
         </div>
         <div className="player-actions">
            <button onClick={initPlayer} title="Reload stream"><RefreshCw size={14} /></button>
-           <button title="Fullscreen"><Maximize2 size={14} /></button>
+           <button onClick={toggleFullScreen} title="Fullscreen"><Maximize2 size={14} /></button>
         </div>
       </div>
       
-      <div className="video-container">
-        <video 
-          ref={videoRef} 
-          muted 
-          playsInline
-          poster="https://images.unsplash.com/photo-1544391496-1ca0f074479e?q=80&w=2000&auto=format&fit=crop"
-        />
+      <div className="video-container" ref={containerRef}>
+        {isMJPEG ? (
+           <img 
+              src={url} 
+              alt={name} 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+              onError={(e) => {
+                (e.target as any).src = 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&q=80&w=640';
+              }}
+           />
+        ) : (
+           <video 
+             ref={videoRef} 
+             muted 
+             playsInline
+             poster="https://images.unsplash.com/photo-1544391496-1ca0f074479e?q=80&w=2000&auto=format&fit=crop"
+           />
+        )}
         <div className="video-overlay">
            <div className="stream-info">
               <span className="bandwidth">1080p • 60 FPS</span>
@@ -159,10 +183,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, name }) => {
           background: #000;
         }
 
-        video {
+        video, img {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
+          background: #000;
         }
 
         .video-overlay {

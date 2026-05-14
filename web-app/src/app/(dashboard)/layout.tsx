@@ -6,7 +6,7 @@ import { signOut, useSession } from 'next-auth/react';
 import {
   Home, Video, Activity, HeartPulse, Settings, UserCircle,
   ShieldCheck, LogIn, Monitor, LayoutGrid, BarChart3,
-  AlertTriangle, Cpu, FileText, Send, Terminal, Zap, LogOut, ChevronDown, Bell, Sparkles
+  AlertTriangle, Cpu, FileText, Send, Terminal, Zap, LogOut, ChevronDown, Bell, Sparkles, BookOpen, Search
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ScrollToTop from '@/components/ScrollToTop';
@@ -215,26 +215,25 @@ export default function DashboardLayout({
             </span>
           </div>
 
-          <div className="project-selector" style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '12px 16px',
-            background: '#fff',
-            borderRadius: '16px',
-            marginBottom: '24px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-            border: '1px solid #f1f5f9',
-            transition: 'all 0.2s ease',
-            margin: '0 8px 24px 8px'
-          }}>
-            <img src="/image.png" alt="Studio Icon" style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover' }} />
-            <span className="project-name" style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e293b', flex: 1 }}>MacchuStudio</span>
-            <ChevronDown size={16} color="#94a3b8" />
-          </div>
-
           <nav className="nav-menu">
+            <div className="project-selector" style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              background: '#fff',
+              borderRadius: '16px',
+              marginBottom: '24px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+              border: '1px solid #f1f5f9',
+              transition: 'all 0.2s ease',
+              margin: '0 8px 24px 8px'
+            }}>
+              <img src="/image.png" alt="Studio Icon" style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover' }} />
+              <span className="project-name" style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e293b', flex: 1 }}>MacchuStudio</span>
+              <ChevronDown size={16} color="#94a3b8" />
+            </div>
             <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
               <Home size={20} />
               <span>Home</span>
@@ -258,6 +257,10 @@ export default function DashboardLayout({
             <Link href="/incidents" className={`nav-link ${pathname === '/incidents' ? 'active' : ''}`}>
               <AlertTriangle size={20} />
               <span>Incidents</span>
+            </Link>
+            <Link href="/docs" className={`nav-link ${pathname === '/docs' ? 'active' : ''}`}>
+              <BookOpen size={20} />
+              <span>Documents</span>
             </Link>
 
             <div className="nav-group-label">Pinned</div>
@@ -289,10 +292,6 @@ export default function DashboardLayout({
               <span>Upgrade</span>
             </Link>
 
-            <button onClick={() => setShowLogoutModal(true)} className="nav-link logout-btn" style={{ marginTop: '8px', color: '#ef4444', width: '100%', justifyContent: 'flex-start', background: 'none', border: 'none', cursor: 'pointer' }}>
-              <LogOut size={20} />
-              <span>Logout</span>
-            </button>
           </div>
         </aside>
 
@@ -319,7 +318,60 @@ export default function DashboardLayout({
                 </nav>
               </div>
 
-              <div className="header-right">
+              <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {/* Thanh tìm kiếm */}
+                <div 
+                  className="search-shortcut"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '240px',
+                    height: '36px',
+                    padding: '0 12px',
+                    background: '#f1f5f9',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    cursor: 'text',
+                    color: '#64748b',
+                    fontSize: '0.85rem',
+                    transition: 'border-color 0.2s ease',
+                  }}
+                  onClick={() => {
+                    const input = document.getElementById('global-search-input');
+                    if (input) input.focus();
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                    <Search size={14} color="#94a3b8" />
+                    <input 
+                      id="global-search-input"
+                      type="text" 
+                      placeholder="Search documentation..." 
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        outline: 'none',
+                        color: '#0f172a',
+                        width: '100%',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                  </span>
+                  <span style={{ 
+                    background: '#ffffff', 
+                    padding: '2px 6px', 
+                    borderRadius: '4px', 
+                    fontSize: '0.7rem', 
+                    fontWeight: 600,
+                    border: '1px solid #e2e8f0',
+                    color: '#64748b',
+                    marginLeft: '8px'
+                  }}>
+                    CtrlK
+                  </span>
+                </div>
+
                 <div
                   className="notification-bell"
                   onClick={() => setShowNotifications(!showNotifications)}

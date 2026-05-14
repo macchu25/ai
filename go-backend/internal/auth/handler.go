@@ -82,8 +82,19 @@ func (h *Handler) SocialLogin(c *gin.Context) {
 			"subscription_plan":   "free",
 			"subscription_status": "active",
 		}
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi truy vấn cơ sở dữ liệu"})
+		return
 	} else {
-		finalID = userDoc["_id"].(primitive.ObjectID)
+		// Safely extract finalID without panicking
+		if id, ok := userDoc["_id"].(primitive.ObjectID); ok {
+			finalID = id
+		} else if idStr, ok := userDoc["_id"].(string); ok {
+			objID, _ := primitive.ObjectIDFromHex(idStr)
+			finalID = objID
+		} else {
+			finalID = primitive.NewObjectID()
+		}
 	}
 
 	// Sinh Token JWT thật cho User này

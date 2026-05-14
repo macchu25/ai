@@ -85,7 +85,7 @@ const Footer: React.FC = () => {
             </div>
 
             {/* Center - Social Media Icons */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
+            <div style={{ flex: 1.5, minWidth: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
               <h4 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 900, marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '1px', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 5px rgba(0,0,0,0.8)' }}>Follow Us</h4>
               <div className="footer-underline" style={{ width: '200px', height: '4px', background: '#ffffff', marginBottom: '10px', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '2px' }}></div>
               <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>

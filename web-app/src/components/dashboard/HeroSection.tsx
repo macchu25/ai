@@ -21,7 +21,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
 
       {/* CASOS UNDER ROBOT */}
       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1, pointerEvents: 'none', width: '100%', textAlign: 'center' }}>
-        <h1 style={{ fontSize: 'clamp(8rem, 22vw, 24rem)', fontWeight: 900, margin: 0, lineHeight: 1, letterSpacing: '0.08em', textTransform: 'uppercase', userSelect: 'none' }}>
+        <h1 style={{ fontSize: 'clamp(4rem, 14vw, 18rem)', fontWeight: 900, margin: 0, lineHeight: 1, letterSpacing: '0.05em', textTransform: 'uppercase', userSelect: 'none' }}>
           {['C', 'A', 'S', 'O', 'S'].map((letter, index) => (
             <span key={index} className="casos-letter">{letter}</span>
           ))}
@@ -44,7 +44,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
 
         <div className="widget-grid-container" style={{ position: 'relative', width: '100%', height: '100%' }}>
           {/* LEFT WIDGETS - Moved up significantly */}
-          <div className="widget widget-stream" style={{ top: '8%', left: '30px', width: '280px', flexDirection: 'column', alignItems: 'flex-start', pointerEvents: 'auto', animationDelay: '0s' }}>
+          <div className="widget widget-stream" style={{ top: '8%', left: '3%', width: '25%', minWidth: '240px', maxWidth: '300px', flexDirection: 'column', alignItems: 'flex-start', pointerEvents: 'auto', animationDelay: '0s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <Video size={16} color="var(--accent)" />
               <span className="metric-label">Tín hiệu Stream</span>
@@ -57,7 +57,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
             <div className="metric-value" style={{ fontSize: '0.9rem' }}>{onlineCams} Live</div>
           </div>
 
-          <div className="widget widget-alerts" style={{ top: '32%', left: '30px', width: '280px', padding: '24px', flexDirection: 'column', alignItems: 'stretch', pointerEvents: 'auto', animationDelay: '-1s' }}>
+          <div className="widget widget-alerts" style={{ top: '32%', left: '3%', width: '25%', minWidth: '240px', maxWidth: '300px', padding: '24px', flexDirection: 'column', alignItems: 'stretch', pointerEvents: 'auto', animationDelay: '-1s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '8px' }}>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <div className="icon-badge danger" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', width: '36px', height: '36px' }}>
@@ -71,7 +71,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
             </div>
           </div>
 
-          <div className="widget mini-widget widget-uptime" style={{ top: '58%', left: '30px', gap: '12px', pointerEvents: 'auto', animationDelay: '-2.5s' }}>
+          <div className="widget mini-widget widget-uptime" style={{ top: '58%', left: '3%', gap: '12px', pointerEvents: 'auto', animationDelay: '-2.5s' }}>
             <div style={{ background: 'var(--success)', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Activity size={18} color="white" />
             </div>
@@ -82,7 +82,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
           </div>
 
           {/* RIGHT WIDGETS - Moved up significantly */}
-          <div className="widget pill-widget widget-ai" style={{ top: '8%', right: '30px', gap: '12px', pointerEvents: 'auto', animationDelay: '-0.5s' }}>
+          <div className="widget pill-widget widget-ai" style={{ top: '8%', right: '3%', gap: '12px', pointerEvents: 'auto', animationDelay: '-0.5s' }}>
             <div className="icon-badge success" style={{ background: '#f0fdf4', width: '28px', height: '28px' }}>
               <Shield size={14} color="var(--success)" />
             </div>
@@ -92,7 +92,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
             </div>
           </div>
 
-          <div className="widget widget-fps" style={{ top: '25%', right: '30px', width: '220px', flexDirection: 'column', alignItems: 'stretch', pointerEvents: 'auto', animationDelay: '-1.5s' }}>
+          <div className="widget widget-fps" style={{ top: '25%', right: '3%', width: '20%', minWidth: '200px', maxWidth: '260px', flexDirection: 'column', alignItems: 'stretch', pointerEvents: 'auto', animationDelay: '-1.5s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '12px' }}>
               <div className="icon-badge warning" style={{ width: '36px', height: '36px' }}>
                 <Clock size={18} color="var(--warning)" />
@@ -104,7 +104,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
             </div>
           </div>
 
-          <div className="widget widget-latency" style={{ top: '48%', right: '30px', width: '280px', flexDirection: 'column', alignItems: 'stretch', pointerEvents: 'auto', animationDelay: '-2s' }}>
+          <div className="widget widget-latency" style={{ top: '48%', right: '3%', width: '25%', minWidth: '240px', maxWidth: '300px', flexDirection: 'column', alignItems: 'stretch', pointerEvents: 'auto', animationDelay: '-2s' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', width: '100%', marginBottom: '15px' }}>
               <div className="icon-badge success" style={{ background: '#ecfdf5', width: '36px', height: '36px' }}>
                 <Wifi size={18} color="var(--success)" />

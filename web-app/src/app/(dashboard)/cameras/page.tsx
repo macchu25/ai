@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, Grid3X3, Monitor, Settings, RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { LayoutGrid, Grid3X3, Monitor, Settings, RefreshCw, AlertTriangle, ShieldCheck, Search } from 'lucide-react';
 import VideoPlayer from '@/components/dashboard/VideoPlayer';
 
 export default function CamerasGridPage() {
@@ -12,6 +12,32 @@ export default function CamerasGridPage() {
   const [cameras, setCameras] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid2' | 'grid3'>('grid2');
+  const [isScanning, setIsScanning] = useState(false);
+  const [hasScanned, setHasScanned] = useState(false);
+  const [discoveredIps, setDiscoveredIps] = useState<string[]>([]);
+
+  const handleScan = async () => {
+    setIsScanning(true);
+    setHasScanned(false);
+    setDiscoveredIps([]);
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+      const res = await fetch(`${apiBase}/cameras/discovery`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDiscoveredIps(data.ips || []);
+        setHasScanned(true);
+      }
+    } catch (err) {
+      console.error("Scan error", err);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const token = session?.user ? (session.user as any).accessToken : '';
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -19,9 +45,7 @@ export default function CamerasGridPage() {
       return;
     }
 
-    if (status === "authenticated" && session?.user) {
-      const token = (session.user as any).accessToken;
-
+    if (status === "authenticated" && token) {
       const fetchCams = async () => {
         try {
           const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
@@ -54,6 +78,15 @@ export default function CamerasGridPage() {
         </div>
 
         <div className="header-actions">
+          <button 
+            onClick={handleScan} 
+            className={`btn-scan ${isScanning ? 'scanning' : ''}`}
+            disabled={isScanning}
+          >
+            <Search size={18} className={isScanning ? 'animate-pulse' : ''} />
+            <span>{isScanning ? 'Đang quét...' : 'Quét Camera'}</span>
+          </button>
+          
           <div className="view-toggle">
             <button
               className={viewMode === 'grid2' ? 'active' : ''}
@@ -76,6 +109,55 @@ export default function CamerasGridPage() {
           </button>
         </div>
       </header>
+      
+      {/* Hiển thị kết quả quét */}
+      {(isScanning || hasScanned) && (
+        <div className={`discovery-results ${hasScanned && discoveredIps.length === 0 ? 'no-results' : ''}`}>
+          <div className="discovery-header">
+            {isScanning ? (
+              <RefreshCw size={20} className="animate-spin" />
+            ) : (discoveredIps?.length || 0) > 0 ? (
+              <ShieldCheck size={20} color="#22c55e" />
+            ) : (
+              <AlertTriangle size={20} color="#f59e0b" />
+            )}
+            
+            <span>
+              {isScanning 
+                ? 'Đang dò tìm thiết bị trong mạng Wifi của bạn...' 
+                : (discoveredIps?.length || 0) > 0 
+                  ? `Đã tìm thấy ${discoveredIps.length} Camera RTSP mới!` 
+                  : 'Không tìm thấy Camera nào đang mở cổng RTSP (554).'}
+            </span>
+            <button onClick={() => { setHasScanned(false); setDiscoveredIps([]); }} className="close-discovery">×</button>
+          </div>
+          
+          {(discoveredIps?.length || 0) > 0 && (
+            <div className="ip-list">
+              {discoveredIps.map(ip => (
+                <div key={ip} className="ip-card">
+                  <span className="ip-text">rtsp://{ip}:554/stream1</span>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(`rtsp://${ip}:554/stream1`);
+                      alert("Đã sao chép link RTSP!");
+                    }}
+                    className="btn-add-fast"
+                  >
+                    Sao chép URL
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {hasScanned && (discoveredIps?.length || 0) === 0 && (
+            <p className="discovery-hint" style={{ marginTop: '10px', color: '#64748b', fontSize: '0.85rem' }}>
+              Hãy đảm bảo Camera X-IoT đã bật nguồn và kết nối cùng mạng Wifi với máy tính.
+            </p>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="loading-grid">
@@ -85,13 +167,21 @@ export default function CamerasGridPage() {
       ) : (
         <div className={`cameras-layout ${viewMode}`}>
           {cameras.length > 0 ? (
-            cameras.map((cam: any) => (
-              <VideoPlayer
-                key={cam.id}
-                url={`${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8`}
-                name={cam.name}
-              />
-            ))
+            cameras.map((cam: any) => {
+              // Xác định luồng là MJPEG hay HLS
+              const isMJPEG = cam.rtspUrl && (cam.rtspUrl.startsWith('http') || cam.rtspUrl.includes(':5000'));
+              const streamUrl = isMJPEG 
+                ? (cam.rtspUrl.startsWith('http') ? cam.rtspUrl : `http://${cam.rtspUrl}`)
+                : `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8?token=${token}&t=${Date.now()}`;
+
+              return (
+                <div key={cam.id} className="camera-grid-item">
+                  <div className="camera-video-container">
+                    <VideoPlayer url={streamUrl} name={cam.name} isMJPEG={isMJPEG} />
+                  </div>
+                </div>
+              );
+            })
           ) : (
             <div className="empty-state">
               <AlertTriangle size={48} color="#94a3b8" />
@@ -188,6 +278,98 @@ export default function CamerasGridPage() {
         }
 
         .btn-refresh:hover { background: #f8fafc; border-color: #cbd5e1; }
+
+        .btn-scan {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: var(--accent);
+          border: none;
+          padding: 10px 20px;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 0.9rem;
+          color: white;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn-scan:hover { background: #2563eb; transform: translateY(-2px); }
+        .btn-scan:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+        
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+        .discovery-results {
+          background: rgba(34, 197, 94, 0.05);
+          border: 1px solid rgba(34, 197, 94, 0.2);
+          border-radius: 20px;
+          padding: 20px;
+          margin-bottom: 30px;
+          animation: slideDown 0.4s ease-out;
+        }
+
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .discovery-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 15px;
+          font-weight: 800;
+          color: #166534;
+        }
+
+        .close-discovery {
+          margin-left: auto;
+          background: transparent;
+          border: none;
+          font-size: 1.5rem;
+          color: #94a3b8;
+          cursor: pointer;
+        }
+
+        .ip-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+
+        .ip-card {
+          background: white;
+          border: 1px solid #dcfce7;
+          padding: 8px 16px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .ip-text {
+          font-family: monospace;
+          color: #166534;
+          font-weight: 700;
+          font-size: 0.85rem;
+        }
+
+        .btn-add-fast {
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+          color: #15803d;
+          padding: 4px 10px;
+          border-radius: 8px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .btn-add-fast:hover { background: #dcfce7; }
 
         .cameras-layout {
           display: grid;

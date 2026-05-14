@@ -34,31 +34,16 @@ const LiveCameraSection: React.FC<LiveCameraSectionProps> = ({ cameras, token })
         {displayCams.length > 0 ? (
           displayCams.map(cam => {
             // Kiểm tra xem đây có phải luồng từ AI (MJPEG) không
-            const isMJPEG = cam.rtsp_url && (cam.rtsp_url.startsWith('http') || cam.rtsp_url.includes(':5000'));
+            const isMJPEG = cam.rtspUrl && (cam.rtspUrl.startsWith('http') || cam.rtspUrl.includes(':5000'));
             
             // Nếu là MJPEG, dùng URL trực tiếp. Nếu không, qua Proxy HLS của Backend
             const streamUrl = isMJPEG 
-              ? (cam.rtsp_url.startsWith('http') ? cam.rtsp_url : `http://${cam.rtsp_url}`)
-              : `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8?token=${token}`;
+              ? (cam.rtspUrl.startsWith('http') ? cam.rtspUrl : `http://${cam.rtspUrl}`)
+              : `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8?token=${token}&t=${Date.now()}`;
             
             return (
               <div key={cam.id} className="camera-card-wrapper">
-                <div className="camera-label-tag">
-                  <div className="live-dot"></div>
-                  {isMJPEG ? 'REAL-TIME AI' : 'LIVE'} - {cam.name}
-                </div>
-                {isMJPEG ? (
-                  <img 
-                    src={streamUrl} 
-                    alt={cam.name} 
-                    style={{ width: '100%', borderRadius: '24px', aspectRatio: '16/9', objectFit: 'cover', background: '#111' }} 
-                    onError={(e) => {
-                      (e.target as any).src = 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&q=80&w=640';
-                    }}
-                  />
-                ) : (
-                  <VideoPlayer url={streamUrl} name={cam.name} />
-                )}
+                <VideoPlayer url={streamUrl} name={cam.name} isMJPEG={isMJPEG} />
               </div>
             );
           })

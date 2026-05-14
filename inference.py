@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import time
+import json
 import requests
 import threading
 from collections import deque
@@ -283,23 +284,23 @@ class FallDetector:
                     if label == "fall": label = "on furniture"
                 else:
                     # Đếm xem trong 2 giây qua có bao nhiêu khung hình là 'ngoi' (ngồi)
-                sitting_frames = list(self.pose_history).count("ngoi")
-                
-                # Nếu đã ngồi một lúc rồi mới nằm, ưu tiên coi là đi ngủ/ngồi nghỉ
-                # Ngoại trừ trường hợp rơi cực nhanh (is_sudden_drop)
-                if sitting_frames > 15 and not is_sudden_drop:
-                    self.fall_streak = 0
-                    if label == "fall":
-                        label = "di ngu (tu tu)"
-                else:
-                    # Kiểm tra số landmark đủ (>=15) để có dữ liệu toàn thân
-                    if landmarks is not None and len(landmarks) >= 15:
-                        if variance > self.THR_LOW:
-                            self.fall_streak += 1
+                    sitting_frames = list(self.pose_history).count("ngoi")
+                    
+                    # Nếu đã ngồi một lúc rồi mới nằm, ưu tiên coi là đi ngủ/ngồi nghỉ
+                    # Ngoại trừ trường hợp rơi cực nhanh (is_sudden_drop)
+                    if sitting_frames > 15 and not is_sudden_drop:
+                        self.fall_streak = 0
+                        if label == "fall":
+                            label = "di ngu (tu tu)"
+                    else:
+                        # Kiểm tra số landmark đủ (>=15) để có dữ liệu toàn thân
+                        if landmarks is not None and len(landmarks) >= 15:
+                            if variance > self.THR_LOW:
+                                self.fall_streak += 1
+                            else:
+                                self.fall_streak = 0
                         else:
                             self.fall_streak = 0
-                    else:
-                        self.fall_streak = 0
             else:
                 self.fall_streak = 0
 
@@ -501,9 +502,36 @@ if __name__ == "__main__":
     print("  Nhan 'c' de in variance ra console (calibrate)")
     print("=" * 50)
 
-    print("-> Opening camera...")
-    cap = cv2.VideoCapture(0)
-    print("-> Camera object created.")
+    # ── TỐI ƯU: Lớp đọc Webcam bằng luồng riêng để xóa bỏ độ trễ bộ đệm (0ms Latency) ──
+    class VideoStream:
+        def __init__(self, src=0):
+            self.stream = cv2.VideoCapture(src)
+            self.stream.set(cv2.CAP_PROP_BUFFERSIZE, 1) # Giới hạn bộ đệm tối thiểu
+            (self.grabbed, self.frame) = self.stream.read()
+            self.stopped = False
+            self.t = threading.Thread(target=self.update, args=(), daemon=True)
+
+        def start(self):
+            self.t.start()
+            return self
+
+        def update(self):
+            while not self.stopped:
+                (self.grabbed, self.frame) = self.stream.read()
+
+        def read(self):
+            return self.grabbed, self.frame
+
+        def isOpened(self):
+            return self.stream.isOpened()
+
+        def stop(self):
+            self.stopped = True
+            self.stream.release()
+
+    print("-> Opening camera with Threaded Stream...")
+    cap = VideoStream(src=0).start()
+    print("-> Camera Thread started.")
     
     # ── MÁY CHỦ TRUYỀN HÌNH ẢNH ẢO CHO WEB (FLASK MJPEG) ──
     try:
@@ -522,8 +550,11 @@ if __name__ == "__main__":
                     time.sleep(0.05)
                     continue
                 ret, buffer = cv2.imencode('.jpg', global_frame)
-                if not ret: continue
+                if not ret: 
+                    time.sleep(0.033)
+                    continue
                 yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+                time.sleep(0.033)  # Giới hạn 30 FPS để không làm nghẽn luồng ffmpeg
 
         @app.route('/video_feed')
         def video_feed():
@@ -582,32 +613,38 @@ if __name__ == "__main__":
 
     prev_time = time.time()
 
+    frame_count = 0
+    last_label, last_conf, last_landmarks, last_extra, last_state = "waiting", 0.0, None, None, State.MONITORING
+    
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             print("Không thể đọc frame từ webcam.")
             break
 
-        # ── TỐI ƯU HÓA: Resize frame cho AI (Giảm tải CPU cực lớn) ──
-        # Dùng ảnh nhỏ cho AI nhưng vẫn giữ ảnh gốc để hiển thị/stream
-        small_frame = cv2.resize(frame, (640, 480))
-
-        # 5. Predict
-        t_loop_start = time.perf_counter()
-        label, conf, landmarks, extra, state = detector.update(small_frame)
-        t_loop_end = time.perf_counter()
-
-        # ── DIAGNOSTIC: In log khi hệ thống bị chậm (< 10 FPS) ──
-        loop_time_ms = (t_loop_end - t_loop_start) * 1000
-        if loop_time_ms > 100: # Chậm hơn 10fps
-            print(f"[PERF ALERT] Loop={loop_time_ms:.1f}ms | MP={detector.last_mp_time:.1f}ms | Torch={detector.last_torch_time:.1f}ms")
-
-        # Chỉ gửi cảnh báo nếu là các trạng thái nguy hiểm (Fall, Unconscious, Seizure sau khi ngã)
-        alert_labels = ["fall", "unconscious", "seizure"]
-        is_alert = any(alert in label.lower() for alert in alert_labels)
+        frame_count += 1
         
-        if is_alert and label != "waiting":
-            threading.Thread(target=push_to_go, args=(label, conf)).start()
+        # ── TỐI ƯU HÓA: Chỉ chạy AI mỗi 3 frame để Video chạy mượt 30 FPS ──
+        if frame_count % 3 == 0:
+            small_frame = cv2.resize(frame, (640, 480))
+            
+            t_loop_start = time.perf_counter()
+            last_label, last_conf, last_landmarks, last_extra, last_state = detector.update(small_frame)
+            t_loop_end = time.perf_counter()
+
+            loop_time_ms = (t_loop_end - t_loop_start) * 1000
+            if loop_time_ms > 150: # Chậm hơn 6fps
+                print(f"[PERF ALERT] Loop={loop_time_ms:.1f}ms | MP={detector.last_mp_time:.1f}ms | Torch={detector.last_torch_time:.1f}ms")
+
+            # Chỉ gửi cảnh báo nếu là các trạng thái nguy hiểm
+            alert_labels = ["fall", "unconscious", "seizure"]
+            is_alert = any(alert in last_label.lower() for alert in alert_labels)
+            
+            if is_alert and last_label != "waiting":
+                threading.Thread(target=push_to_go, args=(last_label, last_conf)).start()
+
+        # Áp dụng kết quả AI gần nhất để vẽ lên hình
+        label, conf, landmarks, extra, state = last_label, last_conf, last_landmarks, last_extra, last_state
 
         # FPS
         curr_time = time.time()
@@ -619,6 +656,12 @@ if __name__ == "__main__":
         draw_landmarks(frame, landmarks)
 
         # ── UI Overlay ──
+        
+        # Đồng hồ thời gian thực (Góc dưới bên phải)
+        from datetime import datetime
+        time_str = datetime.now().strftime("%H:%M:%S")
+        cv2.putText(frame, time_str, (frame.shape[1] - 140, frame.shape[0] - 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
 
         # State badge
         state_colors = {

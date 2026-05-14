@@ -86,6 +86,12 @@ func (s *HLSServer) StartHLS(ctx context.Context, camID string, rtspURL string) 
 	camDir := filepath.Join(s.OutputDir, camID)
 	os.MkdirAll(camDir, 0755)
 
+	// ── TỐI ƯU: Xóa sạch rác cũ để tránh bị delay (Ghosting) ──
+	files, _ := os.ReadDir(camDir)
+	for _, f := range files {
+		os.Remove(filepath.Join(camDir, f.Name()))
+	}
+
 	go func() {
 		for {
 			select {
@@ -107,9 +113,9 @@ func (s *HLSServer) StartHLS(ctx context.Context, camID string, rtspURL string) 
 					"-preset", "ultrafast",
 					"-tune", "zerolatency",
 					"-b:v", "1000k",
-					"-hls_time", "2",
-					"-hls_list_size", "60",
-					"-hls_flags", "delete_segments+append_list",
+					"-hls_time", "1",
+					"-hls_list_size", "5",
+					"-hls_flags", "delete_segments+append_list+omit_endlist+discont_start",
 					"-f", "hls",
 					playlistPath,
 				}
@@ -123,9 +129,9 @@ func (s *HLSServer) StartHLS(ctx context.Context, camID string, rtspURL string) 
 					"-preset", "ultrafast",
 					"-tune", "zerolatency",
 					"-b:v", "1000k",
-					"-hls_time", "2",
-					"-hls_list_size", "60",
-					"-hls_flags", "delete_segments+append_list",
+					"-hls_time", "1",
+					"-hls_list_size", "5",
+					"-hls_flags", "delete_segments+append_list+omit_endlist+discont_start",
 					"-f", "hls",
 					playlistPath,
 				}
