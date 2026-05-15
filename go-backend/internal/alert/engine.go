@@ -2,9 +2,12 @@ package alert
 
 import (
 	"context"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"html"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -247,6 +250,30 @@ func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float
 	// HYBRID CLOUD: Đẩy bằng chứng lên S3/Firebase
 	go func() {
 		e.cloudSync.UploadIncidentEvidence("audio/mockup.png")
+	}()
+
+	// ─── LƯU INCIDENT VÀO VECTOR DB ───
+	go func() {
+		incidentText := fmt.Sprintf("Phát hiện sự cố %s tại %s của bệnh nhân %s vào lúc %s.", label, camName, patientName, time.Now().Format("15:04:05 02/01/2006"))
+		
+		// 1. Lưu vào MongoDB collection 'events'
+		event := bson.M{
+			"user_id":     cameraDoc.UserID,
+			"camera_id":   camID,
+			"type":        label,
+			"description": incidentText,
+			"created_at":  time.Now(),
+		}
+		e.db.Collection("events").InsertOne(context.Background(), event)
+
+		// 2. Lưu vào AI Vector DB
+		payload := map[string]interface{}{
+			"id":       primitive.NewObjectID().Hex(),
+			"text":     incidentText,
+			"metadata": map[string]string{"user_id": cameraDoc.UserID.Hex(), "type": label},
+		}
+		pbody, _ := json.Marshal(payload)
+		http.Post("http://localhost:8001/index", "application/json", bytes.NewBuffer(pbody))
 	}()
 }
 

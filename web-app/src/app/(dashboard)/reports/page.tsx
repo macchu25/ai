@@ -51,7 +51,7 @@ export default function ReportsPage() {
   const maxActivity = 100;
 
   return (
-    <div className="reports-container" style={{ padding: '24px', background: '#f8fafc', minHeight: '100%' }}>
+    <div className="reports-container" style={{ padding: '24px', background: 'transparent', minHeight: '100%' }}>
       
       {/* HEADER: MEDICAL STYLE */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>

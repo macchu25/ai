@@ -3,6 +3,7 @@ package alert
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"os/exec"
@@ -20,8 +21,12 @@ import (
 func execADB(args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
+	adbExe := os.Getenv("ADB_PATH")
+	if adbExe == "" {
+		adbExe = `C:\adb\adb.exe`
+	}
 	var buf bytes.Buffer
-	cmd := exec.CommandContext(ctx, "C:\\adb\\adb.exe", args...)
+	cmd := exec.CommandContext(ctx, adbExe, args...)
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
 	err := cmd.Run()
@@ -65,6 +70,34 @@ func (a *API) GetIncidents(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, events)
+}
+
+func (a *API) AIChat(c *gin.Context) {
+	var payload struct {
+		Query string `json:"query"`
+	}
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dữ liệu không hợp lệ"})
+		return
+	}
+
+	// Gọi đến AI Python service
+	pbody, _ := json.Marshal(map[string]string{"query": payload.Query})
+	resp, err := http.Post("http://localhost:8001/chat", "application/json", bytes.NewBuffer(pbody))
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "AI service hiện không khả dụng"})
+		return
+	}
+	defer resp.Body.Close()
+
+	var result gin.H
+	if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
+		c.JSON(http.StatusOK, result)
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"answer": "Hệ thống AI đang xử lý dữ liệu. Vui lòng thử lại sau.",
+		})
+	}
 }
 
 func (a *API) TestCall(c *gin.Context) {

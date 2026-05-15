@@ -121,10 +121,55 @@ c:\cardiac-alert\
 │   ├── internal/       # Business Logic (Module: alert, auth, camera, user)
 │   └── main.go         # Entry point (Modularized)
 ├── web-app/            # Next.js 14 Dashboard
-├── mobile-app/         # Expo React Native App
-├── inference.py        # AI Prediction Script (Secured)
+├── mobile-app/         # Expo React Native (xem mobile-app/README.md)
+├── inference.py        # AI Prediction Script (webcam/RTSP → POST /api/v1/ai-result)
+├── ai-brain/           # FastAPI + ChromaDB (chat RAG, index sự cố) cổng 8001
+├── ai-service/         # gRPC fall detection (Python)
 └── models/             # AI Model weights & Definition
 ```
 
- rm server.exe
- nexp mqoi mjon kybb
+---
+
+## Cổng dịch vụ & API quan trọng
+
+| Dịch vụ | Cổng mặc định | Ghi chú |
+|--------|----------------|--------|
+| Go API | `8080` | CORS mặc định: `localhost:3000` |
+| Next.js dashboard | `3000` | `NEXT_PUBLIC_API_URL` nên trỏ tới base có hậu tố `/api/v1` (ví dụ `http://localhost:8080/api/v1`) |
+| ai-brain (Chroma + chat) | `8001` | Go gọi `http://localhost:8001/chat` và `/index` — cấu hình URL qua mã nguồn nếu triển khai tách máy |
+| inference overlay (tuỳ chọn) | `5000` | Flask MJPEG khi bật trong `inference.py` |
+
+- **Swagger**: `http://localhost:8080/swagger/index.html`
+- **Metrics**: `http://localhost:8080/metrics`
+- **WebSocket**: `GET /ws` (JWT)
+- **AI → Backend**: `POST /api/v1/ai-result` với header `X-API-Key` trùng `INTERNAL_API_KEY` (đã đăng ký route; trước đây thiếu route thì engine không nhận được kết quả).
+
+### Chạy ai-brain (vector + chat)
+
+```powershell
+cd ai-brain
+pip install chromadb fastapi uvicorn pydantic sentence-transformers
+python service.py
+```
+
+Lần đầu chạy sẽ tải embedding model (`all-MiniLM-L6-v2`); cần mạng hoặc cache sẵn.
+
+---
+
+## Rà soát code — các điểm cần lưu ý
+
+1. **`/api/v1/ai-result`**: Đã bổ sung đăng ký trong `go-backend/main.go` để khớp với `inference.py`; không có route thì báo động từ Python sẽ không vào engine.
+2. **ADB**: Endpoint debug (`/test-adb-push`, `/debug-call-state`) dùng `ADB_PATH` từ `.env`, fallback `C:\adb\adb.exe` — trên Linux/mac cần đặt `ADB_PATH` trỏ tới `adb` trên `PATH`.
+3. **URL nội bộ cứng**: `AIChat` và engine (`http://localhost:8001/...`) giả định ai-brain chạy cùng máy; triển khai đám mây nên chuyển sang biến môi trường.
+4. **CORS**: Chỉ whitelist `localhost:3000`; production cần thêm origin thật.
+5. **Rate limit**: Map trong RAM, reset mỗi phút — không chia sẻ giữa nhiều instance; chỉ phù hợp dev/single-node.
+6. **Tiện ích nhạy cảm**: `test-call`, `test-adb-push`, `debug-call-state`, `simulate-payment` nên tắt hoặc bảo vệ thêm trên môi trường production.
+7. **inference.py**: Gọi `GET /api/v1/cameras` không kèm JWT thường trả 401 — dùng `--camera_id` hoặc cấp token/script riêng.
+8. **ai-brain `/chat`**: Khi collection rỗng, `query` có thể lỗi index; nên seed hoặc bắt `IndexError` trong Python.
+9. **Bằng chứng sự cố**: Engine đang dùng file cố định `audio/mockup.png` cho Telegram/cloud — thay bằng frame/video thật khi tích hợp xong pipeline.
+
+---
+
+## Giấy phép & đóng góp
+
+Dự án nội bộ / demo — điều chỉnh theo chính sách tổ chức của bạn trước khi công khai.

@@ -13,6 +13,7 @@ import ScrollToTop from '@/components/ScrollToTop';
 import { NotificationProvider } from '@/app/context/NotificationContext';
 import { usePathname, useRouter } from 'next/navigation';
 import Loading from './loading';
+import ChatBot from '@/components/ChatBot';
 
 function formatRelativeVi(iso: string): string {
   const t = new Date(iso).getTime();
@@ -206,91 +207,103 @@ export default function DashboardLayout({
 
   return (
     <NotificationProvider>
-      <div className="dashboard-layout" style={{ display: 'flex', width: '100%', height: '100vh', overflow: 'hidden', fontFamily: '"Inter", sans-serif' }}>
-        <aside className="sidebar-slim">
-          <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 0', margin: '0 20px', borderBottom: '1.5px solid #e2e8f0', marginBottom: '16px' }}>
-            <img src="/logo.png" alt="Casos Logo" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
-            <span className="logo-text" style={{ fontSize: '1.6rem', fontWeight: 950, letterSpacing: '-1.2px', color: '#1e293b', whiteSpace: 'nowrap' }}>
-               Casos<span style={{ color: 'var(--accent)' }}>.ai</span>
+      <div className="flex w-full h-screen overflow-hidden" style={{ 
+        fontFamily: '"Inter", sans-serif', 
+        background: 'linear-gradient(135deg, #f8fafc 0%, #edf2f9 100%)' 
+      }}>
+
+        {/* ─── SIDEBAR ─── */}
+        <aside className="sidebar-slim flex flex-col w-[240px] min-w-[200px] max-w-[260px] shrink-0 border-r border-white/20 z-[100]" style={{ 
+          background: 'rgba(255, 255, 255, 0.4)',
+          backdropFilter: 'blur(25px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(25px) saturate(180%)'
+        }}>
+
+          {/* Logo */}
+          <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 overflow-hidden">
+            <img src="/logo.png" alt="Casos Logo" className="w-12 h-12 object-contain shrink-0" style={{ animation: 'logoLoopSpin 9s ease-in-out infinite' }} />
+            <span className="text-[1.55rem] font-black tracking-tight text-slate-900 whitespace-nowrap overflow-hidden" style={{ animation: 'logoTextLoop 9s ease-in-out infinite' }}>
+              Casos<span className="text-blue-500">.ai</span>
             </span>
           </div>
 
-          <nav className="nav-menu">
-            <div className="project-selector" style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              background: '#fff',
-              borderRadius: '16px',
-              marginBottom: '24px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-              border: '1px solid #f1f5f9',
-              transition: 'all 0.2s ease',
-              margin: '0 20px 24px 20px'
-            }}>
-              <img src="/image.png" alt="Studio Icon" style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover' }} />
-              <span className="project-name" style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e293b', flex: 1 }}>MacchuStudio</span>
-              <ChevronDown size={16} color="#94a3b8" />
-            </div>
-            <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
-              <Home size={20} />
-              <span>Home</span>
-            </Link>
-            <Link href="/profile" className={`nav-link ${pathname === '/profile' ? 'active' : ''}`}>
-              <UserCircle size={20} />
-              <span>Profile</span>
-            </Link>
-            <Link href="/cameras" className={`nav-link ${pathname === '/cameras' ? 'active' : ''}`}>
-              <Video size={20} />
-              <span>Cameras</span>
-            </Link>
-            <Link href="/recommendations" className={`nav-link ${pathname === '/recommendations' ? 'active' : ''}`}>
-              <Monitor size={20} />
-              <span>Store</span>
-            </Link>
-            <Link href="/analytics" className={`nav-link ${pathname === '/analytics' ? 'active' : ''}`}>
-              <Activity size={20} />
-              <span>Analytics</span>
-            </Link>
-            <Link href="/incidents" className={`nav-link ${pathname === '/incidents' ? 'active' : ''}`}>
-              <AlertTriangle size={20} />
-              <span>Incidents</span>
-            </Link>
-            <Link href="/docs" className={`nav-link ${pathname === '/docs' ? 'active' : ''}`}>
-              <BookOpen size={20} />
-              <span>Documents</span>
-            </Link>
+          {/* Nav */}
+          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
 
-            <div className="nav-group-label">Pinned</div>
-            <Link href="/ai-models" className="nav-link">
-              <Cpu size={20} />
-              <span>AI Models</span>
-            </Link>
-            <Link href="/reports" className={`nav-link ${pathname === '/reports' ? 'active' : ''}`}>
-              <FileText size={20} />
-              <span>Reports</span>
-            </Link>
-            <Link href="/settings" className={`nav-link ${pathname === '/settings' ? 'active' : ''}`}>
-              <Settings size={20} />
-              <span>Settings</span>
-            </Link>
+            {/* Project selector */}
+            <div className="flex items-center gap-3 px-3 py-2.5 mb-3 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all shadow-sm">
+              <img src="/image.png" alt="Studio Icon" className="w-7 h-7 rounded-lg object-cover" />
+              <span className="flex-1 text-sm font-bold text-slate-800">MacchuStudio</span>
+              <ChevronDown size={15} className="text-slate-400" />
+            </div>
+
+            {/* Main links */}
+            {[
+              { href: '/', icon: <Home size={18} />, label: 'Home' },
+              { href: '/profile', icon: <UserCircle size={18} />, label: 'Profile' },
+              { href: '/cameras', icon: <Video size={18} />, label: 'Cameras' },
+              { href: '/recommendations', icon: <Monitor size={18} />, label: 'Store' },
+              { href: '/analytics', icon: <Activity size={18} />, label: 'Analytics' },
+              { href: '/incidents', icon: <AlertTriangle size={18} />, label: 'Incidents' },
+              { href: '/docs', icon: <BookOpen size={18} />, label: 'Documents' },
+            ].map(({ href, icon, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                  pathname === href
+                    ? 'bg-slate-100 text-slate-900 font-semibold'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                }`}
+              >
+                <span className={pathname === href ? 'text-slate-700' : 'text-slate-400'}>{icon}</span>
+                {label}
+              </Link>
+            ))}
+
+            {/* Pinned section */}
+            <p className="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest px-3 pt-4 pb-1">Pinned</p>
+
+            {[
+              { href: '/ai-models', icon: <Cpu size={18} />, label: 'AI Models' },
+              { href: '/reports', icon: <FileText size={18} />, label: 'Reports' },
+              { href: '/settings', icon: <Settings size={18} />, label: 'Settings' },
+            ].map(({ href, icon, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                  pathname === href
+                    ? 'bg-slate-100 text-slate-900 font-semibold'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                }`}
+              >
+                <span className={pathname === href ? 'text-slate-700' : 'text-slate-400'}>{icon}</span>
+                {label}
+              </Link>
+            ))}
           </nav>
 
-          <div className="sidebar-footer">
-            <div className="invite-card">
-              <div style={{ width: '32px', height: '32px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
-                <Send size={16} color="#64748b" />
+          {/* Footer */}
+          <div className="border-t border-slate-100 px-3 py-4 space-y-3">
+
+            {/* Invite card */}
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-sm">
+              <div className="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center mb-3 shadow-sm">
+                <Send size={14} className="text-slate-500" />
               </div>
-              <span className="invite-title">Invite team members</span>
-              <p className="invite-desc">Bring your team in to collaborate.</p>
+              <p className="text-sm font-bold text-slate-800 mb-0.5">Invite team members</p>
+              <p className="text-xs text-slate-400 leading-relaxed">Bring your team in to collaborate.</p>
             </div>
 
-            <Link href="/subscription" className="upgrade-btn">
-              <Zap size={18} fill="currentColor" />
-              <span>Upgrade</span>
-            </Link>
+            {/* Upgrade button — Galaxy rotating border */}
+            <div className="upgrade-border">
+              <Link href="/subscription">
+                <Zap size={16} fill="currentColor" />
+                Upgrade
+              </Link>
+            </div>
+
 
           </div>
         </aside>
@@ -299,11 +312,11 @@ export default function DashboardLayout({
           <header className="top-header">
             <div className="header-content-wrapper">
               <div className="header-left">
-                <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)', letterSpacing: '-0.5px' }}>
-                  Trung Tâm Điều Hành <span style={{ color: 'var(--accent)' }}>AI</span>
+                <div style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b', letterSpacing: '-0.5px' }}>
+                  Trung Tâm Điều Hành <span style={{ color: '#2563eb' }}>AI</span>
                 </div>
                 {mounted && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
                     {time.toLocaleDateString('vi-VN', { day: '2-digit', month: 'short' })}, {time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 )}
@@ -529,7 +542,9 @@ export default function DashboardLayout({
             </div>
           </div>
         </main>
+        
         <ScrollToTop />
+        <ChatBot />
 
         {/* Logout Confirmation Modal */}
         {showLogoutModal && (
@@ -579,10 +594,34 @@ export default function DashboardLayout({
           </div>
         )}
       </div>
+
       <style jsx global>{`
+        @keyframes galaxy-rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        /* Logo spin + text reveal loop */
+        @keyframes logoLoopSpin {
+          0%   { transform: rotate(0deg); }
+          20%  { transform: rotate(360deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        @keyframes logoTextLoop {
+          0%, 18%  { opacity: 0; transform: translateX(-12px); max-width: 0; }
+          30%, 70% { opacity: 1; transform: translateX(0);    max-width: 160px; }
+          85%, 100% { opacity: 0; transform: translateX(-12px); max-width: 0; }
+        }
+
         @keyframes slideDownToast {
           from { transform: translate(-50%, -20px); opacity: 0; }
           to { transform: translate(-50%, 0); opacity: 1; }
+        }
+
+        @keyframes modalFadeUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
       `}</style>
     </NotificationProvider>

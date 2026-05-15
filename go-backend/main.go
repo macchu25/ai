@@ -132,6 +132,8 @@ func main() {
 	authHandler.RegisterRoutes(r.Group("/api/v1/auth"))
 	r.POST("/api/v1/payment/webhook", paymentHandler.SePayWebhook)
 	r.POST("/api/v1/bridge/register", camAPI.RegisterBridge)
+	// Kết quả inference (Python): xác thực bằng X-API-Key trong handler
+	r.POST("/api/v1/ai-result", alertAPI.AIResult)
 
 	// 7. Register Private Routes (Yêu cầu JWT)
 	private := r.Group("/api/v1")
@@ -140,6 +142,7 @@ func main() {
 		billingAPI.RegisterRoutes(private)
 		camAPI.RegisterRoutes(private)
 		private.GET("/incidents", alertAPI.GetIncidents)
+		private.POST("/ai/chat", alertAPI.AIChat)
 		private.POST("/test-call", alertAPI.TestCall)
 		private.POST("/test-adb-push", alertAPI.TestADBPush)
 		private.GET("/debug-call-state", alertAPI.DebugCallState)

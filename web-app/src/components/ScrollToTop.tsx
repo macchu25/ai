@@ -42,7 +42,7 @@ const ScrollToTop: React.FC = () => {
       <style jsx>{`
         .scroll-to-top {
           position: fixed;
-          bottom: 40px;
+          bottom: 110px;
           right: 40px;
           width: 54px;
           height: 54px;

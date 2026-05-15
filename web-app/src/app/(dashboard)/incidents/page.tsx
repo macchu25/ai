@@ -188,8 +188,8 @@ export default function IncidentsPage() {
   };
 
   return (
-    <div className="incidents-container">
-      <header className="page-header-premium">
+    <div className="incidents-container pt-10">
+      <header className="page-header-premium mb-10">
         <div>
           <h1 className="page-title-premium">Lịch Sử Sự Cố & Quản Trị</h1>
           <p className="page-subtitle-premium">
@@ -214,24 +214,29 @@ export default function IncidentsPage() {
           </div>
         </div>
 
+      <div className="mt-12">
+        <div className="mt-10">
+        <CameraManager 
+          cameras={cameras}
+          camName={camName} setCamName={setCamName}
+          camLocation={camLocation} setCamLocation={setCamLocation}
+          rtspUrl={rtspUrl} setRtspUrl={setRtspUrl}
+          isTesting={isTesting} isLocating={isLocating}
+          editingCamId={editingCamId} setEditingCamId={setEditingCamId}
+          handleGetLocation={handleGetLocation}
+          handleSaveCamera={handleSaveCamera}
+          toggleCamStatus={toggleCamStatus}
+          handleDeleteCamera={handleDeleteCamera}
+        />
+      </div>
 
-      <CameraManager 
-        cameras={cameras}
-        camName={camName} setCamName={setCamName}
-        camLocation={camLocation} setCamLocation={setCamLocation}
-        rtspUrl={rtspUrl} setRtspUrl={setRtspUrl}
-        isTesting={isTesting} isLocating={isLocating}
-        editingCamId={editingCamId} setEditingCamId={setEditingCamId}
-        handleGetLocation={handleGetLocation}
-        handleSaveCamera={handleSaveCamera}
-        toggleCamStatus={toggleCamStatus}
-        handleDeleteCamera={handleDeleteCamera}
-      />
-
-      <IncidentTable 
-        incidents={incidents} 
-        onExport={() => showToast("Đang chuẩn bị dữ liệu...", "info")} 
-      />
+      <div className="mt-10">
+        <IncidentTable 
+          incidents={incidents} 
+          onExport={() => showToast("Đang chuẩn bị dữ liệu...", "info")} 
+        />
+      </div>
     </div>
+  </div>
   );
 }

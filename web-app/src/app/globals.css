@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   --bg-primary: #f8fafc;
   /* Nền xám cực nhẹ */
@@ -50,159 +52,19 @@ body::-webkit-scrollbar {
   display: none;
 }
 
-/* Layout classes are now centralized in the Layout Core section below */
-.logo-section {
-  padding: 0 8px;
-  margin-bottom: 24px;
-}
 
-.logo-text {
-  font-size: 1.4rem;
-  font-weight: 850;
-  color: #000;
-  letter-spacing: -1px;
-}
 
-.project-selector {
-  background: white;
-  border: 1px solid #f1f5f9;
-  border-radius: 12px;
-  padding: 10px 12px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 32px;
-  cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
-}
 
-.project-icon {
-  width: 24px;
-  height: 24px;
-  background: #f59e0b;
-  border-radius: 6px;
-}
-
-.project-name {
-  flex: 1;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.nav-menu {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1 1 0;
-  overflow-y: auto;
-  min-height: 0;
-  padding-bottom: 16px;
-}
-
-.nav-menu > * {
-  flex-shrink: 0;
-}
-
-.nav-group-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #94a3b8;
-  padding: 16px 20px 8px 20px;
-  text-transform: none;
-}
-
-.nav-link {
-  color: #64748b;
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-  height: 40px;
-  padding: 0 12px 0 20px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: all 0.2s ease;
-}
-
-.nav-link svg {
-  width: 20px;
-  height: 20px;
-  opacity: 0.7;
-}
-
-.nav-link:hover {
-  background: #f1f5f9;
-  color: #000;
-}
-
-.nav-link[data-active="true"],
-.nav-link.active {
-  background: #f1f5f9;
-  color: #000;
-  font-weight: 600;
-  box-shadow: none;
-}
-
-.nav-link[data-active="true"] svg,
-.nav-link.active svg {
-  opacity: 1;
-}
-
-.sidebar-footer {
-  margin-top: auto;
-  padding: 24px 20px 20px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  border-top: 1px solid #f1f5f9;
-}
-
-.invite-card {
-  background: white;
-  border: 1px solid #f1f5f9;
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-}
-
-.invite-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 4px;
-  display: block;
-}
-
-.invite-desc {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  line-height: 1.4;
-}
-
-.upgrade-btn {
-  width: 100%;
-  height: 50px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.95rem;
-  font-weight: 850;
-  color: #1e293b;
-  gap: 10px;
-  cursor: pointer;
-  background: white;
+/* Upgrade button — Galaxy rotating border */
+.upgrade-border {
   position: relative;
-  z-index: 1;
+  border-radius: 14px;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  border: none;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  padding: 2px;
+  width: 100%;
 }
 
-.upgrade-btn::before {
+.upgrade-border::before {
   content: '';
   position: absolute;
   top: -60%;
@@ -220,28 +82,29 @@ body::-webkit-scrollbar {
     #ff3d00
   );
   animation: galaxy-rotate 3s linear infinite;
-  z-index: -2;
-  filter: blur(4px);
+  z-index: 0;
+  filter: blur(3px);
 }
 
-.upgrade-btn::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  background: #f8fafc url('/veins.svg') center/500% no-repeat; /* Scaled up for misty effect */
-  backdrop-filter: blur(15px) saturate(180%);
-  -webkit-backdrop-filter: blur(15px) saturate(180%);
-  border-radius: 14px;
-  z-index: -1;
-  transition: all 0.3s ease;
+.upgrade-border > a {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  background: white;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+  text-decoration: none;
+  transition: background 0.2s ease;
 }
 
-.upgrade-btn:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.08);
-}
-
-.upgrade-btn:hover::after {
+.upgrade-border > a:hover {
   background: #f8fafc;
 }
 
@@ -250,57 +113,19 @@ body::-webkit-scrollbar {
   to { transform: rotate(360deg); }
 }
 
-.upgrade-btn:active {
-  transform: translateY(-1px) scale(0.98);
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-.logout-btn {
-  width: 100%;
-  height: 42px;
-  border: 1px solid #f1f5f9;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #ef4444;
-  gap: 8px;
-  cursor: pointer;
-  background: rgba(239, 68, 68, 0.05);
-}
-
-/* Layout Core */
-.dashboard-layout {
-  display: flex;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  background: white;
-}
-
-.sidebar-slim {
-  width: 18%; /* Percentage width */
-  min-width: 200px;
-  max-width: 260px;
-  flex-shrink: 0;
-  /* Đảm bảo sidebar không bao giờ bị bóp nhỏ */
-  background: #fdfdfe;
-  padding: 2.5vh 0; /* Remove global horizontal padding to manage per-section */
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid #f1f5f9;
-  z-index: 100;
-  /* Đảm bảo nằm trên cùng */
-}
 
 .main-content-medical {
   flex: 1;
   min-width: 0;
-  /* Ngăn chặn nội dung làm phình flexbox */
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #f8fafc 0%, #edf2f9 100%);
+  background: transparent;
   position: relative;
   height: 100vh;
 }
@@ -343,6 +168,16 @@ body::-webkit-scrollbar {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+}
+
+.main-content-medical {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  position: relative;
+  height: 100vh;
+  min-width: 0;
 }
 
 .workspace-area {

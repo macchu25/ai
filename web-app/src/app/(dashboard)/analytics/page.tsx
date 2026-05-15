@@ -64,14 +64,11 @@ export default function AnalyticsPage() {
   const colors = ['var(--accent)', 'var(--danger)', 'var(--success)', '#f59e0b', '#8b5cf6'];
 
   return (
-    <div className="analytics-page-container" style={{ height: 'calc(100vh - 60px)', background: '#f8fafc', padding: '20px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div className="analytics-page-container" style={{ height: 'calc(100vh - 60px)', background: 'transparent', padding: '20px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       
       {/* HEADER: COMPACT */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <Link href="/dashboard" style={{ background: '#fff', padding: '10px', borderRadius: '12px', color: '#1e293b', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', display: 'flex' }}>
-            <ArrowLeft size={20} />
-          </Link>
           <div className="page-header-premium" style={{ marginBottom: '0' }}>
             <div>
               <h1 className="page-title-premium">CENTRAL INTELLIGENCE</h1>
