@@ -340,11 +340,9 @@ export default function ProfilePage() {
                </div>
                <div>
                   <label style={{ display: 'block', fontSize: '0.88rem', color: '#475569', marginBottom: '6px', fontWeight: 600 }}>Mối quan hệ</label>
-                  <input 
-                    type="text" 
+                  <select 
                     value={formData.relation} 
                     onChange={e => setFormData({...formData, relation: e.target.value})} 
-                    placeholder="VD: Con trai trưởng"
                     style={{ 
                       width: '100%', 
                       padding: '11px 15px', 
@@ -355,11 +353,33 @@ export default function ProfilePage() {
                       outline: 'none', 
                       color: '#1e293b', 
                       boxSizing: 'border-box',
-                      transition: 'all 0.2s'
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      appearance: 'none',
+                      backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
+                      backgroundPosition: 'right 12px center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundSize: '20px'
                     }}
                     onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
                     onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
-                  />
+                  >
+                    <option value="Cha / Bố">Cha / Bố</option>
+                    <option value="Mẹ">Mẹ</option>
+                    <option value="Vợ">Vợ</option>
+                    <option value="Chồng">Chồng</option>
+                    <option value="Con trai">Con trai</option>
+                    <option value="Con gái">Con gái</option>
+                    <option value="Anh / Em trai">Anh / Em trai</option>
+                    <option value="Chị / Em gái">Chị / Em gái</option>
+                    <option value="Ông / Bà">Ông / Bà</option>
+                    <option value="Hàng xóm">Hàng xóm</option>
+                    <option value="Bác sĩ riêng">Bác sĩ riêng</option>
+                    <option value="Người thân khác">Người thân khác</option>
+                    {formData.relation && !["Cha / Bố", "Mẹ", "Vợ", "Chồng", "Con trai", "Con gái", "Anh / Em trai", "Chị / Em gái", "Ông / Bà", "Hàng xóm", "Bác sĩ riêng", "Người thân khác"].includes(formData.relation) && (
+                      <option value={formData.relation}>{formData.relation}</option>
+                    )}
+                  </select>
                </div>
  
                {/* Footer Buttons */}
