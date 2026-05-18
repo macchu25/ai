@@ -30,7 +30,7 @@ const recommendedCameras = [
     features: ['Chuẩn ONVIF/RTSP', 'Bám theo chuyển động', 'Privacy mode', 'Kết nối ổn định'],
     rating: 4.8,
     reviews: 8930,
-    shopeeLink: 'https://shopee.vn/search?keyword=ezviz%20c6n',
+    shopeeLink: 'https://shopee.vn/product/31195569/5437955853?gads_t_sig=gqRjZGVrxHCFomtpsTE0MjUxOnRzc19zZGtfa2V5omt20QABpGFsZ2_SAAAAZKNkZWvAomN0xEAAAAAMRoz0ZUjQw0QlRa--FjB0AKnHQPF7xv4DyGj9-GQwqn4zSdB6gztmw7ebmtsZs9FPJxlVqctc57WUE3IRqmNpcGhlcnRleHTEagAAAAwOwsEKTvtqzsrcBZUyH5Hl8xOikNNAaAx38wfdjRtO0eNhybHmid2y7pYvN_9StW_iv_NCYrMDIBO-W8H9IK_vEjLGAxRodfmPPP7UqnuFT8l8wWqnnruTRV_DL8oROKaDMTkiO64&gad_source=1&gad_campaignid=23023425037&gbraid=0AAAAADPpQE4fjheImr59vPQGdXEbFgFsf&gclid=CjwKCAjw8arQBhB9EiwAfIKdQHP6mRrAe9JicDmWxRcr5CdiAC5G5xQRBvo0BDGu4HG3zd5ZFFi-BoCDhEQAvD_BwE',
     bestFor: 'Dễ dàng cài đặt & Dùng ổn định',
     isTopPick: false,
     type: 'indoor'
