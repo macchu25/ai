@@ -239,45 +239,152 @@ export default function ProfilePage() {
 
       {/* Modal Thêm/Sửa liên hệ */}
       {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'var(--bg-secondary)', padding: '48px', borderRadius: '32px', width: '100%', maxWidth: '480px', boxShadow: '0 24px 48px rgba(0,0,0,0.1)', animation: 'slideUp 0.4s var(--ease-out-quint)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '36px' }}>
-               <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                 {editingContact ? 'Sửa liên hệ' : 'Thêm liên hệ mới'}
-               </h3>
-               <button onClick={closeModal} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                 <X size={20} color="var(--text-main)" />
-               </button>
+        <div className="modal-backdrop-blur" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#ffffff', padding: '20px 24px', borderRadius: '8px', width: '100%', maxWidth: '520px', boxShadow: '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)', position: 'relative', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif', animation: 'antdZoomIn 0.3s cubic-bezier(0.075, 0.82, 0.165, 1)' }}>
+            
+            {/* Close Button */}
+            <button 
+              onClick={closeModal} 
+              style={{ 
+                position: 'absolute', 
+                top: '16px', 
+                right: '22px', 
+                background: 'transparent', 
+                border: 'none', 
+                cursor: 'pointer',
+                color: 'rgba(0, 0, 0, 0.45)',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                padding: '4px',
+                borderRadius: '4px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(0, 0, 0, 0.88)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)')}
+            >
+              <X size={16} />
+            </button>
+
+            {/* Header */}
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'rgba(0, 0, 0, 0.88)', lineHeight: '1.5' }}>
+                {editingContact ? 'Sửa liên hệ' : 'Thêm liên hệ mới'}
+              </h3>
             </div>
 
-            <form onSubmit={handleSaveContact} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Form Body */}
+            <form onSubmit={handleSaveContact} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                <div>
-                  <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '10px' }}>Họ và tên</label>
-                  <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="VD: Nguyễn Văn B"
-                    style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border)', background: 'var(--bg-primary)', fontSize: '1rem', outline: 'none', color: 'var(--text-main)', boxSizing: 'border-box' }} />
+                  <label style={{ display: 'block', fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)', marginBottom: '8px', fontWeight: 500 }}>Họ và tên</label>
+                  <input 
+                    type="text" 
+                    value={formData.name} 
+                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                    placeholder="VD: Nguyễn Văn B"
+                    style={{ 
+                      width: '100%', 
+                      padding: '8px 12px', 
+                      borderRadius: '6px', 
+                      border: '1px solid #d9d9d9', 
+                      background: '#ffffff', 
+                      fontSize: '14px', 
+                      outline: 'none', 
+                      color: 'rgba(0, 0, 0, 0.88)', 
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s'
+                    }}
+                  />
                </div>
                <div>
-                  <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '10px' }}>Số điện thoại</label>
-                  <input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="VD: 0901 234 567"
-                    style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border)', background: 'var(--bg-primary)', fontSize: '1rem', outline: 'none', color: 'var(--text-main)', boxSizing: 'border-box' }} />
+                  <label style={{ display: 'block', fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)', marginBottom: '8px', fontWeight: 500 }}>Số điện thoại</label>
+                  <input 
+                    type="text" 
+                    value={formData.phone} 
+                    onChange={e => setFormData({...formData, phone: e.target.value})} 
+                    placeholder="VD: 0901 234 567"
+                    style={{ 
+                      width: '100%', 
+                      padding: '8px 12px', 
+                      borderRadius: '6px', 
+                      border: '1px solid #d9d9d9', 
+                      background: '#ffffff', 
+                      fontSize: '14px', 
+                      outline: 'none', 
+                      color: 'rgba(0, 0, 0, 0.88)', 
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s'
+                    }}
+                  />
                </div>
                <div>
-                  <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '10px' }}>Mối quan hệ</label>
-                  <input type="text" value={formData.relation} onChange={e => setFormData({...formData, relation: e.target.value})} placeholder="VD: Con trai trưởng"
-                    style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border)', background: 'var(--bg-primary)', fontSize: '1rem', outline: 'none', color: 'var(--text-main)', boxSizing: 'border-box' }} />
+                  <label style={{ display: 'block', fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)', marginBottom: '8px', fontWeight: 500 }}>Mối quan hệ</label>
+                  <input 
+                    type="text" 
+                    value={formData.relation} 
+                    onChange={e => setFormData({...formData, relation: e.target.value})} 
+                    placeholder="VD: Con trai trưởng"
+                    style={{ 
+                      width: '100%', 
+                      padding: '8px 12px', 
+                      borderRadius: '6px', 
+                      border: '1px solid #d9d9d9', 
+                      background: '#ffffff', 
+                      fontSize: '14px', 
+                      outline: 'none', 
+                      color: 'rgba(0, 0, 0, 0.88)', 
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s'
+                    }}
+                  />
                </div>
-               <button type="submit" style={{ background: 'var(--success)', color: 'white', border: 'none', padding: '18px', borderRadius: '16px', fontSize: '1.1rem', fontWeight: 700, cursor: 'pointer', marginTop: '16px' }}>
-                  Lưu liên hệ
-               </button>
+
+               {/* Footer Buttons */}
+               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
+                  <button 
+                    type="button"
+                    onClick={closeModal}
+                    style={{ 
+                      padding: '4px 15px', 
+                      borderRadius: '6px', 
+                      border: '1px solid #d9d9d9', 
+                      background: '#ffffff', 
+                      color: 'rgba(0, 0, 0, 0.88)', 
+                      fontSize: '14px', 
+                      fontWeight: 400, 
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    Hủy
+                  </button>
+                  <button 
+                    type="submit" 
+                    style={{ 
+                      padding: '4px 15px', 
+                      borderRadius: '6px', 
+                      border: 'none', 
+                      background: '#1677ff', 
+                      color: '#ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 400, 
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 2px 0 rgba(5, 145, 255, 0.1)'
+                    }}
+                  >
+                    Lưu liên hệ
+                  </button>
+               </div>
             </form>
           </div>
         </div>
       )}
 
       <style jsx>{`
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(30px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes antdZoomIn {
+          0% { opacity: 0; transform: scale(0.9) translateY(10px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
     </div>

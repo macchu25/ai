@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export function useDashboardSocket(apiBase: string, token: string, onSubscriptionUpdate?: () => void) {
+export function useDashboardSocket(apiBase: string, token: string, onSubscriptionUpdate?: (payload?: any) => Promise<void> | void) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<NodeJS.Timeout | null>(null);
   const [alertState, setAlertState] = useState<Record<string, boolean>>({});

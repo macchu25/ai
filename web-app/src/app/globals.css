@@ -1045,3 +1045,22 @@ tr:last-child td {
 .tooltip-link:hover svg {
   color: inherit;
 }
+
+/* ========================================================================= */
+/* Global Modal Stacking Context Fix (:has selector)                        */
+/* Elevates main workspace stack above sidebar and header when modal active */
+/* ========================================================================= */
+body:has(.modal-backdrop-blur) .main-content-medical {
+  z-index: 9999 !important;
+}
+
+body:has(.modal-backdrop-blur) .workspace-area {
+  z-index: 9999 !important;
+}
+
+/* Fix browser rendering bug: disables sidebar backdrop-filter to prevent blur conflict */
+body:has(.modal-backdrop-blur) .sidebar-slim {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+}

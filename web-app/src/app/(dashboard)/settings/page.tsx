@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { Settings, Bell, Shield, Sliders, Save, ChevronRight, Activity, Cpu } from 'lucide-react';
+import { Settings, Bell, Shield, Sliders, Save, ChevronRight, Activity, Cpu, X } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import { useNotification } from '@/app/context/NotificationContext';
 
@@ -289,13 +289,13 @@ export default function SettingsPage() {
 
       {/* Telegram Modal */}
       {showTeleModal && (
-        <div style={{ 
+        <div className="modal-backdrop-blur" style={{ 
           position: 'fixed', 
           top: 0, 
           left: 0, 
           right: 0, 
           bottom: 0, 
-          background: 'rgba(0,0,0,0.4)', 
+          background: 'rgba(0,0,0,0.45)', 
           backdropFilter: 'blur(8px)',
           display: 'flex', 
           alignItems: 'center', 
@@ -303,25 +303,70 @@ export default function SettingsPage() {
           zIndex: 2000 
         }}>
           <div style={{ 
-            background: 'white', 
-            padding: '48px', 
-            borderRadius: '32px', 
+            background: '#ffffff', 
+            padding: '20px 24px', 
+            borderRadius: '8px', 
             width: '100%', 
-            maxWidth: '440px', 
-            boxShadow: '0 30px 60px rgba(0,0,0,0.2)',
-            animation: 'modalFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+            maxWidth: '520px', 
+            boxShadow: '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)',
+            position: 'relative',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            animation: 'antdZoomIn 0.3s cubic-bezier(0.075, 0.82, 0.165, 1)'
           }}>
-            <h3 style={{ margin: '0 0 24px 0', fontSize: '1.6rem', fontWeight: 850, letterSpacing: '-0.5px' }}>Cấu hình Telegram</h3>
             
-            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', marginBottom: '32px', fontSize: '0.95rem', color: '#64748b', lineHeight: '1.6', border: '1px solid #f1f5f9' }}>
-              <strong style={{ color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>Hướng dẫn lấy Chat ID:</strong>
-              1. Tìm kiếm và nhắn tin cho Bot <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 800, textDecoration: 'none', borderBottom: '2px solid var(--accent-light)' }}>@userinfobot</a><br />
-              2. Nó sẽ gửi lại cho bạn một dãy số (chính là <strong>ID</strong> của bạn).<br />
-              3. Dán dãy số đó vào ô bên dưới để nhận cảnh báo từ <strong>@Casos_autoBot</strong>.
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowTeleModal(false)} 
+              style={{ 
+                position: 'absolute', 
+                top: '16px', 
+                right: '22px', 
+                background: 'transparent', 
+                border: 'none', 
+                cursor: 'pointer',
+                color: 'rgba(0, 0, 0, 0.45)',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                padding: '4px',
+                borderRadius: '4px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(0, 0, 0, 0.88)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)')}
+            >
+              <X size={16} />
+            </button>
+
+            {/* Header */}
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'rgba(0, 0, 0, 0.88)', lineHeight: '1.5' }}>
+                Cấu hình Telegram
+              </h3>
+            </div>
+            
+            {/* Ant Design styled Alert */}
+            <div style={{ 
+              background: '#e6f4ff', 
+              padding: '12px 16px', 
+              borderRadius: '6px', 
+              marginBottom: '20px', 
+              fontSize: '14px', 
+              color: 'rgba(0, 0, 0, 0.88)', 
+              lineHeight: '1.5', 
+              border: '1px solid #91caff',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}>
+              <strong style={{ color: 'rgba(0, 0, 0, 0.88)' }}>Hướng dẫn lấy Chat ID:</strong>
+              <div>1. Tìm kiếm và nhắn tin cho Bot <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: '#1677ff', fontWeight: 600, textDecoration: 'none' }}>@userinfobot</a></div>
+              <div>2. Nó sẽ gửi lại cho bạn một dãy số (chính là <strong>ID</strong> của bạn).</div>
+              <div>3. Dán dãy số đó vào ô bên dưới để nhận cảnh báo từ <strong>@Casos_autoBot</strong>.</div>
             </div>
 
-            <div style={{ marginBottom: '32px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Telegram Chat ID</label>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)', marginBottom: '8px', fontWeight: 500 }}>Telegram Chat ID</label>
               <input 
                 type="text" 
                 placeholder="Ví dụ: 123456789"
@@ -329,31 +374,33 @@ export default function SettingsPage() {
                 onChange={(e) => setTeleId(e.target.value)}
                 style={{ 
                   width: '100%', 
-                  padding: '18px', 
-                  borderRadius: '16px', 
-                  border: '1px solid #e2e8f0', 
-                  fontSize: '1.1rem',
-                  fontWeight: 600,
-                  boxSizing: 'border-box',
+                  padding: '8px 12px', 
+                  borderRadius: '6px', 
+                  border: '1px solid #d9d9d9', 
+                  fontSize: '14px',
                   outline: 'none',
-                  transition: 'border-color 0.2s',
-                  background: '#fcfdfe'
+                  color: 'rgba(0, 0, 0, 0.88)',
+                  boxSizing: 'border-box',
+                  transition: 'all 0.2s',
+                  background: '#ffffff'
                 }}
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '16px' }}>
+            {/* Footer Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button 
                 onClick={() => setShowTeleModal(false)} 
                 style={{ 
-                  flex: 1, 
-                  padding: '16px', 
-                  borderRadius: '16px', 
-                  border: '1px solid #e2e8f0', 
-                  background: 'white', 
-                  fontWeight: 600,
+                  padding: '4px 15px', 
+                  borderRadius: '6px', 
+                  border: '1px solid #d9d9d9', 
+                  background: '#ffffff', 
+                  color: 'rgba(0, 0, 0, 0.88)',
+                  fontSize: '14px',
+                  fontWeight: 400,
                   cursor: 'pointer',
-                  transition: 'background 0.2s'
+                  transition: 'all 0.2s'
                 }}
               >
                 Hủy bỏ
@@ -361,15 +408,16 @@ export default function SettingsPage() {
               <button 
                 onClick={handleSaveTele} 
                 style={{ 
-                  flex: 1, 
-                  padding: '16px', 
-                  borderRadius: '16px', 
+                  padding: '4px 15px', 
+                  borderRadius: '6px', 
                   border: 'none', 
-                  background: 'var(--accent)', 
+                  background: '#1677ff', 
                   color: 'white', 
-                  fontWeight: 700, 
+                  fontSize: '14px',
+                  fontWeight: 400,
                   cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 0 rgba(5, 145, 255, 0.1)'
                 }}
               >
                 Lưu cấu hình
@@ -380,9 +428,9 @@ export default function SettingsPage() {
       )}
 
       <style jsx>{`
-        @keyframes modalFadeUp {
-          from { opacity: 0; transform: translateY(20px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes antdZoomIn {
+          0% { opacity: 0; transform: scale(0.9) translateY(10px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
     </div>

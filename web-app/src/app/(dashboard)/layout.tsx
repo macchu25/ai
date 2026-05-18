@@ -450,13 +450,27 @@ export default function DashboardLayout({
                 <div className="user-profile-container" style={{ position: 'relative' }}>
                   <div className="user-avatar" style={{
                     position: 'relative',
-                    padding: '3px',
+                    width: '44px',
+                    height: '44px',
                     borderRadius: '50%',
-                    background: currentPlan === 'pro' || currentPlan === 'scale'
-                      ? 'linear-gradient(45deg, #f59e0b, #fbbf24)' // Gold
-                      : currentPlan === 'starter' || currentPlan === 'creator'
-                        ? 'linear-gradient(45deg, #3b82f6, #60a5fa)' // Blue
-                        : 'linear-gradient(45deg, #cbd5e1, #94a3b8)', // Gray/Silver
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    background: (() => {
+                      switch (currentPlan) {
+                        case 'scale':
+                          return 'linear-gradient(135deg, #ffe259 0%, #ffa751 100%)'; // Luxury Gold
+                        case 'pro':
+                          return 'linear-gradient(135deg, #ec4899 0%, #f43f5e 100%)'; // Vibrant Rose Pink
+                        case 'creator':
+                          return 'linear-gradient(135deg, #818cf8 0%, #4f46e5 100%)'; // Indigo/Purple
+                        case 'starter':
+                          return 'linear-gradient(135deg, #34d399 0%, #059669 100%)'; // Emerald Green
+                        default:
+                          return 'linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%)'; // Silver/Gray for Free
+                      }
+                    })(),
                     cursor: 'pointer'
                   }}>
                     <img
