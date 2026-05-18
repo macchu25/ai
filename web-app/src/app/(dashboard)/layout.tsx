@@ -213,14 +213,15 @@ export default function DashboardLayout({
       }}>
 
         {/* ─── SIDEBAR ─── */}
-        <aside className="sidebar-slim flex flex-col w-[240px] min-w-[200px] max-w-[260px] shrink-0 border-r border-white/20 z-[100]" style={{ 
-          background: 'rgba(255, 255, 255, 0.4)',
-          backdropFilter: 'blur(25px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(25px) saturate(180%)'
+        <aside className="sidebar-slim flex flex-col w-[240px] min-w-[200px] max-w-[260px] shrink-0 border-r border-slate-200/80 z-[100]" style={{ 
+          background: 'rgba(255, 255, 255, 0.82)',
+          backdropFilter: 'blur(30px) saturate(190%)',
+          WebkitBackdropFilter: 'blur(30px) saturate(190%)',
+          boxShadow: '4px 0 24px -2px rgba(15, 23, 42, 0.03)'
         }}>
 
           {/* Logo */}
-          <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100/80 overflow-hidden">
             <img src="/logo.png" alt="Casos Logo" className="w-12 h-12 object-contain shrink-0" style={{ animation: 'logoLoopSpin 9s ease-in-out infinite' }} />
             <span className="text-[1.55rem] font-black tracking-tight text-slate-900 whitespace-nowrap overflow-hidden" style={{ animation: 'logoTextLoop 9s ease-in-out infinite' }}>
               Casos<span className="text-blue-500">.ai</span>
@@ -231,7 +232,7 @@ export default function DashboardLayout({
           <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
 
             {/* Project selector */}
-            <div className="flex items-center gap-3 px-3 py-2.5 mb-3 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all shadow-sm">
+            <div className="flex items-center gap-3 px-3 py-2.5 mb-3 bg-slate-50/80 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all shadow-sm">
               <img src="/image.png" alt="Studio Icon" className="w-7 h-7 rounded-lg object-cover" />
               <span className="flex-1 text-sm font-bold text-slate-800">MacchuStudio</span>
               <ChevronDown size={15} className="text-slate-400" />
@@ -252,11 +253,11 @@ export default function DashboardLayout({
                 href={href}
                 className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
                   pathname === href
-                    ? 'bg-slate-100 text-slate-900 font-semibold'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    ? 'bg-white text-blue-600 font-bold shadow-[0_4px_12px_-2px_rgba(59,130,246,0.08)]'
+                    : 'text-slate-500 hover:bg-white/60 hover:text-slate-800'
                 }`}
               >
-                <span className={pathname === href ? 'text-slate-700' : 'text-slate-400'}>{icon}</span>
+                <span className={pathname === href ? 'text-blue-500' : 'text-slate-400'}>{icon}</span>
                 {label}
               </Link>
             ))}
@@ -274,11 +275,11 @@ export default function DashboardLayout({
                 href={href}
                 className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
                   pathname === href
-                    ? 'bg-slate-100 text-slate-900 font-semibold'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    ? 'bg-white text-blue-600 font-bold shadow-[0_4px_12px_-2px_rgba(59,130,246,0.08)]'
+                    : 'text-slate-500 hover:bg-white/60 hover:text-slate-800'
                 }`}
               >
-                <span className={pathname === href ? 'text-slate-700' : 'text-slate-400'}>{icon}</span>
+                <span className={pathname === href ? 'text-blue-500' : 'text-slate-400'}>{icon}</span>
                 {label}
               </Link>
             ))}
