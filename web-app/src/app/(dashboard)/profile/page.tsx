@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { User, Phone, MapPin, Heart, AlertCircle, Calendar, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { User, Phone, MapPin, Heart, AlertCircle, Calendar, Plus, Edit2, Trash2, X, ChevronDown } from 'lucide-react';
 import { useSession, signOut } from "next-auth/react";
 import { useNotification } from '@/app/context/NotificationContext';
 
@@ -12,6 +12,7 @@ export default function ProfilePage() {
   const [showModal, setShowModal] = useState(false);
   const [editingContact, setEditingContact] = useState<any>(null);
   const [formData, setFormData] = useState({ id: '', name: '', phone: '', relation: '' });
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     if (session?.user) fetchData();
@@ -117,6 +118,7 @@ export default function ProfilePage() {
   const closeModal = () => {
     setShowModal(false);
     setEditingContact(null);
+    setShowDropdown(false);
   };
 
   if (!patient) return (
@@ -338,49 +340,141 @@ export default function ProfilePage() {
                     onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
                   />
                </div>
-               <div>
-                  <label style={{ display: 'block', fontSize: '0.88rem', color: '#475569', marginBottom: '6px', fontWeight: 600 }}>Mối quan hệ</label>
-                  <select 
-                    value={formData.relation} 
-                    onChange={e => setFormData({...formData, relation: e.target.value})} 
-                    style={{ 
-                      width: '100%', 
-                      padding: '11px 15px', 
-                      borderRadius: '12px', 
-                      border: '1px solid #e2e8f0', 
-                      background: '#ffffff', 
-                      fontSize: '0.95rem', 
-                      outline: 'none', 
-                      color: '#1e293b', 
-                      boxSizing: 'border-box',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      appearance: 'none',
-                      backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
-                      backgroundPosition: 'right 12px center',
-                      backgroundRepeat: 'no-repeat',
-                      backgroundSize: '20px'
-                    }}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
-                  >
-                    <option value="Cha / Bố">Cha / Bố</option>
-                    <option value="Mẹ">Mẹ</option>
-                    <option value="Vợ">Vợ</option>
-                    <option value="Chồng">Chồng</option>
-                    <option value="Con trai">Con trai</option>
-                    <option value="Con gái">Con gái</option>
-                    <option value="Anh / Em trai">Anh / Em trai</option>
-                    <option value="Chị / Em gái">Chị / Em gái</option>
-                    <option value="Ông / Bà">Ông / Bà</option>
-                    <option value="Hàng xóm">Hàng xóm</option>
-                    <option value="Bác sĩ riêng">Bác sĩ riêng</option>
-                    <option value="Người thân khác">Người thân khác</option>
-                    {formData.relation && !["Cha / Bố", "Mẹ", "Vợ", "Chồng", "Con trai", "Con gái", "Anh / Em trai", "Chị / Em gái", "Ông / Bà", "Hàng xóm", "Bác sĩ riêng", "Người thân khác"].includes(formData.relation) && (
-                      <option value={formData.relation}>{formData.relation}</option>
-                    )}
-                  </select>
-               </div>
+                <div style={{ position: 'relative' }}>
+                   <label style={{ display: 'block', fontSize: '0.88rem', color: '#475569', marginBottom: '6px', fontWeight: 600 }}>Mối quan hệ</label>
+                   
+                   {/* Custom Select Box Trigger */}
+                   <div 
+                     onClick={() => setShowDropdown(!showDropdown)}
+                     style={{ 
+                       width: '100%', 
+                       padding: '11px 15px', 
+                       borderRadius: '12px', 
+                       border: `1px solid ${showDropdown ? '#3b82f6' : '#e2e8f0'}`, 
+                       background: '#ffffff', 
+                       fontSize: '0.95rem', 
+                       color: '#1e293b', 
+                       boxSizing: 'border-box',
+                       cursor: 'pointer',
+                       display: 'flex',
+                       alignItems: 'center',
+                       justifyContent: 'space-between',
+                       transition: 'all 0.2s',
+                       boxShadow: showDropdown ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
+                       userSelect: 'none'
+                     }}
+                   >
+                     <span>{formData.relation || 'Người thân'}</span>
+                     <ChevronDown 
+                       size={18} 
+                       style={{ 
+                         color: '#64748b', 
+                         transform: showDropdown ? 'rotate(180deg)' : 'rotate(0deg)',
+                         transition: 'transform 0.2s ease'
+                       }} 
+                     />
+                   </div>
+
+                   {/* Custom Dropdown List */}
+                   {showDropdown && (
+                     <div style={{
+                       position: 'absolute',
+                       top: '100%',
+                       left: 0,
+                       right: 0,
+                       background: 'rgba(255, 255, 255, 0.98)',
+                       backdropFilter: 'blur(20px) saturate(180%)',
+                       border: '1px solid #e2e8f0',
+                       borderRadius: '16px',
+                       marginTop: '6px',
+                       maxHeight: '220px',
+                       overflowY: 'auto',
+                       zIndex: 1000,
+                       boxShadow: '0 12px 30px -10px rgba(0, 0, 0, 0.12), 0 4px 12px -5px rgba(0, 0, 0, 0.05)',
+                       padding: '6px',
+                       display: 'flex',
+                       flexDirection: 'column',
+                       gap: '2px',
+                       animation: 'dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+                     }}>
+                       {[
+                         "Cha / Bố", "Mẹ", "Vợ", "Chồng", "Con trai", "Con gái", 
+                         "Anh / Em trai", "Chị / Em gái", "Ông / Bà", "Hàng xóm", 
+                         "Bác sĩ riêng", "Người thân khác"
+                       ].map((item) => (
+                         <div
+                           key={item}
+                           onClick={() => {
+                             setFormData({ ...formData, relation: item });
+                             setShowDropdown(false);
+                           }}
+                           style={{
+                             padding: '10px 14px',
+                             borderRadius: '10px',
+                             cursor: 'pointer',
+                             fontSize: '0.92rem',
+                             color: formData.relation === item ? '#3b82f6' : '#334155',
+                             background: formData.relation === item ? '#eff6ff' : 'transparent',
+                             fontWeight: formData.relation === item ? 700 : 500,
+                             transition: 'all 0.15s',
+                             display: 'flex',
+                             alignItems: 'center',
+                             justifyContent: 'space-between'
+                           }}
+                           onMouseEnter={(e) => {
+                             if (formData.relation !== item) {
+                               e.currentTarget.style.background = '#f1f5f9';
+                               e.currentTarget.style.color = '#1e293b';
+                             }
+                           }}
+                           onMouseLeave={(e) => {
+                             if (formData.relation !== item) {
+                               e.currentTarget.style.background = 'transparent';
+                               e.currentTarget.style.color = '#334155';
+                             } else {
+                               e.currentTarget.style.background = '#eff6ff';
+                               e.currentTarget.style.color = '#3b82f6';
+                             }
+                           }}
+                         >
+                           <span>{item}</span>
+                           {formData.relation === item && (
+                             <span style={{ fontSize: '0.8rem', color: '#3b82f6', fontWeight: 800 }}>✓</span>
+                           )}
+                         </div>
+                       ))}
+
+                       {/* Fallback Custom relation if currently selected but not in standard options */}
+                       {formData.relation && ![
+                         "Cha / Bố", "Mẹ", "Vợ", "Chồng", "Con trai", "Con gái", 
+                         "Anh / Em trai", "Chị / Em gái", "Ông / Bà", "Hàng xóm", 
+                         "Bác sĩ riêng", "Người thân khác"
+                       ].includes(formData.relation) && (
+                         <div
+                           onClick={() => {
+                             setShowDropdown(false);
+                           }}
+                           style={{
+                             padding: '10px 14px',
+                             borderRadius: '10px',
+                             cursor: 'pointer',
+                             fontSize: '0.92rem',
+                             color: '#3b82f6',
+                             background: '#eff6ff',
+                             fontWeight: 700,
+                             transition: 'all 0.15s',
+                             display: 'flex',
+                             alignItems: 'center',
+                             justifyContent: 'space-between'
+                           }}
+                         >
+                           <span>{formData.relation}</span>
+                           <span style={{ fontSize: '0.8rem', color: '#3b82f6', fontWeight: 800 }}>✓</span>
+                         </div>
+                       )}
+                     </div>
+                   )}
+                </div>
  
                {/* Footer Buttons */}
                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
@@ -431,6 +525,10 @@ export default function ProfilePage() {
       <style jsx>{`
         @keyframes modalSlideUp {
           from { transform: translateY(30px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes dropdownFadeIn {
+          from { transform: translateY(-8px); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
         }
       `}</style>
