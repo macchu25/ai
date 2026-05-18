@@ -6,7 +6,7 @@ import { signOut, useSession } from 'next-auth/react';
 import {
   Home, Video, Activity, HeartPulse, Settings, UserCircle,
   ShieldCheck, LogIn, Monitor, LayoutGrid, BarChart3,
-  AlertTriangle, Cpu, FileText, Send, Terminal, Zap, LogOut, ChevronDown, Bell, Sparkles, BookOpen, Search
+  AlertTriangle, Cpu, FileText, Send, Terminal, Zap, LogOut, ChevronDown, Bell, Sparkles, BookOpen, Search, X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ScrollToTop from '@/components/ScrollToTop';
@@ -564,42 +564,68 @@ export default function DashboardLayout({
         {showLogoutModal && (
           <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+            background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(12px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
           }}>
             <div style={{
-              background: 'white', padding: '40px', borderRadius: '32px',
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px) saturate(180%)',
+              border: '1px solid rgba(255, 255, 255, 0.6)',
+              padding: '40px 32px', borderRadius: '32px',
               width: '100%', maxWidth: '400px', textAlign: 'center',
-              boxShadow: '0 30px 60px rgba(0,0,0,0.3)',
-              animation: 'modalFadeUp 0.3s ease'
+              boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.12), 0 20px 40px -20px rgba(0, 0, 0, 0.08)',
+              position: 'relative',
+              animation: 'modalFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
             }}>
+              {/* Close button */}
+              <button 
+                onClick={() => setShowLogoutModal(false)}
+                style={{
+                  position: 'absolute', top: '20px', right: '24px',
+                  background: 'transparent', border: 'none', color: '#94a3b8',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#1e293b')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+              >
+                <X size={20} />
+              </button>
+
               <div style={{
-                width: '64px', height: '64px', background: '#fee2e2',
-                borderRadius: '20px', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', margin: '0 auto 24px', color: '#ef4444'
+                width: '56px', height: '56px', background: '#fef2f2',
+                borderRadius: '18px', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', margin: '0 auto 20px', color: '#ef4444'
               }}>
-                <LogOut size={32} />
+                <LogOut size={24} />
               </div>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '12px' }}>Xác nhận đăng xuất?</h3>
-              <p style={{ color: '#64748b', marginBottom: '32px', lineHeight: '1.6' }}>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e293b', marginBottom: '12px', letterSpacing: '-0.02em' }}>Xác nhận đăng xuất?</h3>
+              <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '32px', lineHeight: '1.6' }}>
                 Bạn có chắc chắn muốn rời khỏi hệ thống điều hành Casos? Các phiên giám sát vẫn sẽ tiếp tục chạy ngầm.
               </p>
-              <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{ display: 'flex', gap: '12px' }}>
                 <button
                   onClick={() => setShowLogoutModal(false)}
                   style={{
-                    flex: 1, padding: '16px', borderRadius: '16px', border: '1px solid #e2e8f0',
-                    background: 'white', fontWeight: 600, cursor: 'pointer'
+                    flex: 1, padding: '14px', borderRadius: '16px', border: '1px solid #e2e8f0',
+                    background: 'white', color: '#64748b', fontWeight: 700, fontSize: '0.95rem',
+                    cursor: 'pointer', transition: 'all 0.2s'
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                 >
                   Quay lại
                 </button>
                 <button
                   onClick={handleLogout}
                   style={{
-                    flex: 1, padding: '16px', borderRadius: '16px', border: 'none',
-                    background: '#ef4444', color: 'white', fontWeight: 700, cursor: 'pointer'
+                    flex: 1.5, padding: '14px', borderRadius: '16px', border: 'none',
+                    background: '#ef4444', color: 'white', fontWeight: 700, fontSize: '0.95rem',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                    boxShadow: '0 8px 16px rgba(239, 68, 68, 0.15)'
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
                   Đăng xuất
                 </button>

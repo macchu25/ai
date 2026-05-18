@@ -295,23 +295,25 @@ export default function SettingsPage() {
           left: 0, 
           right: 0, 
           bottom: 0, 
-          background: 'rgba(0,0,0,0.45)', 
-          backdropFilter: 'blur(8px)',
+          background: 'rgba(15, 23, 42, 0.3)', 
+          backdropFilter: 'blur(12px)',
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 
-          zIndex: 2000 
+          zIndex: 10000 
         }}>
           <div style={{ 
-            background: '#ffffff', 
-            padding: '20px 24px', 
-            borderRadius: '8px', 
+            background: 'rgba(255, 255, 255, 0.95)', 
+            backdropFilter: 'blur(20px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.6)',
+            padding: '36px 32px', 
+            borderRadius: '28px', 
             width: '100%', 
             maxWidth: '520px', 
-            boxShadow: '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)',
+            boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.12), 0 20px 40px -20px rgba(0, 0, 0, 0.08)',
             position: 'relative',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            animation: 'antdZoomIn 0.3s cubic-bezier(0.075, 0.82, 0.165, 1)'
+            fontFamily: '"Inter", sans-serif',
+            animation: 'modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
           }}>
             
             {/* Close Button */}
@@ -319,54 +321,57 @@ export default function SettingsPage() {
               onClick={() => setShowTeleModal(false)} 
               style={{ 
                 position: 'absolute', 
-                top: '16px', 
-                right: '22px', 
+                top: '20px', 
+                right: '24px', 
                 background: 'transparent', 
                 border: 'none', 
                 cursor: 'pointer',
-                color: 'rgba(0, 0, 0, 0.45)',
+                color: '#94a3b8',
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
                 padding: '4px',
-                borderRadius: '4px',
+                borderRadius: '50%',
                 transition: 'all 0.2s'
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(0, 0, 0, 0.88)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)')}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#1e293b')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
             >
-              <X size={16} />
+              <X size={20} />
             </button>
 
             {/* Header */}
             <div style={{ marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'rgba(0, 0, 0, 0.88)', lineHeight: '1.5' }}>
-                Cấu hình Telegram
+              <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em' }}>
+                Cấu hình nhận tin cảnh báo Telegram
               </h3>
+              <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                Tự động nhận thông báo hình ảnh sự cố và trạng thái trực tiếp qua tài khoản cá nhân.
+              </p>
             </div>
             
-            {/* Ant Design styled Alert */}
+            {/* Instructions box */}
             <div style={{ 
-              background: '#e6f4ff', 
-              padding: '12px 16px', 
-              borderRadius: '6px', 
-              marginBottom: '20px', 
-              fontSize: '14px', 
-              color: 'rgba(0, 0, 0, 0.88)', 
-              lineHeight: '1.5', 
-              border: '1px solid #91caff',
+              background: '#eff6ff', 
+              padding: '16px 20px', 
+              borderRadius: '16px', 
+              marginBottom: '24px', 
+              fontSize: '0.88rem', 
+              color: '#1e293b', 
+              lineHeight: '1.6', 
+              border: '1px solid rgba(59, 130, 246, 0.1)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '4px'
+              gap: '6px'
             }}>
-              <strong style={{ color: 'rgba(0, 0, 0, 0.88)' }}>Hướng dẫn lấy Chat ID:</strong>
-              <div>1. Tìm kiếm và nhắn tin cho Bot <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: '#1677ff', fontWeight: 600, textDecoration: 'none' }}>@userinfobot</a></div>
-              <div>2. Nó sẽ gửi lại cho bạn một dãy số (chính là <strong>ID</strong> của bạn).</div>
-              <div>3. Dán dãy số đó vào ô bên dưới để nhận cảnh báo từ <strong>@Casos_autoBot</strong>.</div>
+              <strong style={{ color: '#1e293b', fontSize: '0.92rem' }}>Hướng dẫn lấy Chat ID:</strong>
+              <div>1. Tìm kiếm và nhắn tin cho Bot <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>@userinfobot</a></div>
+              <div>2. Nó sẽ phản hồi tức thì với một dãy số (chính là <strong>ID</strong> của bạn).</div>
+              <div>3. Nhập ID đó xuống ô bên dưới để liên kết với hệ thống <strong>@Casos_autoBot</strong>.</div>
             </div>
 
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)', marginBottom: '8px', fontWeight: 500 }}>Telegram Chat ID</label>
+            <div style={{ marginBottom: '28px' }}>
+              <label style={{ display: 'block', fontSize: '0.88rem', color: '#475569', marginBottom: '6px', fontWeight: 600 }}>Telegram Chat ID</label>
               <input 
                 type="text" 
                 placeholder="Ví dụ: 123456789"
@@ -374,51 +379,57 @@ export default function SettingsPage() {
                 onChange={(e) => setTeleId(e.target.value)}
                 style={{ 
                   width: '100%', 
-                  padding: '8px 12px', 
-                  borderRadius: '6px', 
-                  border: '1px solid #d9d9d9', 
-                  fontSize: '14px',
+                  padding: '11px 15px', 
+                  borderRadius: '12px', 
+                  border: '1px solid #e2e8f0', 
+                  fontSize: '0.95rem',
                   outline: 'none',
-                  color: 'rgba(0, 0, 0, 0.88)',
+                  color: '#1e293b',
                   boxSizing: 'border-box',
                   transition: 'all 0.2s',
                   background: '#ffffff'
                 }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
               />
             </div>
 
             {/* Footer Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button 
                 onClick={() => setShowTeleModal(false)} 
                 style={{ 
-                  padding: '4px 15px', 
-                  borderRadius: '6px', 
-                  border: '1px solid #d9d9d9', 
+                  padding: '11px 20px', 
+                  borderRadius: '14px', 
+                  border: '1px solid #e2e8f0', 
                   background: '#ffffff', 
-                  color: 'rgba(0, 0, 0, 0.88)',
-                  fontSize: '14px',
-                  fontWeight: 400,
+                  color: '#64748b',
+                  fontSize: '0.92rem',
+                  fontWeight: 700,
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
               >
                 Hủy bỏ
               </button>
               <button 
                 onClick={handleSaveTele} 
                 style={{ 
-                  padding: '4px 15px', 
-                  borderRadius: '6px', 
+                  padding: '11px 24px', 
+                  borderRadius: '14px', 
                   border: 'none', 
-                  background: '#1677ff', 
+                  background: '#3b82f6', 
                   color: 'white', 
-                  fontSize: '14px',
-                  fontWeight: 400,
+                  fontSize: '0.92rem',
+                  fontWeight: 700,
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  boxShadow: '0 2px 0 rgba(5, 145, 255, 0.1)'
+                  boxShadow: '0 8px 16px rgba(59, 130, 246, 0.15)'
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.transform = 'translateY(0)'; }}
               >
                 Lưu cấu hình
               </button>
@@ -428,9 +439,9 @@ export default function SettingsPage() {
       )}
 
       <style jsx>{`
-        @keyframes antdZoomIn {
-          0% { opacity: 0; transform: scale(0.9) translateY(10px); }
-          100% { opacity: 1; transform: scale(1) translateY(0); }
+        @keyframes modalSlideUp {
+          from { transform: translateY(30px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
       `}</style>
     </div>

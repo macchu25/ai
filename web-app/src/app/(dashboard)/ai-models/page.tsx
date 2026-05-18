@@ -15,8 +15,7 @@ export default function AIModelsPage() {
   const [models, setModels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [adbTesting, setAdbTesting] = useState(false);
-  const [adbResult, setAdbResult] = useState<any>(null);
+
 
   useEffect(() => {
     setMounted(true);
@@ -73,24 +72,7 @@ export default function AIModelsPage() {
     }
   };
 
-  const testADBPush = async () => {
-    setAdbTesting(true);
-    setAdbResult(null);
-    try {
-      const token = (session?.user as any)?.accessToken;
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
-      const res = await fetch(`${apiBase}/test-adb-push`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setAdbResult(data);
-    } catch (err: any) {
-      setAdbResult({ error: err.message });
-    } finally {
-      setAdbTesting(false);
-    }
-  };
+
 
   if (!mounted) return null;
 
@@ -249,67 +231,7 @@ export default function AIModelsPage() {
             </div>
           </div>
 
-          {/* ADB Push Test Panel */}
-          <div className="overview-card" style={{ padding: '28px 32px' }}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Terminal size={20} color="var(--accent)" /> Kiểm tra ADB Push
-            </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 20px 0' }}>
-              Test push file âm thanh cảnh báo lên thiết bị Android đang kết nối.
-            </p>
-            <button
-              id="btn-test-adb-push"
-              onClick={testADBPush}
-              disabled={adbTesting}
-              style={{
-                background: adbTesting ? 'var(--bg-primary)' : 'var(--accent)',
-                color: adbTesting ? 'var(--text-muted)' : 'white',
-                border: 'none', padding: '12px 24px', borderRadius: '12px',
-                fontWeight: 700, fontSize: '0.9rem', cursor: adbTesting ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s'
-              }}
-            >
-              {adbTesting ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-              {adbTesting ? 'Đang kiểm tra...' : 'Test ADB Push'}
-            </button>
 
-            {adbResult && (
-              <div style={{ marginTop: '20px', background: '#0f172a', borderRadius: '14px', padding: '20px', fontFamily: '"Fira Code", monospace', fontSize: '0.8rem' }}>
-                <div style={{ marginBottom: '12px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                  <span style={{
-                    background: adbResult.connected ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                    color: adbResult.connected ? '#22c55e' : '#ef4444',
-                    padding: '4px 12px', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem'
-                  }}>
-                    {adbResult.connected ? '✅ Thiết bị đã kết nối' : '❌ Không tìm thấy thiết bị'}
-                  </span>
-                  {adbResult.push_success !== undefined && (
-                    <span style={{
-                      background: adbResult.push_success ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                      color: adbResult.push_success ? '#22c55e' : '#ef4444',
-                      padding: '4px 12px', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem'
-                    }}>
-                      {adbResult.push_success ? '✅ Push thành công' : '❌ Push thất bại'}
-                    </span>
-                  )}
-                  {adbResult.play_success !== undefined && (
-                    <span style={{
-                      background: adbResult.play_success ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                      color: adbResult.play_success ? '#22c55e' : '#ef4444',
-                      padding: '4px 12px', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem'
-                    }}>
-                      {adbResult.play_success ? '✅ Phát âm thành công' : '❌ Phát âm thất bại'}
-                    </span>
-                  )}
-                </div>
-                {adbResult.devices_output && <div style={{ color: '#94a3b8', marginBottom: '8px', whiteSpace: 'pre-wrap' }}><span style={{ color: '#38bdf8' }}>$ adb devices</span><br />{adbResult.devices_output}</div>}
-                {adbResult.push_error && <div style={{ color: '#f87171', marginBottom: '8px' }}>Lỗi push: {adbResult.push_error}</div>}
-                {adbResult.push_output && <div style={{ color: '#94a3b8', marginBottom: '8px', whiteSpace: 'pre-wrap' }}><span style={{ color: '#38bdf8' }}>push output:</span><br />{adbResult.push_output}</div>}
-                {adbResult.file_check && <div style={{ color: '#94a3b8', whiteSpace: 'pre-wrap' }}><span style={{ color: '#38bdf8' }}>$ ls /sdcard/alert.mp3</span><br />{adbResult.file_check}</div>}
-                {adbResult.error && <div style={{ color: '#f87171' }}>❌ {adbResult.error}</div>}
-              </div>
-            )}
-          </div>
 
           {/* Infrastructure Card */}
           <div style={{ background: 'var(--text-main)', color: 'white', padding: '32px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>

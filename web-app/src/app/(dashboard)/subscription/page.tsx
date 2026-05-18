@@ -354,49 +354,54 @@ export default function SubscriptionPage() {
 
       {showSuccess && (
         <div className="modal-backdrop-blur" style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-          backdropFilter: 'blur(8px)', zIndex: 2000,
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.3)',
+          backdropFilter: 'blur(12px)', zIndex: 10000,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           <div style={{ 
-            background: '#ffffff', 
+            background: 'rgba(255, 255, 255, 0.95)', 
+            backdropFilter: 'blur(20px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.6)',
             padding: '48px 32px', 
-            borderRadius: '8px', 
+            borderRadius: '28px', 
             width: '100%', 
-            maxWidth: '520px', 
-            boxShadow: '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)',
+            maxWidth: '500px', 
+            boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.12), 0 20px 40px -20px rgba(0, 0, 0, 0.08)',
             textAlign: 'center',
             position: 'relative',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            animation: 'antdZoomIn 0.3s cubic-bezier(0.075, 0.82, 0.165, 1)'
+            fontFamily: '"Inter", sans-serif',
+            animation: 'modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
           }}>
             <div style={{
-              width: '72px', height: '72px', background: '#f6ffed',
+              width: '64px', height: '64px', background: '#f0fdf4',
               borderRadius: '50%', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', margin: '0 auto 24px',
-              border: '1px solid #b7eb8f'
+              justifyContent: 'center', margin: '0 auto 20px',
+              border: '1px solid rgba(16, 185, 129, 0.15)'
             }}>
-              <PartyPopper size={36} color="#52c41a" />
+              <PartyPopper size={28} color="#10b981" />
             </div>
-            <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'rgba(0, 0, 0, 0.88)', marginBottom: '8px' }}>Tuyệt vời!</h2>
-            <p style={{ color: 'rgba(0,0,0,0.65)', fontSize: '14px', lineHeight: '1.6', margin: '0 0 4px 0' }}>Hệ thống đã xác nhận thanh toán tự động thành công.</p>
-            <p style={{ color: 'rgba(0,0,0,0.65)', fontSize: '14px', lineHeight: '1.6', margin: '0 0 24px 0' }}>Gói <span style={{ color: '#1677ff', fontWeight: 600, textTransform: 'capitalize' }}>{celebratePlan || 'mới'}</span> của bạn đã sẵn sàng hoạt động.</p>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1e293b', marginBottom: '8px', letterSpacing: '-0.02em' }}>Tuyệt vời!</h2>
+            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', margin: '0 0 4px 0' }}>Hệ thống đã xác nhận thanh toán tự động thành công.</p>
+            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', margin: '0 0 24px 0' }}>Gói <span style={{ color: '#3b82f6', fontWeight: 700, textTransform: 'capitalize' }}>{celebratePlan || 'mới'}</span> của bạn đã sẵn sàng hoạt động.</p>
             <button
               onClick={() => setShowSuccess(false)}
               style={{
-                padding: '6px 20px',
-                borderRadius: '6px',
+                width: '100%',
+                padding: '12px 24px',
+                borderRadius: '14px',
                 border: 'none',
-                background: '#1677ff',
+                background: '#3b82f6',
                 color: '#ffffff',
-                fontSize: '14px',
-                fontWeight: 400,
+                fontSize: '0.95rem',
+                fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                boxShadow: '0 2px 0 rgba(5, 145, 255, 0.1)'
+                boxShadow: '0 8px 16px rgba(59, 130, 246, 0.15)'
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-              Bắt đầu trải nghiệm
+              Bắt đầu trải nghiệm ngay
             </button>
           </div>
         </div>
@@ -404,47 +409,64 @@ export default function SubscriptionPage() {
 
       {showCancelModal && (
         <div className="modal-backdrop-blur" style={{ 
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', 
-          backdropFilter: 'blur(8px)', zIndex: 1100, 
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.3)', 
+          backdropFilter: 'blur(12px)', zIndex: 10000, 
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           <div style={{ 
-            background: '#ffffff', 
-            padding: '24px', 
-            borderRadius: '8px', 
+            background: 'rgba(255, 255, 255, 0.95)', 
+            backdropFilter: 'blur(20px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.6)',
+            padding: '36px 32px', 
+            borderRadius: '28px', 
             width: '100%', 
-            maxWidth: '416px', 
-            boxShadow: '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)',
+            maxWidth: '430px', 
+            boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.12), 0 20px 40px -20px rgba(0, 0, 0, 0.08)',
             position: 'relative',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            animation: 'antdZoomIn 0.3s cubic-bezier(0.075, 0.82, 0.165, 1)'
+            fontFamily: '"Inter", sans-serif',
+            animation: 'modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
           }}>
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '20px' }}>
+            
+            <button 
+              onClick={() => { setShowCancelModal(false); setCancelOTP(''); }} 
+              style={{ 
+                position: 'absolute', top: '20px', right: '24px',
+                background: 'transparent', border: 'none', color: '#94a3b8',
+                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', padding: '4px', borderRadius: '50%',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#1e293b')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '24px' }}>
               <div style={{ 
-                width: '22px', height: '22px', background: 'transparent',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                color: '#faad14', marginTop: '2px'
+                width: '56px', height: '56px', background: '#fef3c7',
+                borderRadius: '18px', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', marginBottom: '16px', color: '#d97706',
+                border: '1px solid rgba(217, 119, 6, 0.1)'
               }}>
-                <ShieldCheck size={22} color="#faad14" />
+                <ShieldCheck size={26} />
               </div>
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(0, 0, 0, 0.88)', margin: '0 0 8px 0', lineHeight: '1.5' }}>Xác nhận hủy gói đăng ký</h3>
-                <p style={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.65)', margin: 0, lineHeight: 1.5 }}>
-                  Chúng tôi đã gửi mã xác nhận 6 số đến email của bạn. Vui lòng nhập mã để hoàn tất việc hủy gói.
-                </p>
-              </div>
+              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>Xác nhận hủy gói</h3>
+              <p style={{ fontSize: '0.92rem', color: '#64748b', margin: 0, lineHeight: 1.6 }}>
+                Chúng tôi đã gửi mã xác nhận 6 số đến email của bạn. Vui lòng nhập mã để hoàn tất việc hủy gói.
+              </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '24px', position: 'relative' }}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '28px', position: 'relative' }}>
               {[...Array(6)].map((_, i) => (
                 <div key={i} style={{
-                  width: '40px', height: '48px', borderRadius: '6px',
-                  border: `1px solid ${cancelOTP[i] ? '#ff4d4f' : '#d9d9d9'}`,
-                  background: cancelOTP[i] ? '#fff' : '#fafafa',
+                  width: '44px', height: '52px', borderRadius: '12px',
+                  border: `1px solid ${cancelOTP[i] ? '#ef4444' : '#e2e8f0'}`,
+                  background: cancelOTP[i] ? '#ffffff' : '#f8fafc',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '18px', fontWeight: 600, color: 'rgba(0, 0, 0, 0.88)',
+                  fontSize: '1.15rem', fontWeight: 700, color: '#1e293b',
                   transition: 'all 0.2s ease',
-                  boxShadow: cancelOTP[i] ? '0 0 0 2px rgba(255, 77, 79, 0.1)' : 'none'
+                  boxShadow: cancelOTP[i] ? '0 0 0 3px rgba(239, 68, 68, 0.1)' : 'none'
                 }}>
                   {cancelOTP[i] || ''}
                 </div>
@@ -461,19 +483,23 @@ export default function SubscriptionPage() {
               />
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '10px' }}>
               <button 
                 onClick={() => { setShowCancelModal(false); setCancelOTP(''); }}
                 style={{ 
-                  padding: '4px 15px', 
-                  borderRadius: '6px', 
-                  border: '1px solid #d9d9d9', 
+                  flex: 1,
+                  padding: '11px 20px', 
+                  borderRadius: '14px', 
+                  border: '1px solid #e2e8f0', 
                   background: '#ffffff', 
-                  color: 'rgba(0, 0, 0, 0.88)',
-                  fontSize: '14px',
+                  color: '#64748b',
+                  fontSize: '0.92rem',
+                  fontWeight: 700,
                   cursor: 'pointer', 
                   transition: 'all 0.2s' 
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
               >
                 Bỏ qua
               </button>
@@ -481,27 +507,31 @@ export default function SubscriptionPage() {
                 onClick={confirmCancelPlan}
                 disabled={isProcessing || cancelOTP.length < 6}
                 style={{ 
-                  padding: '4px 15px', 
-                  borderRadius: '6px', 
+                  flex: 1.5,
+                  padding: '11px 24px', 
+                  borderRadius: '14px', 
                   border: 'none', 
-                  background: cancelOTP.length === 6 ? '#ff4d4f' : '#f5f5f5', 
-                  color: cancelOTP.length === 6 ? '#ffffff' : 'rgba(0, 0, 0, 0.25)', 
-                  fontWeight: 400, 
-                  fontSize: '14px',
+                  background: cancelOTP.length === 6 ? '#ef4444' : '#f1f5f9', 
+                  color: cancelOTP.length === 6 ? '#ffffff' : '#94a3b8', 
+                  fontWeight: 700, 
+                  fontSize: '0.92rem',
                   cursor: cancelOTP.length === 6 ? 'pointer' : 'not-allowed', 
                   transition: 'all 0.2s',
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center',
-                  gap: '6px'
+                  gap: '6px',
+                  boxShadow: cancelOTP.length === 6 ? '0 8px 16px rgba(239, 68, 68, 0.15)' : 'none'
                 }}
+                onMouseEnter={(e) => { if (cancelOTP.length === 6) { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
+                onMouseLeave={(e) => { if (cancelOTP.length === 6) { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.transform = 'translateY(0)'; } }}
               >
                 {isProcessing ? <Loader2 className="animate-spin" size={14} /> : 'Xác nhận hủy'}
               </button>
             </div>
             
             {!isOTPSent && isProcessing && (
-              <div style={{ marginTop: '12px', fontSize: '12px', color: '#1677ff', textAlign: 'center' }}>
+              <div style={{ marginTop: '14px', fontSize: '0.8rem', color: '#3b82f6', textAlign: 'center', fontWeight: 600 }}>
                 Đang gửi mã xác nhận...
               </div>
             )}
@@ -511,61 +541,69 @@ export default function SubscriptionPage() {
 
       {cancelStatus && (
         <div className="modal-backdrop-blur" style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-          backdropFilter: 'blur(8px)', zIndex: 1200,
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.3)',
+          backdropFilter: 'blur(12px)', zIndex: 10000,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           <div style={{
-            background: '#ffffff', 
-            padding: '24px', 
-            borderRadius: '8px', 
+            background: 'rgba(255, 255, 255, 0.95)', 
+            backdropFilter: 'blur(20px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.6)',
+            padding: '36px 32px', 
+            borderRadius: '28px', 
             width: '100%', 
-            maxWidth: '416px',
-            boxShadow: '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)',
+            maxWidth: '400px',
+            boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.12), 0 20px 40px -20px rgba(0, 0, 0, 0.08)',
             position: 'relative',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            animation: 'antdZoomIn 0.3s cubic-bezier(0.075, 0.82, 0.165, 1)'
+            textAlign: 'center',
+            fontFamily: '"Inter", sans-serif',
+            animation: 'modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
           }}>
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <div style={{
-                width: '22px', height: '22px',
+                width: '56px', height: '56px',
+                background: cancelStatus.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                borderRadius: '18px',
                 display: 'flex', alignItems: 'center',
-                justifyContent: 'center', flexShrink: 0,
-                marginTop: '2px'
+                justifyContent: 'center', marginBottom: '20px',
+                color: cancelStatus.type === 'success' ? '#10b981' : '#ef4444',
+                border: cancelStatus.type === 'success' ? '1px solid rgba(16, 185, 129, 0.1)' : '1px solid rgba(239, 68, 68, 0.1)'
               }}>
                 {cancelStatus.type === 'success' ?
-                  <PartyPopper size={22} color="#52c41a" /> :
-                  <X size={22} color="#ff4d4f" strokeWidth={3} />
+                  <PartyPopper size={26} /> :
+                  <X size={26} strokeWidth={2.5} />
                 }
               </div>
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(0, 0, 0, 0.88)', margin: '0 0 8px 0', lineHeight: '1.5' }}>
-                  {cancelStatus.type === 'success' ? 'Thành công!' : 'Có lỗi xảy ra'}
-                </h3>
-                <p style={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.65)', margin: 0, lineHeight: 1.5 }}>
-                  {cancelStatus.message}
-                </p>
-              </div>
+              
+              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>
+                {cancelStatus.type === 'success' ? 'Đã hủy thành công!' : 'Có lỗi xảy ra'}
+              </h3>
+              <p style={{ fontSize: '0.92rem', color: '#64748b', margin: '0 0 28px 0', lineHeight: 1.6 }}>
+                {cancelStatus.message}
+              </p>
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button
                 onClick={() => {
                   setCancelStatus(null);
                   if (cancelStatus.type === 'success') router.push('/');
                 }}
                 style={{
-                  padding: '4px 15px', 
-                  borderRadius: '6px', 
+                  width: '100%',
+                  padding: '11px 24px', 
+                  borderRadius: '14px', 
                   border: 'none',
-                  background: cancelStatus.type === 'success' ? '#52c41a' : '#ff4d4f',
+                  background: cancelStatus.type === 'success' ? '#10b981' : '#ef4444',
                   color: '#ffffff', 
-                  fontWeight: 400, 
-                  fontSize: '14px',
+                  fontWeight: 700, 
+                  fontSize: '0.92rem',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  boxShadow: '0 2px 0 rgba(0,0,0,0.05)'
+                  boxShadow: cancelStatus.type === 'success' ? '0 8px 16px rgba(16, 185, 129, 0.15)' : '0 8px 16px rgba(239, 68, 68, 0.15)'
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = cancelStatus.type === 'success' ? '#059669' : '#dc2626'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = cancelStatus.type === 'success' ? '#10b981' : '#ef4444'; e.currentTarget.style.transform = 'translateY(0)'; }}
               >
                 Đã hiểu
               </button>
@@ -576,186 +614,194 @@ export default function SubscriptionPage() {
 
       {selectedPlan && (
         <div className="modal-backdrop-blur" style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-          backdropFilter: 'blur(8px)', zIndex: 1000,
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.3)',
+          backdropFilter: 'blur(12px)', zIndex: 10000,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           <div style={{
-            background: '#ffffff', 
-            borderRadius: '8px', 
+            background: 'rgba(255, 255, 255, 0.95)', 
+            backdropFilter: 'blur(20px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.6)',
+            borderRadius: '28px', 
             width: '100%', 
-            maxWidth: '800px',
-            padding: '24px', 
+            maxWidth: '820px',
+            padding: '36px', 
             position: 'relative', 
             textAlign: 'left',
-            boxShadow: '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            animation: 'antdZoomIn 0.3s cubic-bezier(0.075, 0.82, 0.165, 1)'
+            boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.12), 0 20px 40px -20px rgba(0, 0, 0, 0.08)',
+            fontFamily: '"Inter", sans-serif',
+            animation: 'modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
           }}>
             {/* Close Button */}
             <button
               onClick={() => setSelectedPlan(null)}
               style={{ 
                 position: 'absolute', 
-                top: '16px', 
-                right: '22px', 
+                top: '20px', 
+                right: '24px', 
                 background: 'transparent', 
                 border: 'none', 
                 cursor: 'pointer',
-                color: 'rgba(0, 0, 0, 0.45)',
+                color: '#94a3b8',
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
                 padding: '4px',
-                borderRadius: '4px',
+                borderRadius: '50%',
                 transition: 'all 0.2s'
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#1e293b')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
             >
-              <X size={16} />
+              <X size={20} />
             </button>
 
-            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingRight: '24px' }}>
+            <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '24px' }}>
               <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(0, 0, 0, 0.88)', margin: '0 0 4px 0' }}>Xác nhận thanh toán</h3>
-                <p style={{ fontSize: '14px', color: 'rgba(0,0,0,0.45)', margin: 0 }}>Hệ thống đang tự động kiểm tra giao dịch của bạn...</p>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e293b', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>Xác nhận thanh toán</h3>
+                <p style={{ fontSize: '0.88rem', color: '#64748b', margin: 0 }}>Hệ thống đang tự động kiểm tra giao dịch của bạn...</p>
               </div>
               <div style={{
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '8px',
-                padding: '4px 12px', 
-                background: '#e6f4ff', 
+                padding: '6px 14px', 
+                background: '#eff6ff', 
                 borderRadius: '100px',
-                border: '1px solid #91caff'
+                border: '1px solid rgba(59, 130, 246, 0.1)'
               }}>
-                <div className="pulse-dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#1677ff' }}></div>
-                <span style={{ fontSize: '12px', fontWeight: 500, color: '#1677ff' }}>Đang chờ thanh toán</span>
+                <div className="pulse-dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6' }}></div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#3b82f6' }}>Đang chờ thanh toán</span>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
               <div style={{ flex: '1', maxWidth: '340px' }}>
-                {/* Ant Design Segmented-style Payment Tab */}
-                <div style={{ display: 'flex', gap: '2px', background: '#f5f5f5', padding: '2px', borderRadius: '6px', marginBottom: '20px' }}>
+                {/* Custom Segmented Payment Tab */}
+                <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '4px', borderRadius: '12px', marginBottom: '20px' }}>
                   <button
                     onClick={() => setPaymentMethod('bank')}
                     style={{
-                      flex: 1, padding: '6px', borderRadius: '4px', border: 'none',
+                      flex: 1, padding: '8px 12px', borderRadius: '10px', border: 'none',
                       background: paymentMethod === 'bank' ? '#ffffff' : 'transparent',
-                      color: paymentMethod === 'bank' ? 'rgba(0,0,0,0.88)' : 'rgba(0,0,0,0.45)',
-                      fontWeight: 500, fontSize: '14px', cursor: 'pointer',
+                      color: paymentMethod === 'bank' ? '#1e293b' : '#64748b',
+                      fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                      boxShadow: paymentMethod === 'bank' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                      boxShadow: paymentMethod === 'bank' ? '0 4px 12px rgba(0,0,0,0.04)' : 'none',
                       transition: 'all 0.2s'
                     }}
                   >
-                    <Building2 size={14} /> Ngân hàng
+                    <Building2 size={15} /> Ngân hàng
                   </button>
                   <button
                     onClick={() => setPaymentMethod('momo')}
                     style={{
-                      flex: 1, padding: '6px', borderRadius: '4px', border: 'none',
+                      flex: 1, padding: '8px 12px', borderRadius: '10px', border: 'none',
                       background: paymentMethod === 'momo' ? '#ffffff' : 'transparent',
-                      color: paymentMethod === 'momo' ? '#a50064' : 'rgba(0,0,0,0.45)',
-                      fontWeight: 500, fontSize: '14px', cursor: 'pointer',
+                      color: paymentMethod === 'momo' ? '#a50064' : '#64748b',
+                      fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                      boxShadow: paymentMethod === 'momo' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                      boxShadow: paymentMethod === 'momo' ? '0 4px 12px rgba(0,0,0,0.04)' : 'none',
                       transition: 'all 0.2s'
                     }}
                   >
-                    <Smartphone size={14} /> Ví MoMo
+                    <Smartphone size={15} /> Ví MoMo
                   </button>
                 </div>
 
                 <div style={{
-                  background: '#ffffff', borderRadius: '8px', padding: '8px',
-                  border: '1px solid #d9d9d9', boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  background: '#ffffff', borderRadius: '16px', padding: '12px',
+                  border: '1px solid #e2e8f0', boxShadow: '0 8px 24px rgba(0,0,0,0.03)',
                   position: 'relative'
                 }}>
                   {paymentMethod === 'bank' ? (
                     <img
                       src={`https://img.vietqr.io/image/mb-0905304143-compact.png?amount=${getVNDPrice(selectedPlan)}&addInfo=${encodeURIComponent(getPaymentCode())}&accountName=NHU%20HUU%20MAC`}
                       alt="Bank QR"
-                      style={{ width: '100%', borderRadius: '4px', display: 'block' }}
+                      style={{ width: '100%', borderRadius: '12px', display: 'block' }}
                     />
                   ) : (
                     <div style={{ padding: '8px' }}>
                       <img
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://nhantien.momo.vn/0905177808/${getVNDPrice(selectedPlan)}`}
                         alt="MoMo QR"
-                        style={{ width: '100%', borderRadius: '4px', display: 'block', border: '2px solid #a50064' }}
+                        style={{ width: '100%', borderRadius: '12px', display: 'block', border: '2px solid #a50064' }}
                       />
-                      <p style={{ marginTop: '8px', color: '#a50064', fontWeight: 600, fontSize: '12px', textAlign: 'center', margin: 0 }}>Quét bằng ứng dụng MoMo</p>
+                      <p style={{ marginTop: '12px', color: '#a50064', fontWeight: 700, fontSize: '0.8rem', textAlign: 'center', margin: 0 }}>Quét bằng ứng dụng MoMo</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div style={{ flex: '1.2', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ background: '#fafafa', padding: '20px', borderRadius: '8px', border: '1px solid #f0f0f0' }}>
-                  <div style={{ marginBottom: '16px' }}>
-                    <p style={{ fontSize: '12px', color: 'rgba(0,0,0,0.45)', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 500 }}>Số tiền cần thanh toán</p>
+              <div style={{ flex: '1.2', display: 'flex', flexDirection: 'column', gap: '20px', height: '100%', justifyContent: 'space-between' }}>
+                <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ marginBottom: '20px' }}>
+                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Số tiền cần thanh toán</p>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                      <span style={{ fontSize: '28px', fontWeight: 600, color: 'rgba(0,0,0,0.88)' }}>{getVNDPrice(selectedPlan).toLocaleString()}</span>
-                      <span style={{ fontSize: '14px', fontWeight: 600, color: 'rgba(0,0,0,0.45)' }}>VND</span>
+                      <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1e293b' }}>{getVNDPrice(selectedPlan).toLocaleString()}</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#64748b' }}>VND</span>
                     </div>
                   </div>
 
                   <div>
-                    <p style={{ fontSize: '12px', color: 'rgba(0,0,0,0.45)', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 500 }}>Nội dung chuyển khoản</p>
+                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Nội dung chuyển khoản</p>
                     <div style={{
-                      background: '#ffffff', padding: '12px 16px', borderRadius: '6px',
-                      border: '1px solid #d9d9d9', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                      background: '#ffffff', padding: '12px 16px', borderRadius: '12px',
+                      border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                     }}>
-                      <span style={{ fontSize: '16px', fontWeight: 600, color: '#1677ff' }}>{getPaymentCode()}</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 800, color: '#3b82f6' }}>{getPaymentCode()}</span>
                       <button
                         onClick={() => copyToClipboard(getPaymentCode())}
                         style={{ 
-                          background: '#f5f5f5', border: '1px solid #d9d9d9', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-                          transition: 'all 0.2s'
+                          background: '#f1f5f9', border: 'none', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+                          transition: 'all 0.2s', fontWeight: 600, fontSize: '0.8rem', color: copied ? '#10b981' : '#475569'
                         }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
                       >
-                        <Copy size={12} color={copied ? '#52c41a' : 'rgba(0,0,0,0.45)'} />
-                        <span style={{ fontSize: '12px', fontWeight: 400, color: copied ? '#52c41a' : 'rgba(0,0,0,0.65)' }}>{copied ? 'Đã chép' : 'Sao chép'}</span>
+                        <Copy size={12} color={copied ? '#10b981' : '#475569'} />
+                        <span>{copied ? 'Đã chép' : 'Sao chép'}</span>
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Ant Design styled Info Alert */}
+                {/* Soft Info Box */}
                 <div style={{
-                  padding: '12px 16px', borderRadius: '6px', background: '#e6f4ff',
-                  border: '1px solid #91caff', display: 'flex', gap: '12px'
+                  padding: '16px 20px', borderRadius: '16px', background: '#eff6ff',
+                  border: '1px solid rgba(59, 130, 246, 0.1)', display: 'flex', gap: '14px', alignItems: 'center'
                 }}>
                   <div style={{
-                    width: '32px', height: '32px', background: '#1677ff',
+                    width: '36px', height: '36px', background: '#3b82f6',
                     borderRadius: '50%', display: 'flex', alignItems: 'center',
                     justifyContent: 'center', flexShrink: 0
                   }}>
                     <Search size={16} color="white" className="ping-animate" />
                   </div>
                   <div>
-                    <p style={{ fontSize: '14px', color: 'rgba(0,0,0,0.88)', fontWeight: 600, margin: '0 0 2px 0' }}>Hệ thống đang tự động dò tìm...</p>
-                    <p style={{ fontSize: '13px', color: 'rgba(0,0,0,0.65)', margin: 0, lineHeight: 1.4 }}>
+                    <p style={{ fontSize: '0.9rem', color: '#1e293b', fontWeight: 700, margin: '0 0 2px 0' }}>Hệ thống đang tự động dò tìm...</p>
+                    <p style={{ fontSize: '0.82rem', color: '#64748b', margin: 0, lineHeight: 1.4 }}>
                       Màn hình này sẽ tự động đóng ngay khi chúng tôi nhận được chuyển khoản của bạn. Vui lòng giữ nguyên màn hình.
                     </p>
                   </div>
                 </div>
 
-                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
                   <button
                     onClick={handleConfirmPayment}
                     disabled={isProcessing}
                     style={{
-                      width: '100%', padding: '8px 16px', borderRadius: '6px', border: 'none',
-                      background: isProcessing ? '#f5f5f5' : '#1677ff',
-                      color: isProcessing ? 'rgba(0,0,0,0.25)' : '#ffffff', 
-                      fontWeight: 400, fontSize: '14px',
+                      width: '100%', padding: '12px 24px', borderRadius: '14px', border: 'none',
+                      background: isProcessing ? '#f1f5f9' : '#3b82f6',
+                      color: isProcessing ? '#94a3b8' : '#ffffff', 
+                      fontWeight: 700, fontSize: '0.95rem',
                       cursor: isProcessing ? 'not-allowed' : 'pointer', 
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                      boxShadow: '0 2px 0 rgba(5, 145, 255, 0.1)',
+                      boxShadow: isProcessing ? 'none' : '0 8px 16px rgba(59, 130, 246, 0.15)',
                       transition: 'all 0.2s'
                     }}
+                    onMouseEnter={(e) => { if (!isProcessing) { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
+                    onMouseLeave={(e) => { if (!isProcessing) { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.transform = 'translateY(0)'; } }}
                   >
                     {isProcessing ? <Loader2 size={16} className="animate-spin" /> : 'Xác nhận đã chuyển khoản'}
                   </button>
