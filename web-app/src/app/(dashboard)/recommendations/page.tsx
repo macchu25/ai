@@ -25,6 +25,7 @@ const recommendedCameras = [
     brand: 'EZVIZ',
     model: 'C6N 1080p / 2K',
     gradient: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+    image: '/C6N-1080p-2K.webp',
     price: 'Khoảng 450.000đ - 650.000đ',
     resolution: '2MP / 4MP',
     features: ['Chuẩn ONVIF/RTSP', 'Bám theo chuyển động', 'Privacy mode', 'Kết nối ổn định'],
