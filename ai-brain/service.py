@@ -8,8 +8,15 @@ import google.generativeai as genai
 
 app = FastAPI()
 
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
+
 # Cấu hình Gemini - NÂNG CẤP LÊN 2.5 THEO YÊU CẦU
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyBHqgYInid1zXVEXh9Ny2_yPaYqcJPvbfk")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY is not set in the environment or .env file")
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash-lite')
 
