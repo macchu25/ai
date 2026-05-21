@@ -9,7 +9,7 @@ import google.generativeai as genai
 app = FastAPI()
 
 # Cấu hình Gemini - NÂNG CẤP LÊN 2.5 THEO YÊU CẦU
-GEMINI_API_KEY = "AIzaSyBHqgYInid1zXVEXh9Ny2_yPaYqcJPvbfk"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyBHqgYInid1zXVEXh9Ny2_yPaYqcJPvbfk")
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash-lite')
 
