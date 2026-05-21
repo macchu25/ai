@@ -88,7 +88,7 @@ class FallDetector:
 
     def _poll_model_status(self):
         """Hỏi Backend xem các model có được bật không."""
-        api_base = "http://localhost:8080/api/v1"
+        api_base = "https://be-casos-production.up.railway.app/api/v1"
         headers = {"X-API-Key": "ai_secret_key_12345"}
         
         while True:
@@ -468,6 +468,31 @@ def draw_variance_bars(frame, var_info, thr_low, thr_high):
 # ── Main ───────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    import argparse
+    import requests
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--camera_id", type=str, help="ID của Camera trong Database")
+    parser.add_argument("--source", type=str, default="0", help="Nguồn video (0: webcam, hoặc RTSP URL, hoặc file video)")
+    parser.add_argument("--headless", action="store_true", help="Chạy không có giao diện hiển thị GUI")
+    args = parser.parse_known_args()[0]
+
+    # Tự động tìm ID của Camera mình vừa tạo trên Web NextJS để trỏ AI vào
+    target_cam_id = args.camera_id if args.camera_id else "default_cam_id"
+    if not args.camera_id:
+        try:
+            # Lưu ý: Endpoint này giờ yêu cầu JWT, nên Python script chạy độc lập sẽ bị 401
+            # trừ khi ta cung cấp token hoặc dùng ID cố định qua CLI.
+            res = requests.get("https://be-casos-production.up.railway.app/api/v1/cameras", timeout=2)
+            if res.status_code == 200:
+                cam_list = res.json()
+                if isinstance(cam_list, list) and len(cam_list) > 0:
+                    target_cam_id = cam_list[-1]["id"] # Lấy camera tạo gần nhất
+                    print(f"-> Lien ket truc tiep với Dashboard thanh cong! Dang stream cho: {cam_list[-1]['name']}")
+            else:
+                print(f"! Khong the tu dong lay ID camera (HTTP {res.status_code}). Vui long dung --camera_id <id>")
+        except Exception as e:
+            print(f"! Khong ket noi duoc Backend: {e}")
+
     print("-> STAGE 1: Checking environment...")
     import sys
     print(f"-> Python Version: {sys.version}")
@@ -530,8 +555,11 @@ if __name__ == "__main__":
             self.stream.release()
 
     print("-> Opening camera with Threaded Stream...")
-    cap = VideoStream(src=0).start()
-    print("-> Camera Thread started.")
+    src = args.source
+    if src.isdigit():
+        src = int(src)
+    cap = VideoStream(src=src).start()
+    print(f"-> Camera Thread started on source: {src}")
     
     # ── MÁY CHỦ TRUYỀN HÌNH ẢNH ẢO CHO WEB (FLASK MJPEG) ──
     try:
@@ -565,7 +593,7 @@ if __name__ == "__main__":
         pass
 
     if cap.isOpened():
-        print("====== DA KET NOI CAMERA LAPTOP THANH CONG ======")
+        print("====== DA KET NOI CAMERA THANH CONG ======")
         try:
             import winsound
             winsound.Beep(1000, 200)
@@ -576,31 +604,9 @@ if __name__ == "__main__":
     import requests
     import threading
 
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--camera_id", type=str, help="ID của Camera trong Database")
-    args = parser.parse_known_args()[0]
-
-    # Tự động tìm ID của Camera mình vừa tạo trên Web NextJS để trỏ AI vào
-    target_cam_id = args.camera_id if args.camera_id else "default_cam_id"
-    if not args.camera_id:
-        try:
-            # Lưu ý: Endpoint này giờ yêu cầu JWT, nên Python script chạy độc lập sẽ bị 401
-            # trừ khi ta cung cấp token hoặc dùng ID cố định qua CLI.
-            res = requests.get("http://localhost:8080/api/v1/cameras", timeout=2)
-            if res.status_code == 200:
-                cam_list = res.json()
-                if isinstance(cam_list, list) and len(cam_list) > 0:
-                    target_cam_id = cam_list[-1]["id"] # Lấy camera tạo gần nhất
-                    print(f"-> Lien ket truc tiep với Dashboard thanh cong! Dang stream cho: {cam_list[-1]['name']}")
-            else:
-                print(f"! Khong the tu dong lay ID camera (HTTP {res.status_code}). Vui long dung --camera_id <id>")
-        except Exception as e:
-            print(f"! Khong ket noi duoc Backend: {e}")
-
     def push_to_go(lbl, cnf):
         try:
-            requests.post("http://localhost:8080/api/v1/ai-result", 
+            requests.post("https://be-casos-production.up.railway.app/api/v1/ai-result", 
                 json={
                     "CameraID": target_cam_id,
                     "ModelName": "Fall Detection Engine",
@@ -722,17 +728,22 @@ if __name__ == "__main__":
             global_frame = frame.copy()
         except: pass
 
-        cv2.imshow("Fall Detection - Hybrid", frame)
+        if not args.headless:
+            cv2.imshow("Fall Detection - Hybrid", frame)
 
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord("q"):
-            break
-        elif key == ord("c"):
-            # Calibrate: print variance to console
-            if len(detector.buffer) == detector.n_frames:
-                v = detector._compute_variance()
-                print(f"[CALIBRATE] total={v['total']:.5f}  arm={v['arm']:.5f}  "
-                      f"leg={v['leg']:.5f}  torso={v['torso']:.5f}")
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord("q"):
+                break
+            elif key == ord("c"):
+                # Calibrate: print variance to console
+                if len(detector.buffer) == detector.n_frames:
+                    v = detector._compute_variance()
+                    print(f"[CALIBRATE] total={v['total']:.5f}  arm={v['arm']:.5f}  "
+                          f"leg={v['leg']:.5f}  torso={v['torso']:.5f}")
+        else:
+            # Chế độ chạy ẩn (headless): nghỉ nhẹ 30ms để tránh vòng lặp quá nhanh gây quá tải CPU
+            time.sleep(0.03)
 
-    cap.release()
-    cv2.destroyAllWindows()
+    cap.stop() if hasattr(cap, 'stop') else cap.release()
+    if not args.headless:
+        cv2.destroyAllWindows()
