@@ -83,7 +83,11 @@ func (a *API) AIChat(c *gin.Context) {
 
 	// Gọi đến AI Python service
 	pbody, _ := json.Marshal(map[string]string{"query": payload.Query})
-	resp, err := http.Post("http://localhost:8001/chat", "application/json", bytes.NewBuffer(pbody))
+	aiBrainURL := os.Getenv("AI_BRAIN_URL")
+	if aiBrainURL == "" {
+		aiBrainURL = "http://localhost:8001"
+	}
+	resp, err := http.Post(aiBrainURL+"/chat", "application/json", bytes.NewBuffer(pbody))
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "AI service hiện không khả dụng"})
 		return
