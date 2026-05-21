@@ -52,10 +52,10 @@ async def index_document(item: DocumentItem):
 @app.post("/chat")
 async def chat(request: ChatRequest):
     try:
-        # 1. Tìm kiếm ngữ cảnh từ Vector DB (Tăng lên 10 kết quả để chính xác hơn)
+        # 1. Tìm kiếm ngữ cảnh từ Vector DB (Giảm xuống 4 kết quả để giảm latency)
         results = collection.query(
             query_texts=[request.query],
-            n_results=10
+            n_results=4
         )
         
         context_docs = results['documents'][0]
