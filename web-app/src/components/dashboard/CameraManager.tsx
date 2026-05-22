@@ -25,12 +25,14 @@ interface CameraManagerProps {
   handleSaveCamera: (e: React.FormEvent) => void;
   toggleCamStatus: (cam: Camera) => void;
   handleDeleteCamera: (cam: Camera) => void;
+  onOpenWebcamTest?: (cam: Camera) => void;
 }
 
 const CameraManager: React.FC<CameraManagerProps> = ({
   cameras, camName, setCamName, camLocation, setCamLocation, rtspUrl, setRtspUrl,
   isTesting, isLocating, editingCamId, setEditingCamId,
-  handleGetLocation, handleSaveCamera, toggleCamStatus, handleDeleteCamera
+  handleGetLocation, handleSaveCamera, toggleCamStatus, handleDeleteCamera,
+  onOpenWebcamTest
 }) => {
   return (
     <section className="infrastructure-section">
@@ -98,6 +100,17 @@ const CameraManager: React.FC<CameraManagerProps> = ({
                   <span className="loc">{cam.location}</span>
                 </div>
                 <div className="chip-actions">
+                  {(!cam.rtsp_url || cam.rtsp_url === 'webcam') && onOpenWebcamTest && (
+                    <button 
+                      onClick={() => onOpenWebcamTest(cam)} 
+                      className="action-btn webcam-test" 
+                      title="Mở WebCam Test AI"
+                      style={{ color: '#10b981', background: '#ecfdf5' }}
+                      type="button"
+                    >
+                      <Video size={14} />
+                    </button>
+                  )}
                   <button onClick={() => toggleCamStatus(cam)} className={`action-btn power ${cam.status}`} title="Bật/Tắt Camera">
                     <Power size={14} />
                   </button>

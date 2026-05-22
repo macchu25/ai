@@ -9,6 +9,7 @@ import { useNotification } from '@/app/context/NotificationContext';
 // Components
 import CameraManager from '@/components/dashboard/CameraManager';
 import IncidentTable from '@/components/dashboard/IncidentTable';
+import WebcamTestModal from '@/components/dashboard/WebcamTestModal';
 
 // Styles
 import '@/app/incidents.css';
@@ -26,6 +27,9 @@ export default function IncidentsPage() {
   const [isTesting, setIsTesting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [editingCamId, setEditingCamId] = useState<string | null>(null);
+  const [activeTestCam, setActiveTestCam] = useState<any | null>(null);
+  
+  const token = session?.user ? (session.user as any).accessToken : '';
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -227,6 +231,7 @@ export default function IncidentsPage() {
           handleSaveCamera={handleSaveCamera}
           toggleCamStatus={toggleCamStatus}
           handleDeleteCamera={handleDeleteCamera}
+          onOpenWebcamTest={setActiveTestCam}
         />
       </div>
 
@@ -236,6 +241,17 @@ export default function IncidentsPage() {
           onExport={() => showToast("Đang chuẩn bị dữ liệu...", "info")} 
         />
       </div>
+
+      {activeTestCam && (
+        <WebcamTestModal 
+          camera={activeTestCam} 
+          onClose={() => {
+            setActiveTestCam(null);
+            loadData();
+          }} 
+          token={token}
+        />
+      )}
     </div>
   </div>
   );
