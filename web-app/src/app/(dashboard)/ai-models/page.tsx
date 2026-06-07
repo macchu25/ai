@@ -106,11 +106,11 @@ export default function AIModelsPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', background: 'rgba(241, 245, 249, 0.4)' }}>
-                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>MODEL NAME</th>
-                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>STATUS</th>
-                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>PRECISION</th>
-                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>LATENCY</th>
-                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>ACTION</th>
+                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>TÊN MÔ HÌNH (MODEL)</th>
+                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>TRẠNG THÁI</th>
+                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>ĐỘ CHÍNH XÁC</th>
+                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>ĐỘ TRỄ (TỐC ĐỘ)</th>
+                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>BẬT / TẮT</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -133,26 +133,49 @@ export default function AIModelsPage() {
                           color: model.status === 'Active' ? 'var(--success)' : 'var(--text-muted)',
                           padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700
                         }}>
-                          {model.status}
+                          {model.status === 'Active' ? 'Đang hoạt động' : 'Tạm dừng'}
                         </span>
                       </td>
                       <td style={{ padding: '24px 32px', fontWeight: 600, color: 'var(--text-main)' }}>{model.precision}</td>
                       <td style={{ padding: '24px 32px', fontWeight: 600, color: 'var(--text-main)' }}>{model.latency || model.speed}</td>
                       <td style={{ padding: '24px 32px' }}>
-                        <button 
-                          onClick={() => toggleModel(model._id || model.id)}
-                          disabled={togglingId === (model._id || model.id)}
-                          style={{ 
-                            background: model.status === 'Active' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(37, 99, 235, 0.05)',
-                            color: model.status === 'Active' ? 'var(--danger)' : 'var(--accent)',
-                            border: 'none', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                        <div 
+                          onClick={() => {
+                            if (togglingId !== (model._id || model.id)) {
+                              toggleModel(model._id || model.id);
+                            }
+                          }}
+                          style={{
+                            width: '50px',
+                            height: '28px',
+                            borderRadius: '15px',
+                            background: model.status === 'Active' ? '#22c55e' : '#cbd5e1',
+                            padding: '2px',
+                            cursor: togglingId === (model._id || model.id) ? 'not-allowed' : 'pointer',
+                            transition: 'background 0.2s ease',
+                            position: 'relative',
+                            display: 'inline-block',
+                            opacity: togglingId === (model._id || model.id) ? 0.6 : 1
+                          }}
+                        >
+                          <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            background: '#ffffff',
+                            position: 'absolute',
+                            left: model.status === 'Active' ? '24px' : '2px',
+                            transition: 'left 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                           }}>
-                          {togglingId === (model._id || model.id) ? (
-                            <Loader2 size={18} className="animate-spin" />
-                          ) : (
-                            model.status === 'Active' ? <Pause size={18} /> : <Play size={18} />
-                          )}
-                        </button>
+                            {togglingId === (model._id || model.id) && (
+                              <Loader2 size={12} className="animate-spin" style={{ color: '#64748b' }} />
+                            )}
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ))}
