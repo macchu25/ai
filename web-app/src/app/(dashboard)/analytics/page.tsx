@@ -6,6 +6,7 @@ import {
   Download, ArrowLeft, PieChart 
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSession } from "next-auth/react";
 
 interface IncidentCategory {
   label: string;
@@ -27,19 +28,22 @@ interface TimelineItem {
 }
 
 export default function AnalyticsPage() {
+  const { data: session } = useSession();
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!session?.user) return;
       try {
-        const token = localStorage.getItem('token');
+        const token = (session.user as any).accessToken;
         const headers = { 'Authorization': `Bearer ${token}` };
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
         const [sumRes, timeRes] = await Promise.all([
-          fetch('http://localhost:8080/api/v1/analytics/summary', { headers }),
-          fetch('http://localhost:8080/api/v1/analytics/timeline', { headers })
+          fetch(`${apiBase}/analytics/summary`, { headers }),
+          fetch(`${apiBase}/analytics/timeline`, { headers })
         ]);
 
         const sumData = await sumRes.json();
@@ -55,7 +59,7 @@ export default function AnalyticsPage() {
     };
 
     fetchData();
-  }, []);
+  }, [session]);
 
   const safeTimeline = timeline;
   const maxCount = Math.max(...safeTimeline.map(t => t.count), 5);

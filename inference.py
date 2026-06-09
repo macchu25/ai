@@ -4,6 +4,7 @@ import time
 import json
 import requests
 import threading
+import os
 from collections import deque
 
 import torch
@@ -14,6 +15,9 @@ from mediapipe.tasks.python.vision import (
     PoseLandmarkerOptions,
     RunningMode,
 )
+
+# Cấu hình API Endpoint (Mặc định trỏ về production, có thể ghi đè qua biến môi trường BACKEND_URL)
+API_BASE = os.getenv("BACKEND_URL", "https://be-casos-production.up.railway.app/api/v1")
 
 
 # ── State Machine ──────────────────────────────────────────────
@@ -88,7 +92,7 @@ class FallDetector:
 
     def _poll_model_status(self):
         """Hỏi Backend xem các model có được bật không."""
-        api_base = "https://be-casos-production.up.railway.app/api/v1"
+        api_base = API_BASE
         headers = {"X-API-Key": "ai_secret_key_12345"}
         
         while True:
@@ -482,7 +486,7 @@ if __name__ == "__main__":
         try:
             # Lưu ý: Endpoint này giờ yêu cầu JWT, nên Python script chạy độc lập sẽ bị 401
             # trừ khi ta cung cấp token hoặc dùng ID cố định qua CLI.
-            res = requests.get("https://be-casos-production.up.railway.app/api/v1/cameras", timeout=2)
+            res = requests.get(f"{API_BASE}/cameras", timeout=2)
             if res.status_code == 200:
                 cam_list = res.json()
                 if isinstance(cam_list, list) and len(cam_list) > 0:
@@ -606,7 +610,7 @@ if __name__ == "__main__":
 
     def push_to_go(lbl, cnf):
         try:
-            requests.post("https://be-casos-production.up.railway.app/api/v1/ai-result", 
+            requests.post(f"{API_BASE}/ai-result", 
                 json={
                     "CameraID": target_cam_id,
                     "ModelName": "Fall Detection Engine",

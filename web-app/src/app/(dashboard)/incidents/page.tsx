@@ -61,7 +61,7 @@ export default function IncidentsPage() {
         setIncidents(incData.map((item: any) => ({
           id: item.id || item._id,
           camera: item.camera_name || "Camera #"+(item.camera_id?.substring(0,8) || "Unknown"),
-          type: item.type,
+          type: item.type || "Cảnh báo",
           conf: item.confidence_score || 0,
           createdAt: item.detected_at ? new Date(item.detected_at).toLocaleString('vi-VN') : "N/A",
           status: item.status === 'active' ? 'Active' : 'Resolved'

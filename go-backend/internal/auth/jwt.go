@@ -31,6 +31,31 @@ func GenerateToken(userID string) (string, error) {
 	return token.SignedString(getSecretKey())
 }
 
+// ValidateToken parses and validates a JWT token and returns the userID if successful
+func ValidateToken(tokenString string) (string, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("phương thức ký không hợp lệ: %v", token.Header["alg"])
+		}
+		return getSecretKey(), nil
+	})
+	if err != nil {
+		return "", err
+	}
+	if !token.Valid {
+		return "", fmt.Errorf("token invalid")
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", fmt.Errorf("invalid claims")
+	}
+	userID, ok := claims["userID"].(string)
+	if !ok || userID == "" {
+		return "", fmt.Errorf("invalid userID in token")
+	}
+	return userID, nil
+}
+
 func JWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -55,28 +80,14 @@ func JWTMiddleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Thiếu JWT Token (Header hoặc Query)"})
 			return
 		}
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("phương thức ký không hợp lệ: %v", token.Header["alg"])
-			}
-			return getSecretKey(), nil
-		})
 
-		if err != nil || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "JWT Token không hợp lệ"})
+		userID, err := ValidateToken(tokenString)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "JWT Token không hợp lệ: " + err.Error()})
 			return
 		}
 
-		// Trích xuất userID từ claims và lưu vào context của Gin
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			userID, ok := claims["userID"].(string)
-			if !ok || userID == "" {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "JWT Token thiếu userID hợp lệ"})
-				return
-			}
-			c.Set("userID", userID)
-		}
-
+		c.Set("userID", userID)
 		c.Next()
 	}
 }

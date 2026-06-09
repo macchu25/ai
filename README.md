@@ -11,7 +11,6 @@ Hệ thống giám sát và nhận diện té ngã thông minh sử dụng trí 
 - **MongoDB**: Cơ sở dữ liệu NoSQL dùng để lưu trữ thông tin người dùng, cấu hình camera và nhật ký sự cố.
 - **WebSocket (Gorilla)**: Giao tiếp thời gian thực để đẩy thông báo từ AI Hub tới các Dashboard ngay lập tức.
 - **FFmpeg**: Công cụ nòng cốt để transcode luồng RTSP từ Camera thành HLS Stream cho trình duyệt và thiết bị di động.
-- **ADB (Android Debug Bridge)**: Gateway điều khiển điện thoại Android thực hiện cuộc gọi khẩn cấp qua SIM vật lý.
 
 ### 🔹 Frontend & Mobile
 - **Next.js 14 (TypeScript)**: Dashboard quản trị với Server-side Rendering và kiến trúc App Router hiện đại.
@@ -48,7 +47,7 @@ Hệ thống được thiết kế với nhiều lớp bảo mật để bảo v
 - **Telegram Bot Integration**: Hệ thống gửi tin nhắn báo động tức thời tới nhóm Telegram gia đình ngay khi phát hiện nghi vấn hoặc sự cố khẩn cấp.
 
 ### 4. Quản lý cấu hình (Configuration Security)
-- **Environment Variables (.env)**: Toàn bộ thông tin nhạy cảm như MONGODB_URI, API Keys (ElevenLabs, Stringee), và đường dẫn ADB được tách biệt hoàn toàn khỏi mã nguồn.
+- **Environment Variables (.env)**: Toàn bộ thông tin nhạy cảm như MONGODB_URI, API Keys (ElevenLabs) được tách biệt hoàn toàn khỏi mã nguồn.
 
 ---
 
@@ -72,7 +71,6 @@ MONGODB_URI=mongodb+srv://...
 JWT_SECRET=your_jwt_secret
 INTERNAL_API_KEY=ai_secret_key_12345
 REDIS_URL=localhost:6379
-ADB_PATH=C:\path\to\adb.exe
 # Ngưỡng thời gian báo động
 LOCAL_WARNING_SECONDS=7
 EMERGENCY_ALERT_MINUTES=8
@@ -156,17 +154,18 @@ Lần đầu chạy sẽ tải embedding model (`all-MiniLM-L6-v2`); cần mạn
 
 ---
 
-## Rà soát code — các điểm cần lưu ý
+## Rà soát code
 
-1. **`/api/v1/ai-result`**: Đã bổ sung đăng ký trong `go-backend/main.go` để khớp với `inference.py`; không có route thì báo động từ Python sẽ không vào engine.
-2. **ADB**: Endpoint debug (`/test-adb-push`, `/debug-call-state`) dùng `ADB_PATH` từ `.env`, fallback `C:\adb\adb.exe` — trên Linux/mac cần đặt `ADB_PATH` trỏ tới `adb` trên `PATH`.
-3. **URL nội bộ cứng**: `AIChat` và engine (`http://localhost:8001/...`) giả định ai-brain chạy cùng máy; triển khai đám mây nên chuyển sang biến môi trường.
-4. **CORS**: Chỉ whitelist `localhost:3000`; production cần thêm origin thật.
-5. **Rate limit**: Map trong RAM, reset mỗi phút — không chia sẻ giữa nhiều instance; chỉ phù hợp dev/single-node.
-6. **Tiện ích nhạy cảm**: `test-call`, `test-adb-push`, `debug-call-state`, `simulate-payment` nên tắt hoặc bảo vệ thêm trên môi trường production.
-7. **inference.py**: Gọi `GET /api/v1/cameras` không kèm JWT thường trả 401 — dùng `--camera_id` hoặc cấp token/script riêng.
-8. **ai-brain `/chat`**: Khi collection rỗng, `query` có thể lỗi index; nên seed hoặc bắt `IndexError` trong Python.
-9. **Bằng chứng sự cố**: Engine đang dùng file cố định `audio/mockup.png` cho Telegram/cloud — thay bằng frame/video thật khi tích hợp xong pipeline.
+Báo cáo review đầy đủ (Critical / High / Medium / Low, bảng route, ưu tiên sửa): **[CODE_REVIEW.md](./CODE_REVIEW.md)**
+
+Tóm tắt nhanh — **5 vấn đề Critical:**
+1. `POST /api/v1/auth/social-login` — public, có thể forge JWT
+2. `POST /api/v1/bridge/register` — public, hijack camera theo `user_id`
+3. Analytics không filter `user_id` — leak dữ liệu cross-user
+4. `/streams/*` không có JWT — video live lộ nếu biết URL
+5. Path traversal tiềm ẩn trên `/streams/`
+
+**Đã sửa:** route `POST /api/v1/ai-result` đã đăng ký trong `main.go`.
 
 ---
 

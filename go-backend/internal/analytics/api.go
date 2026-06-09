@@ -38,7 +38,7 @@ func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 	// 2. PHÂN LOẠI SỰ CỐ THỰC TẾ (Cho biểu đồ tròn)
 	pipeline := mongo.Pipeline{
 		{{Key: "$group", Value: bson.M{
-			"_id":   "$label",
+			"_id":   "$type",
 			"count": bson.M{"$sum": 1},
 		}}},
 	}
@@ -55,7 +55,17 @@ func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 
 	for _, res := range results {
 		label, _ := res["_id"].(string)
-		count := int64(res["count"].(int32))
+		
+		var count int64
+		if val, ok := res["count"]; ok {
+			switch v := val.(type) {
+			case int32:
+				count = int64(v)
+			case int64:
+				count = v
+			}
+		}
+		
 		if label == "" { label = "Khác" }
 		
 		percent := 0.0

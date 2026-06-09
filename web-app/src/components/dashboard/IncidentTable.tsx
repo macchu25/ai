@@ -53,8 +53,8 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
                   </div>
                 </td>
                 <td>
-                  <span className={`type-badge ${incident.type.toLowerCase()}`}>
-                    {incident.type}
+                  <span className={`type-badge ${(incident.type || 'unknown').toLowerCase()}`}>
+                    {incident.type || 'Không rõ'}
                   </span>
                 </td>
                 <td>
@@ -72,7 +72,7 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
                   </div>
                 </td>
                 <td>
-                  <div className={`status-pill ${incident.status.toLowerCase()}`}>
+                  <div className={`status-pill ${(incident.status || 'resolved').toLowerCase()}`}>
                     <div className="pulse-dot"></div>
                     {incident.status === 'Active' ? 'Đang xử lý' : 'Đã hoàn thành'}
                   </div>

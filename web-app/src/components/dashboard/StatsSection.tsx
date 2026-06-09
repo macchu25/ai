@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FileBarChart, UserCheck, Clock, TrendingUp, Download, Shield, Activity, Zap } from 'lucide-react';
+import { useSession } from "next-auth/react";
 
 interface SummaryData {
   total_incidents: number;
@@ -15,19 +16,22 @@ interface TimelineItem {
 }
 
 const StatsSection: React.FC = () => {
+  const { data: session } = useSession();
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!session?.user) return;
       try {
-        const token = localStorage.getItem('token');
+        const token = (session.user as any).accessToken;
         const headers = { 'Authorization': `Bearer ${token}` };
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
         const [sumRes, timeRes] = await Promise.all([
-          fetch('http://localhost:8080/api/v1/analytics/summary', { headers }),
-          fetch('http://localhost:8080/api/v1/analytics/timeline', { headers })
+          fetch(`${apiBase}/analytics/summary`, { headers }),
+          fetch(`${apiBase}/analytics/timeline`, { headers })
         ]);
 
         const sumData = await sumRes.json();
@@ -45,7 +49,7 @@ const StatsSection: React.FC = () => {
     fetchData();
     const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [session]);
 
   const safeTimeline = Array.isArray(timeline) ? timeline : [];
   const maxCount = Math.max(...safeTimeline.map(t => t.count), 5);

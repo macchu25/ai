@@ -258,11 +258,15 @@ func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float
 		
 		// 1. Lưu vào MongoDB collection 'events'
 		event := bson.M{
-			"user_id":     cameraDoc.UserID,
-			"camera_id":   camID,
-			"type":        label,
-			"description": incidentText,
-			"created_at":  time.Now(),
+			"user_id":          cameraDoc.UserID,
+			"camera_id":        camID,
+			"camera_name":      camName,
+			"type":             label,
+			"confidence_score": conf,
+			"status":           "active",
+			"description":      incidentText,
+			"detected_at":      time.Now(),
+			"created_at":       time.Now(),
 		}
 		e.db.Collection("events").InsertOne(context.Background(), event)
 
