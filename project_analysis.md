@@ -164,7 +164,12 @@ AI không huấn luyện trực tiếp trên toàn bộ điểm ảnh của vide
 *   **Chiều dài chuỗi (Sequence Length):** 30 khung hình liên tiếp (tương đương khoảng 1 giây hành động ở tốc độ ghi hình 30 FPS).
 *   **Kích thước Tensor đầu vào:** `(Batch_Size, 30, 99)`.
 
-### 2. Kiến Trúc Mô Hình Học Sâu (Model Architecture)
+### 2. Các Cơ Sở Dữ Liệu Huấn Luyện (Training Datasets)
+*   **Dữ liệu hành động (Té ngã & Co giật):** Mô hình CNN-LSTM được huấn luyện trên bộ dữ liệu **UP-Fall Detection Dataset** và **UR Fall Detection Dataset (URFD)** chứa hàng nghìn chuỗi khung xương té ngã thực tế dưới nhiều góc quay camera khác nhau, kết hợp các mẫu chuyển động co giật động kinh tự thu thập chéo.
+*   **Dữ liệu nhịp tim không tiếp xúc (rPPG):** Mô hình DeepPhys được huấn luyện chéo trên hai bộ dữ liệu y sinh nổi tiếng là **COHFACE** (Viện nghiên cứu IDIAP) và **PURE (Physiological Viability Reconstruction)**, sử dụng video màu gương mặt chuẩn kết hợp với tín hiệu đo nhịp tim tiếp xúc thực tế (ECG/PPG Ground Truth) làm nhãn học đối chiếu.
+*   **Dữ liệu biểu cảm đau đớn (Pain):** Thang đo và trọng số của bộ phát hiện đau đớn được tối ưu hóa dựa trên tập dữ liệu lâm sàng **UNBC-McMaster Shoulder Pain Archive** chứa hàng nghìn sắc thái nhăn mặt của bệnh nhân được dán nhãn theo thang điểm lâm sàng PSPI (Prkachin and Solomon Pain Intensity).
+
+### 3. Kiến Trúc Mô Hình Học Sâu (Model Architecture)
 Chi tiết các tầng cấu tạo bên trong [model_def.py](file:///c:/cardiac-alert/models/model_def.py):
 
 *   **Tầng CNN 1 Chiều (Conv1D Layers):**
@@ -258,3 +263,48 @@ Giao diện người dùng của CAS được định hình theo hướng **Prem
     *   *Đèn nháy trạng thái (Pulse Indicator):* Các chấm tròn nhỏ hiển thị trạng thái của Camera (online/offline) liên tục co giãn mượt mà bằng CSS animation để người dùng biết luồng kết nối vẫn hoạt động tốt.
     *   *Ranh giới báo động đỏ (Screen-border flashing):* Khi WebSocket nhận diện sự kiện ngã khẩn cấp, viền của toàn bộ màn hình Dashboard sẽ chuyển sang màu đỏ rực rỡ và nhấp nháy liên tục (Red border flash alert) để gây chú ý lập tức cho người trực.
     *   *Nút bấm nổi bật (Hover interactions):* Mọi nút chức năng đều hỗ trợ phóng to nhẹ (`scale(1.02)`) và phát sáng nhẹ ở viền khi di chuột qua, mang lại cảm giác giao diện "sống động" và phản hồi tích cực.
+
+---
+
+## 🔬 7. Đề Xuất Nghiên Cứu Mở Rộng AI Trong Tương Lai & Các Mô Hình Mới
+
+Để nâng cao khả năng của hệ thống CAS, dưới đây là chi tiết kỹ thuật về **Nhóm 2 (AI Y Tế Không Tiếp Xúc)** và **Nhóm 3 (AI Phòng Ngừa Chủ Động)**:
+
+### A. Nhóm 2: AI Y Tế Không Tiếp Xúc (Non-contact Health AI)
+
+Đo lường các dấu hiệu sinh tồn và biểu hiện đau cấp tính qua dữ liệu video mà không cần cảm biến tiếp xúc vật lý.
+
+#### 1. Theo Dõi Nhịp Tim và Nhịp Thở Từ Xa (rPPG - Remote Photoplethysmography) - [ĐÃ TRIỂN KHAI]
+*   **Mô tả**: Khi tim đập, thể tích máu thay đổi tuần hoàn ở các vùng da mặt, gây ra các biến đổi màu sắc cực nhỏ trên da (không thể thấy bằng mắt thường nhưng có thể thu nhận bởi cảm biến camera). rPPG định vị các vùng da quan tâm (ROI), lọc nhiễu chuyển động và áp dụng biến đổi Fourier (FFT) hoặc học sâu để tính toán Nhịp tim (HR) và Nhịp thở (RR).
+*   **Kiến trúc Triển khai**: 
+    *   *Face Detection*: Sử dụng MediaPipe Face Detection để crop vùng trán và má của khuôn mặt.
+    *   *Mô hình Core*: DeepPhys (Kiến trúc tích hợp Attention đa luồng gồm Appearance Branch và Motion Branch) tải từ file weights `best_model_rppg.pth`.
+    *   *Đầu ra*: Nhịp tim (BPM) cập nhật thời gian thực.
+    *   *Tập tin khởi động riêng biệt*: [rppg_inference.py](file:///c:/cardiac-alert/rppg_inference.py).
+    *   *Tích hợp Dashboard*: Tự động hiển thị và cho phép bật/tắt mô hình "Remote Heart Rate Monitor (rPPG)" trên Trung Tâm AI Core. Expose luồng video ảo kèm đồ thị sóng BVP tại cổng `5001` (`/video_feed`).
+
+#### 2. Nhận Diện Biểu Cảm Đau Cấp Tính (Pain & Grimace Detection)
+*   **Mô tả**: Nhận diện các vi chuyển động cơ mặt thể hiện cơn đau dữ dội (thường do đột quỵ hoặc nhồi máu cơ tim gây ra).
+*   **Kiến trúc đề xuất**: 
+    *   *Face Mesh*: MediaPipe Face Mesh trích xuất 468 điểm mốc khuôn mặt.
+    *   *Bộ phân loại*: Mạng đồ thị tích chập (GCN) chạy trên các đỉnh Face Mesh hoặc bộ phân loại CNN phân tích biến dạng không gian khuôn mặt (nhắm mắt chặt, nhíu mày, căng môi).
+*   **Ứng dụng**: Kích hoạt cảnh báo sớm khi bệnh nhân có biểu cảm đau đớn dữ dội trước khi ngất đi và té ngã.
+
+---
+
+### B. Nhóm 3: AI Phòng Ngừa Chủ Động (Active Preventive AI)
+
+Ngăn ngừa tai nạn trước khi xảy ra bằng cách định nghĩa các ranh giới an toàn (geofence) và các hành vi nguy hiểm.
+
+#### 1. Kiểm Tra Ranh Giới Vùng Nguy Hiểm (Geofencing & Hazard Zone Detection)
+*   **Mô tả**: Cho phép người dùng vẽ các ranh giới tùy chỉnh (đa giác) trên giao diện web (ví dụ: lối ra cầu thang, bếp ga, sàn nhà tắm ướt). AI theo dõi tọa độ chân của bệnh nhân đối chiếu với các vùng nguy hiểm này.
+*   **Kiến trúc đề xuất**:
+    *   *Phát hiện vật thể*: YOLOv11 Segment tự động nhận diện khu vực nguy hiểm hoặc vẽ đa giác trên canvas.
+    *   *Thuật toán*: Point-in-Polygon (PIP) tính toán khoảng cách từ tọa độ chân của bệnh nhân (Landmarks 31, 32) tới ranh giới cảnh báo.
+*   **Ứng dụng**: Phát giọng nói cảnh báo trực tiếp từ loa: *"Cảnh báo: Bạn đang tiến gần khu vực cầu thang nguy hiểm!"*.
+
+#### 2. Giám Sát Đi Lang Thang Đêm Khuya (Nighttime Wandering Monitoring)
+*   **Mô tả**: Phát hiện bệnh nhân (đặc biệt là người sa sút trí tuệ/Alzheimer) rời khỏi phòng ngủ hoặc ra khỏi nhà vào các khung giờ không an toàn (ví dụ: từ 11:00 PM đến 5:00 AM).
+*   **Kiến trúc đề xuất**: Camera hồng ngoại nhìn đêm, YOLOv11 phát hiện người, kết hợp kiểm tra thời gian hệ thống.
+*   **Ứng dụng**: Gửi tin nhắn cảnh báo im lặng lập tức cho người nhà: *"Cảnh báo: Phát hiện bệnh nhân đi lang thang tại phòng khách lúc 2:30 sáng."*
+

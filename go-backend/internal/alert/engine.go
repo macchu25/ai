@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"go-backend/internal/cloud"
@@ -174,34 +175,188 @@ func (e *Engine) Process(camID primitive.ObjectID, modelName string, label strin
 	state, _ := e.storage.Get(ctx, camID)
 	if state == nil { state = &CameraState{} }
 
-	if float64(conf) > 0.85 && label != "normal" && label != "" {
+	isAbnormal := false
+	alertLabel := label
+
+	if modelName == "Remote Heart Rate Monitor (rPPG)" {
+		var hr, rr float64
+		// Parse "rPPG: 72.5 BPM | Resp: 16.2 RPM"
+		_, err := fmt.Sscanf(label, "rPPG: %f BPM | Resp: %f RPM", &hr, &rr)
+		if err == nil {
+			// Ngưỡng mặc định cho người bình thường
+			hrLowDanger := 50.0
+			hrLowWarning := 60.0
+			hrHighWarning := 100.0
+			hrHighDanger := 120.0
+
+			rrLowDanger := 10.0
+			rrLowWarning := 12.0
+			rrHighWarning := 20.0
+			rrHighDanger := 24.0
+
+			hrCriticalLow := 40.0
+			hrCriticalHigh := 140.0
+			rrCriticalLow := 6.0
+			rrCriticalHigh := 30.0
+
+			isPersonalized := false
+
+			// Tìm camera để lấy UserID
+			var camera model.Camera
+			errCam := e.db.Collection("cameras").FindOne(ctx, bson.M{"_id": camID}).Decode(&camera)
+			if errCam == nil {
+				// Tìm hồ sơ sức khỏe của bệnh nhân
+				var profile model.HealthProfile
+				errProfile := e.db.Collection("health_profiles").FindOne(ctx, bson.M{"user_id": camera.UserID}).Decode(&profile)
+				if errProfile == nil {
+					// Nếu có thông tin bệnh án, kích hoạt hướng cá nhân hóa
+					isPersonalized = true
+
+					// 1. Kiểm tra bệnh lý nền
+					hasHeartCondition := false
+					hasLungCondition := false
+					for _, cond := range profile.Conditions {
+						condLower := strings.ToLower(cond)
+						if strings.Contains(condLower, "heart") || strings.Contains(condLower, "tim") || strings.Contains(condLower, "mạch") {
+							hasHeartCondition = true
+						}
+						if strings.Contains(condLower, "asthma") || strings.Contains(condLower, "hen") || strings.Contains(condLower, "copd") || strings.Contains(condLower, "phổi") {
+							hasLungCondition = true
+						}
+					}
+
+					// 2. Kiểm tra thuốc điều trị
+					hasBetaBlocker := false
+					for _, med := range profile.Medications {
+						medLower := strings.ToLower(med)
+						if strings.Contains(medLower, "beta") || strings.Contains(medLower, "chẹn beta") {
+							hasBetaBlocker = true
+						}
+					}
+
+					// Áp dụng ngưỡng cá nhân hóa
+					if hasHeartCondition {
+						hrHighWarning = 95.0
+						hrHighDanger = 110.0
+						rrHighDanger = 22.0
+						hrCriticalHigh = 125.0
+					}
+					if hasLungCondition {
+						rrHighWarning = 18.0
+						rrHighDanger = 22.0
+						rrCriticalHigh = 26.0
+					}
+					if hasBetaBlocker {
+						hrLowWarning = 48.0
+						hrLowDanger = 40.0
+						hrCriticalLow = 32.0
+					}
+				}
+			}
+
+			// Đánh giá chỉ số sinh tồn dựa trên ngưỡng được thiết lập (Cá nhân hóa hoặc Người thường)
+			isHRDanger := hr > 0 && (hr < hrLowDanger || hr > hrHighDanger)
+			isHRWarning := hr > 0 && ((hr >= hrLowDanger && hr < hrLowWarning) || (hr > hrHighWarning && hr <= hrHighDanger))
+			isRRDanger := rr == 0.0 || (rr > 0 && (rr < rrLowDanger || rr > rrHighDanger))
+			isRRWarning := rr > 0 && ((rr >= rrLowDanger && rr < rrLowWarning) || (rr > rrHighWarning && rr <= rrHighDanger))
+
+			isCritical := (hr > 0 && (hr < hrCriticalLow || hr > hrCriticalHigh)) || rr == 0.0 || (rr > 0 && (rr < rrCriticalLow || rr > rrCriticalHigh))
+
+			if isHRDanger || isRRDanger {
+				isAbnormal = true
+				
+				personalStr := "Người thường"
+				if isPersonalized {
+					personalStr = "Cá nhân hóa"
+				}
+
+				if isCritical {
+					alertLabel = fmt.Sprintf("CẤP CỨU (%s): Ngừng tim/Suy hô hấp (Nhịp tim %.1f BPM | Nhịp thở %.1f RPM)", personalStr, hr, rr)
+				} else {
+					alertLabel = fmt.Sprintf("Nguy kịch (%s): Nhịp tim %.1f BPM | Nhịp thở %.1f RPM", personalStr, hr, rr)
+				}
+			} else if isHRWarning || isRRWarning {
+				isAbnormal = true
+				personalStr := "Người thường"
+				if isPersonalized {
+					personalStr = "Cá nhân hóa"
+				}
+				alertLabel = fmt.Sprintf("Cảnh báo (%s): Nhịp tim %.1f BPM | Nhịp thở %.1f RPM", personalStr, hr, rr)
+			} else {
+				// Chỉ số bình thường, không kích hoạt báo động khẩn cấp
+				// Nhưng ta vẫn có thể cập nhật trạng thái bình thường để xóa cảnh báo trước đó nếu có
+				if !state.SuspectStart.IsZero() {
+					state.SuspectStart = time.Time{}
+					state.AlertPaused = false
+					state.LocalAlertSent = false
+					metrics.ActiveAlerts.Dec()
+					e.broadcastToOwner(camID, []byte(`{"event":"clear_alert", "camera_id":"` + camID.Hex() + `"}`))
+					e.storage.Set(ctx, camID, state)
+				}
+				return
+			}
+		} else {
+			// Nếu parse lỗi, không báo động nhầm
+			return
+		}
+	} else {
+		// Các model khác (như Fall Detection hay Facial Pain Detector)
+		if label != "normal" && label != "" && float64(conf) > 0.85 {
+			isAbnormal = true
+		}
+	}
+
+	if isAbnormal {
 		if state.SuspectStart.IsZero() {
 			state.SuspectStart = time.Now()
 			state.AlertPaused = false
 			metrics.ActiveAlerts.Inc()
-			var camera model.Camera
-			if err := e.db.Collection("cameras").FindOne(ctx, bson.M{"_id": camID}).Decode(&camera); err != nil {
-				log.Printf("[Engine] Lỗi tìm camera %s: %v\n", camID.Hex(), err)
-				return
-			}
-			_, patientName := e.getDetailedInfo(camID, camera.UserID)
-			msg := fmt.Sprintf("🔍 <b>[Casos - THEO DÕI]</b>\n👤 <b>Đối tượng:</b> %s\n⚠️ <b>Dấu hiệu:</b> %s", html.EscapeString(patientName), html.EscapeString(label))
-			telephony.SendTelegramAlertCustom(e.getUserChatID(camera.UserID), msg, nil)
 		}
 		if state.AlertPaused { return }
-		if time.Since(state.SuspectStart) >= 7*time.Second {
+		
+		// Xác định thời gian chờ tối thiểu dựa trên mức độ nguy hiểm
+		requiredSeconds := 8.0
+		criticalAlertSeconds := 15.0
+
+		if modelName == "Remote Heart Rate Monitor (rPPG)" {
+			var hr, rr float64
+			_, err := fmt.Sscanf(label, "rPPG: %f BPM | Resp: %f RPM", &hr, &rr)
+			if err == nil {
+				isCritical := (hr > 0 && (hr < 40 || hr > 140)) || rr == 0.0 || (rr > 0 && (rr < 6 || rr > 30))
+				if isCritical {
+					requiredSeconds = 3.0
+					criticalAlertSeconds = 6.0
+				}
+			}
+		} else {
+			// Các mô hình khẩn cấp khác (như Fall Detection)
+			requiredSeconds = 3.0
+			criticalAlertSeconds = 6.0
+		}
+
+		durationAbnormal := time.Since(state.SuspectStart)
+
+		// 1. Sau requiredSeconds giây bất thường liên tục: Gửi tin nhắn Telegram THEO DÕI và còi báo động cục bộ
+		if durationAbnormal >= time.Duration(requiredSeconds)*time.Second {
 			if !state.LocalAlertSent {
 				var camera model.Camera
 				if err := e.db.Collection("cameras").FindOne(ctx, bson.M{"_id": camID}).Decode(&camera); err == nil {
 					go e.gateway.TriggerLocalAlarm(camera.UserID, camID)
+					
+					// Gửi Telegram Theo Dõi khi xác nhận bất thường kéo dài
+					_, patientName := e.getDetailedInfo(camID, camera.UserID)
+					msg := fmt.Sprintf("🔍 <b>[Casos - THEO DÕI]</b>\n👤 <b>Đối tượng:</b> %s\n⚠️ <b>Dấu hiệu bất thường:</b> %s\n⏱️ <i>(Xác nhận sau %.0f giây liên tục)</i>", html.EscapeString(patientName), html.EscapeString(alertLabel), requiredSeconds)
+					go telephony.SendTelegramAlertCustom(e.getUserChatID(camera.UserID), msg, nil)
 				}
 				e.broadcastToOwner(camID, []byte(`{"event":"local_warning", "camera_id":"` + camID.Hex() + `"}`))
 				state.LocalAlertSent = true
 			}
 		}
-		if time.Since(state.SuspectStart) >= 10*time.Second {
-			if state.LastAlert.IsZero() || time.Since(state.LastAlert) >= 5*time.Minute {
-				e.triggerAlert(camID, label, conf)
+		
+		// 2. Sau criticalAlertSeconds giây bất thường liên tục: Kích hoạt cuộc gọi khẩn cấp Twilio & Alert đỏ & Log vào DB
+		if durationAbnormal >= time.Duration(criticalAlertSeconds)*time.Second {
+			if state.LastAlert.IsZero() || time.Since(state.LastAlert) >= 3*time.Minute {
+				e.triggerAlert(camID, alertLabel, conf)
 				state.LastAlert = time.Now()
 			}
 		}

@@ -245,6 +245,7 @@ export default function DashboardLayout({
               { href: '/cameras', icon: <Video size={18} />, label: 'Cameras' },
               { href: '/recommendations', icon: <Monitor size={18} />, label: 'Store' },
               { href: '/analytics', icon: <Activity size={18} />, label: 'Analytics' },
+              { href: '/rppg', icon: <HeartPulse size={18} />, label: 'Heart Rate' },
               { href: '/incidents', icon: <AlertTriangle size={18} />, label: 'Incidents' },
               { href: '/docs', icon: <BookOpen size={18} />, label: 'Documents' },
             ].map(({ href, icon, label }) => (

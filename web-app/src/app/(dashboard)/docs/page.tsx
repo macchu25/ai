@@ -152,6 +152,57 @@ export default function DocsPage() {
           </div>
         )}
 
+        {isMatch("rppg đo nhịp tim nhịp thở không tiếp xúc chỉ số sinh tồn camera dataset cơ sở dữ liệu cohface pure ubfc-rppg") && (
+          <div className="doc-section">
+            <h2 id="rppg-vitals">Đo nhịp tim & nhịp thở (rPPG)</h2>
+            <p>
+              Hệ thống tích hợp mô hình AI nâng cao **Remote Photoplethysmography (rPPG)** cho phép giám sát các chỉ số sinh tồn của người bệnh hoàn toàn không tiếp xúc thông qua camera:
+            </p>
+            <ul>
+              <li><strong>Đo Nhịp Tim:</strong> AI tự động định vị khuôn mặt, phân tích sự thay đổi sắc tố mao mạch siêu nhỏ dưới da theo tuần hoàn máu (tín hiệu BVP) để tính toán nhịp tim (BPM) chính xác.</li>
+              <li><strong>Đo Nhịp Thở:</strong> Hệ thống sử dụng mô hình **Mediapipe Pose** xác định hai khớp vai để định vị lồng ngực. AI sẽ đo đạc độ phồng xẹp (biến thiên độ sáng) của ngực khi thở để tính tần số hô hấp (RPM).</li>
+              <li><strong>Click xem chi tiết:</strong> Người nhà có thể nhấp chuột trực tiếp vào ô nhịp tim hoặc nhịp thở trên Dashboard để mở rộng biểu đồ lớn dạng máy theo dõi y tế bệnh viện (ECG Grid), hiển thị toàn bộ lịch sử 40 điểm đo và các thống kê Cao nhất, Thấp nhất, Trung bình.</li>
+              <li><strong>Dataset huấn luyện rPPG:</strong> Mô hình DeepPhys được huấn luyện và kiểm định chéo trên các bộ cơ sở dữ liệu y sinh chuẩn quốc tế gồm **COHFACE** (Viện nghiên cứu IDIAP), **PURE** (Physiological Viability Reconstruction) và **UBFC-RPPG**, chứa video màu RGB đi kèm luồng đối chứng nhịp tim tiếp xúc thực tế (ECG/PPG Ground Truth).</li>
+            </ul>
+            <hr />
+          </div>
+        )}
+
+        {isMatch("biểu cảm đau đớn facial pain detector nhăn mặt nhíu mày híp mắt 6 điểm dataset cơ sở dữ liệu unbc-mcmaster pspi scale") && (
+          <div className="doc-section">
+            <h2 id="pain-detection">Nhận diện biểu cảm đau (Pain)</h2>
+            <p>
+              Bên cạnh các chỉ số sinh tồn, hệ thống sử dụng thuật toán **Mediapipe Face Mesh 3D** để theo dõi liên tục trạng thái căng thẳng hoặc đau đớn trên cơ mặt bệnh nhân:
+            </p>
+            <ul>
+              <li><strong>Thang điểm chuẩn y tế:</strong> Mức độ đau đớn được tính toán theo thang điểm từ <strong>0.0 đến 6.0</strong> (chuẩn Faces Pain Scale lâm sàng của Bieri và cộng sự).</li>
+              <li><strong>Cơ chế phân tích:</strong> AI đo đạc các biến đổi cơ mặt: *Brow Furrowing* (nhíu lông mày), *Eye Squinting* (híp chặt mắt do đau) và *Mouth Stretching* (hé miệng/méo miệng do đau) để tính toán điểm số đau đớn một cách khách quan.</li>
+              <li><strong>Báo động đỏ:</strong> Khi điểm số vượt ngưỡng **3.5 / 6.0** (biểu thị mức đau trung bình đến dữ dội), khung camera sẽ tự động chuyển sang màu đỏ và phát tín hiệu khẩn cấp về hệ thống.</li>
+              <li><strong>Cơ sở dữ liệu đau đớn:</strong> Các ngưỡng sắc thái cơ mặt nhăn nhó được chuẩn hóa dựa trên tập dữ liệu đau đớn lâm sàng chuẩn quốc tế **UNBC-McMaster Shoulder Pain Archive** (chứa hàng nghìn chuỗi khung hình biểu cảm của bệnh nhân bị chấn thương vai được dán nhãn lâm sàng theo thang điểm đau PSPI).</li>
+            </ul>
+            <hr />
+          </div>
+        )}
+
+        {isMatch("quy trình cảnh báo ngừng thở apnea nín thở 3 giây 6 giây khẩn cấp") && (
+          <div className="doc-section">
+            <h2 id="apnea-alert">Cảnh báo ngừng thở (Apnea)</h2>
+            <p>
+              Ngừng thở là một trong những tình huống khẩn cấp đe dọa trực tiếp đến tính mạng. Hệ thống được cấu hình để phản ứng tức thì khi bệnh nhân có dấu hiệu ngừng thở:
+            </p>
+            <ul>
+              <li><strong>Nhận diện nín thở:</strong> Nếu bệnh nhân nín thở hoặc bất động lồng ngực trong hơn 8 giây, camera AI sẽ hạ chỉ số nhịp thở về mức <strong>0.0 RPM (Đang nín thở / Đứng yên)</strong>.</li>
+              <li><strong>Quy trình xử lý khẩn cấp:</strong> 
+                <ul>
+                  <li>*Sau 3 giây bất thường:* Kích hoạt cảnh báo còi báo động tại chỗ (Local Warning) và gửi tin nhắn theo dõi qua Telegram.</li>
+                  <li>*Sau 6 giây bất thường liên tục:* Kích hoạt cuộc gọi cấp cứu Twilio tự động, đẩy thông báo đỏ làm nhấp nháy màn hình Dashboard và gửi ảnh bằng chứng hiện trường trực tiếp đến điện thoại người nhà qua Telegram.</li>
+                </ul>
+              </li>
+            </ul>
+            <hr />
+          </div>
+        )}
+
         {isMatch("câu hỏi thường gặp lỗi faq troubleshooting offline mất mạng") && (
           <div className="doc-section">
             <h2 id="faq">Câu hỏi thường gặp (FAQ)</h2>
@@ -333,6 +384,15 @@ export default function DocsPage() {
             )}
             {isMatch("thanh toán gói cước subscription nâng cấp mã qr hủy đăng ký otp") && (
               <li><button onClick={() => scrollTo('billing')} className={activeId === 'billing' ? 'active' : ''}>Thanh toán gói cước</button></li>
+            )}
+            {isMatch("rppg đo nhịp tim nhịp thở không tiếp xúc chỉ số sinh tồn camera dataset cơ sở dữ liệu cohface pure ubfc-rppg") && (
+              <li><button onClick={() => scrollTo('rppg-vitals')} className={activeId === 'rppg-vitals' ? 'active' : ''}>Nhịp tim & nhịp thở (rPPG)</button></li>
+            )}
+            {isMatch("biểu cảm đau đớn facial pain detector nhăn mặt nhíu mày híp mắt 6 điểm dataset cơ sở dữ liệu unbc-mcmaster pspi scale") && (
+              <li><button onClick={() => scrollTo('pain-detection')} className={activeId === 'pain-detection' ? 'active' : ''}>Nhận diện đau đớn</button></li>
+            )}
+            {isMatch("quy trình cảnh báo ngừng thở apnea nín thở 3 giây 6 giây khẩn cấp") && (
+              <li><button onClick={() => scrollTo('apnea-alert')} className={activeId === 'apnea-alert' ? 'active' : ''}>Cảnh báo ngừng thở</button></li>
             )}
             {isMatch("câu hỏi thường gặp lỗi faq troubleshooting offline mất mạng") && (
               <li><button onClick={() => scrollTo('faq')} className={activeId === 'faq' ? 'active' : ''}>FAQ & Khắc phục lỗi</button></li>

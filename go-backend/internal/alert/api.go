@@ -233,38 +233,65 @@ func (a *API) GetAIModels(c *gin.Context) {
 		return
 	}
 
-	// Nếu chưa có model nào, tạo mặc định
-	if len(models) == 0 {
-		defaultModels := []interface{}{
-			bson.M{
-				"name": "Fall Detection Engine",
-				"version": "2.1.0",
-				"type": "CNN-LSTM + MediaPipe",
-				"status": "Active",
-				"precision": "85.0%",
-				"latency": "25ms",
-			},
-			bson.M{
-				"name": "Human Pose Estimation",
-				"version": "1.4.2",
-				"type": "MediaPipe",
-				"status": "Active",
-				"precision": "94.2%",
-				"latency": "24ms",
-			},
-			bson.M{
-				"name": "YOLO Furniture Detector",
-				"version": "1.0.0",
-				"type": "YOLOv11-Nano",
-				"status": "Idle",
-				"precision": "92.0%",
-				"latency": "15ms",
-			},
+	defaultModels := []bson.M{
+		{
+			"name":      "Fall Detection Engine",
+			"version":   "2.1.0",
+			"type":      "CNN-LSTM + MediaPipe",
+			"status":    "Active",
+			"precision": "85.0%",
+			"latency":   "25ms",
+		},
+		{
+			"name":      "Human Pose Estimation",
+			"version":   "1.4.2",
+			"type":      "MediaPipe",
+			"status":    "Active",
+			"precision": "94.2%",
+			"latency":   "24ms",
+		},
+		{
+			"name":      "YOLO Furniture Detector",
+			"version":   "1.0.0",
+			"type":      "YOLOv11-Nano",
+			"status":    "Idle",
+			"precision": "92.0%",
+			"latency":   "15ms",
+		},
+		{
+			"name":      "Remote Heart Rate Monitor (rPPG)",
+			"version":   "1.0.0",
+			"type":      "DeepPhys Spatial-Temporal CNN",
+			"status":    "Idle",
+			"precision": "90.1%",
+			"latency":   "18ms",
+		},
+		{
+			"name":      "Facial Pain Detector",
+			"version":   "1.0.0",
+			"type":      "CNN-LSTM Pain Expression Classifier",
+			"status":    "Idle",
+			"precision": "88.5%",
+			"latency":   "20ms",
+		},
+	}
+
+	hasInserted := false
+	for _, dm := range defaultModels {
+		var existing bson.M
+		err := collection.FindOne(context.Background(), bson.M{"name": dm["name"]}).Decode(&existing)
+		if err == mongo.ErrNoDocuments {
+			collection.InsertOne(context.Background(), dm)
+			hasInserted = true
 		}
-		collection.InsertMany(context.Background(), defaultModels)
-		// Lấy lại sau khi insert
-		cursor, _ = collection.Find(context.Background(), bson.M{})
-		cursor.All(context.Background(), &models)
+	}
+
+	if hasInserted {
+		// Reload models list after seeding missing defaults
+		cursor, err = collection.Find(context.Background(), bson.M{})
+		if err == nil {
+			cursor.All(context.Background(), &models)
+		}
 	}
 
 	c.JSON(http.StatusOK, models)
