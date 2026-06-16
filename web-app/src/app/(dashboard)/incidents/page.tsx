@@ -232,6 +232,8 @@ export default function IncidentsPage() {
           toggleCamStatus={toggleCamStatus}
           handleDeleteCamera={handleDeleteCamera}
           onOpenWebcamTest={setActiveTestCam}
+          token={token}
+          onRefreshData={loadData}
         />
       </div>
 

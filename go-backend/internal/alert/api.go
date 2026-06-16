@@ -3,7 +3,9 @@ package alert
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -126,10 +128,11 @@ func (a *API) AIResult(c *gin.Context) {
 	}
 
 	var payload struct {
-		CameraID   string  `json:"CameraID"`
-		ModelName  string  `json:"ModelName"`
-		Label      string  `json:"Label"`
-		Confidence float32 `json:"Confidence"`
+		CameraID      string  `json:"CameraID"`
+		ModelName     string  `json:"ModelName"`
+		Label         string  `json:"Label"`
+		Confidence    float32 `json:"Confidence"`
+		EvidenceImage string  `json:"EvidenceImage,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&payload); err == nil {
 		camID, err := primitive.ObjectIDFromHex(payload.CameraID)
@@ -137,11 +140,22 @@ func (a *API) AIResult(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "ID Camera không hợp lệ"})
 			return
 		}
+
+		var imgBytes []byte
+		if payload.EvidenceImage != "" {
+			var errDec error
+			imgBytes, errDec = base64.StdEncoding.DecodeString(payload.EvidenceImage)
+			if errDec != nil {
+				log.Printf("[API] Lỗi giải mã ảnh bằng chứng Base64: %v\n", errDec)
+			}
+		}
+
 		a.engine.ResultCh <- AIResult{
-			CameraID:   camID,
-			ModelName:  payload.ModelName,
-			Label:      payload.Label,
-			Confidence: payload.Confidence,
+			CameraID:      camID,
+			ModelName:     payload.ModelName,
+			Label:         payload.Label,
+			Confidence:    payload.Confidence,
+			EvidenceImage: imgBytes,
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	} else {

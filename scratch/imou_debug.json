@@ -1,0 +1,20 @@
+{
+  "deviceList": [
+    {
+      "aplist": [],
+      "bindId": 1,
+      "channels": [
+        {
+          "channelId": "0",
+          "channelName": "Cruiser 2C 3MP-8DEF",
+          "deviceId": "E8F77BKPCGC8DEF",
+          "picType": "",
+          "picUrl": "",
+          "productId": "QLDuttGT"
+        }
+      ],
+      "deviceId": "E8F77BKPCGC8DEF"
+    }
+  ],
+  "count": 1
+}

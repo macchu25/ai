@@ -8,6 +8,7 @@ import os
 from collections import deque
 
 import torch
+torch.set_num_threads(1)
 import mediapipe as mp
 from mediapipe.tasks.python import BaseOptions
 from mediapipe.tasks.python.vision import (
@@ -478,24 +479,42 @@ if __name__ == "__main__":
     parser.add_argument("--camera_id", type=str, help="ID của Camera trong Database")
     parser.add_argument("--source", type=str, default="0", help="Nguồn video (0: webcam, hoặc RTSP URL, hoặc file video)")
     parser.add_argument("--headless", action="store_true", help="Chạy không có giao diện hiển thị GUI")
+    parser.add_argument("--port", type=int, default=5000, help="Cổng chạy server MJPEG stream")
     args = parser.parse_known_args()[0]
 
     # Tự động tìm ID của Camera mình vừa tạo trên Web NextJS để trỏ AI vào
     target_cam_id = args.camera_id if args.camera_id else "default_cam_id"
-    if not args.camera_id:
-        try:
-            # Lưu ý: Endpoint này giờ yêu cầu JWT, nên Python script chạy độc lập sẽ bị 401
-            # trừ khi ta cung cấp token hoặc dùng ID cố định qua CLI.
-            res = requests.get(f"{API_BASE}/cameras", timeout=2)
-            if res.status_code == 200:
-                cam_list = res.json()
-                if isinstance(cam_list, list) and len(cam_list) > 0:
-                    target_cam_id = cam_list[-1]["id"] # Lấy camera tạo gần nhất
-                    print(f"-> Lien ket truc tiep với Dashboard thanh cong! Dang stream cho: {cam_list[-1]['name']}")
+    try:
+        # Gọi API lấy danh sách camera kèm X-API-Key bảo mật
+        headers = {"X-API-Key": "ai_secret_key_12345"}
+        res = requests.get(f"{API_BASE}/cameras", headers=headers, timeout=2)
+        if res.status_code == 200:
+            cam_list = res.json()
+            selected_cam = None
+            if args.camera_id:
+                # Tìm camera theo ID được truyền vào
+                selected_cam = next((c for c in cam_list if c.get("id") == args.camera_id), None)
             else:
-                print(f"! Khong the tu dong lay ID camera (HTTP {res.status_code}). Vui long dung --camera_id <id>")
-        except Exception as e:
-            print(f"! Khong ket noi duoc Backend: {e}")
+                # Tự động tìm camera có cấu hình RTSP URL hợp lệ đầu tiên
+                for cam in cam_list:
+                    rtsp_val = cam.get("rtsp_url")
+                    if rtsp_val and rtsp_val != "webcam" and rtsp_val.startswith("rtsp://"):
+                        selected_cam = cam
+                        break
+                if not selected_cam and isinstance(cam_list, list) and len(cam_list) > 0:
+                    selected_cam = cam_list[-1]
+            
+            if selected_cam:
+                target_cam_id = selected_cam["id"]
+                print(f"-> Lien ket truc tiep voi Dashboard thanh cong! Dang stream cho: {selected_cam.get('name')}")
+                # Tự động gán nguồn video nếu người dùng chưa chỉ định nguồn khác webcam
+                if args.source == "0" and selected_cam.get("rtsp_url") and selected_cam.get("rtsp_url") != "webcam":
+                    args.source = selected_cam["rtsp_url"]
+                    print(f"-> Tu dong phat hien nguon RTSP camera tu database: {args.source}")
+        else:
+            print(f"! Khong the lay thong tin camera (HTTP {res.status_code}).")
+    except Exception as e:
+        print(f"! Khong ket noi duoc Backend hoac lay thong tin camera: {e}")
 
     print("-> STAGE 1: Checking environment...")
     import sys
@@ -592,7 +611,7 @@ if __name__ == "__main__":
         def video_feed():
             return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
         
-        threading.Thread(target=lambda: app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False), daemon=True).start()
+        threading.Thread(target=lambda: app.run(host='0.0.0.0', port=args.port, debug=False, use_reloader=False), daemon=True).start()
     except ImportError:
         pass
 
@@ -608,17 +627,24 @@ if __name__ == "__main__":
     import requests
     import threading
 
-    def push_to_go(lbl, cnf):
+    def push_to_go(lbl, cnf, img_frame=None):
         try:
+            payload = {
+                "CameraID": target_cam_id,
+                "ModelName": "Fall Detection Engine",
+                "Label": lbl,
+                "Confidence": float(cnf)
+            }
+            if img_frame is not None:
+                import base64
+                ret, jpeg_buffer = cv2.imencode('.jpg', img_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                if ret:
+                    payload["EvidenceImage"] = base64.b64encode(jpeg_buffer).decode('utf-8')
+            
             requests.post(f"{API_BASE}/ai-result", 
-                json={
-                    "CameraID": target_cam_id,
-                    "ModelName": "Fall Detection Engine",
-                    "Label": lbl,
-                    "Confidence": float(cnf)
-                }, 
+                json=payload, 
                 headers={"X-API-Key": "ai_secret_key_12345"},
-                timeout=0.1)
+                timeout=2.0)
         except: pass
 
     prev_time = time.time()
@@ -651,7 +677,8 @@ if __name__ == "__main__":
             is_alert = any(alert in last_label.lower() for alert in alert_labels)
             
             if is_alert and last_label != "waiting":
-                threading.Thread(target=push_to_go, args=(last_label, last_conf)).start()
+                frame_copy = small_frame.copy() if small_frame is not None else None
+                threading.Thread(target=push_to_go, args=(last_label, last_conf, frame_copy)).start()
 
         # Áp dụng kết quả AI gần nhất để vẽ lên hình
         label, conf, landmarks, extra, state = last_label, last_conf, last_landmarks, last_extra, last_state
@@ -729,7 +756,8 @@ if __name__ == "__main__":
 
         # Lưu bản sao hình ảnh hiện tại cho Web xem
         try:
-            global_frame = frame.copy()
+            # Thu nhỏ ảnh xuống 640x480 để giảm tải CPU khi mã hóa JPEG truyền về Web
+            global_frame = cv2.resize(frame, (640, 480))
         except: pass
 
         if not args.headless:

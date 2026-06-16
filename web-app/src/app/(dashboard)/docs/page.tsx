@@ -359,6 +359,66 @@ export default function DocsPage() {
               Bạn có thể tải phần mềm <strong>Fing</strong> trên cửa hàng ứng dụng điện thoại (đảm bảo điện thoại kết nối cùng Wifi). Mở Fing lên quét, ứng dụng sẽ liệt kê tất cả các thiết bị cùng địa chỉ IP tương ứng.
               Ngoài ra, bạn cũng có thể đăng nhập vào trang quản trị của Modem (thường truy cập qua <code>192.168.1.1</code> bằng trình duyệt) để tra cứu danh sách thiết bị.
             </p>
+            <hr />
+          </div>
+        )}
+
+        {isMatch("mở cổng modem port forwarding nat virtual server ip tĩnh ngoại mạng ddns") && (
+          <div className="doc-section">
+            <h2 id="port-forwarding">Cấu hình: Mở cổng Modem (Port Forwarding)</h2>
+            <p>
+              Để hệ thống đám mây của Casos có thể kết nối và phân tích luồng video từ Camera của bạn từ bất kỳ đâu (ngoài mạng nội bộ) mà không cần cài đặt phần cứng Bridge, bạn cần thực hiện cấu hình mở cổng (Port Forwarding / NAT) trên Modem nhà mạng.
+            </p>
+            
+            <h3>Các bước thực hiện mở cổng:</h3>
+            <ol>
+              <li>
+                <strong>Cố định IP Camera:</strong> Truy cập cài đặt Camera hoặc trang quản trị Modem để thiết lập IP tĩnh (Static IP) cho Camera (ví dụ: <code>192.168.1.100</code>). Việc này đảm bảo IP Camera không bị thay đổi mỗi khi khởi động lại.
+              </li>
+              <li>
+                <strong>Xác định cổng RTSP:</strong> Cổng mặc định của RTSP thường là <code>554</code>. Một số dòng Camera cho phép thay đổi cổng này trong phần cài đặt nâng cao.
+              </li>
+              <li>
+                <strong>Cấu hình Port Forwarding trên Modem:</strong>
+                <ul>
+                  <li>Truy cập trang cấu hình Modem (thường là <code>192.168.1.1</code> hoặc <code>192.168.0.1</code>) bằng trình duyệt web.</li>
+                  <li>Tìm mục <strong>Port Forwarding</strong>, <strong>NAT</strong>, <strong>Virtual Server</strong>, hoặc <strong>DMZ</strong>.</li>
+                  <li>Tạo một quy tắc mới (Rule):
+                    <ul>
+                      <li><em>IP Address:</em> Nhập địa chỉ IP tĩnh của Camera (ví dụ: <code>192.168.1.100</code>).</li>
+                      <li><em>Internal Port:</em> <code>554</code> (hoặc cổng RTSP của Camera).</li>
+                      <li><em>External Port:</em> <code>554</code> (hoặc một cổng tùy chọn khác như <code>8554</code> để tăng tính bảo mật).</li>
+                      <li><em>Protocol:</em> Chọn <code>TCP</code> hoặc <code>ALL</code> (cả TCP và UDP).</li>
+                    </ul>
+                  </li>
+                  <li>Lưu lại cấu hình.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Xác định địa chỉ IP công cộng (Public IP):</strong> 
+                Truy cập vào trang <a href="https://ip.me" target="_blank" rel="noreferrer">ip.me</a> hoặc <a href="https://whatismyip.com" target="_blank" rel="noreferrer">whatismyip.com</a> để lấy địa chỉ IP WAN hiện tại của nhà bạn (ví dụ: <code>14.226.50.88</code>).
+              </li>
+            </ol>
+
+            <h3>Đường dẫn RTSP ngoại mạng (Public RTSP URL):</h3>
+            <p>Sau khi mở cổng thành công, đường dẫn RTSP để khai báo vào ứng dụng Casos sẽ có dạng:</p>
+            <div className="code-block">
+              <code>rtsp://[username]:[password]@[IP_Công_Cộng]:[External_Port]/[đường_dẫn_luồng]</code>
+              <br /><br />
+              <span className="comment">// Ví dụ thực tế với cổng mặc định 554:</span><br />
+              <code>rtsp://admin:safetycode123@14.226.50.88:554/cam/realmonitor?channel=1&subtype=0</code>
+              <br /><br />
+              <span className="comment">// Ví dụ thực tế với cổng ngoài được đổi thành 8554:</span><br />
+              <code>rtsp://admin:safetycode123@14.226.50.88:8554/cam/realmonitor?channel=1&subtype=0</code>
+            </div>
+
+            <div className="warning-box" style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+              <strong style={{ color: '#b45309' }}>⚠ Lưu ý cực kỳ quan trọng về bảo mật & tính ổn định:</strong>
+              <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', color: '#78350f' }}>
+                <li><strong>Thay đổi mật khẩu mặc định:</strong> Khi đã mở cổng ra Internet, Camera sẽ dễ bị tấn công nếu bạn dùng mật khẩu mặc định (như <code>admin</code>, <code>123456</code>). Hãy đổi sang một mật khẩu cực kỳ mạnh.</li>
+                <li><strong>IP mạng WAN động (Dynamic IP):</strong> Modem thông thường sẽ tự động thay đổi địa chỉ IP công cộng sau mỗi vài ngày hoặc khi khởi động lại Modem. Để giải quyết, bạn nên đăng ký dịch vụ tên miền động <strong>DDNS</strong> (như No-IP, DynDNS, hoặc DDNS miễn phí tích hợp sẵn trên Modem/Camera) để có một tên miền cố định thay thế cho IP công cộng (ví dụ: <code>nharieng.ddns.net</code>).</li>
+              </ul>
+            </div>
           </div>
         )}
       </main>
@@ -421,6 +481,9 @@ export default function DocsPage() {
             )}
             {isMatch("cách lấy ip camera wifi fing router default gateway") && (
               <li><button onClick={() => scrollTo('find-ip')} className={activeId === 'find-ip' ? 'active' : ''}>Cách lấy IP mạng</button></li>
+            )}
+            {isMatch("mở cổng modem port forwarding nat virtual server ip tĩnh ngoại mạng ddns") && (
+              <li><button onClick={() => scrollTo('port-forwarding')} className={activeId === 'port-forwarding' ? 'active' : ''}>Mở cổng Modem</button></li>
             )}
           </ul>
           

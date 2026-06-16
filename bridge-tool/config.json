@@ -1,0 +1,5 @@
+{
+  "rtsp_url": "rtsp://admin:L2D2AD70@192.168.1.79:554/cam/realmonitor?channel=1&subtype=1",
+  "user_id": "69e9945f8ad13b95b7bc9f92",
+  "backend_url": "http://localhost:8080/api/v1/bridge/register"
+}

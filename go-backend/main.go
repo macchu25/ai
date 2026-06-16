@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sync"
 	"time"
 
@@ -33,10 +37,52 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+func startCloudflareTunnel() {
+	if _, err := os.Stat("./cloudflared.exe"); os.IsNotExist(err) {
+		return
+	}
+
+	// Dọn dẹp các tiến trình cloudflared cũ để tránh bị treo
+	exec.Command("taskkill", "/F", "/IM", "cloudflared.exe").Run()
+	time.Sleep(500 * time.Millisecond)
+
+	logger.Log.Info("[Tunnel] Phát hiện cloudflared.exe, đang khởi tạo đường hầm công khai...")
+	cmd := exec.Command("./cloudflared.exe", "tunnel", "--url", "http://127.0.0.1:8080")
+	
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		logger.Log.Errorf("[Tunnel] Lỗi tạo pipe cho cloudflared: %v", err)
+		return
+	}
+
+	if err := cmd.Start(); err != nil {
+		logger.Log.Errorf("[Tunnel] Không thể chạy cloudflared.exe: %v", err)
+		return
+	}
+
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		urlRegex := regexp.MustCompile(`https://[a-zA-Z0-9-]+\.trycloudflare\.com`)
+		
+		for scanner.Scan() {
+			line := scanner.Text()
+			match := urlRegex.FindString(line)
+			if match != "" {
+				fmt.Println("\n=======================================================================")
+				fmt.Printf("   [+] GO BACKEND PUBLIC URL: %s\n", match)
+				fmt.Println("=======================================================================\n")
+			}
+		}
+	}()
+}
+
 func main() {
 	// 0. Initialize Logger
 	logger.Init()
 	defer logger.Log.Sync()
+
+	// Tự động chạy Cloudflare Tunnel nếu có file cloudflared.exe
+	startCloudflareTunnel()
 
 	// 1. Load environment variables
 	if err := godotenv.Load(); err != nil {
@@ -163,6 +209,7 @@ func main() {
 	}
 
 	r.GET("/api/v1/ai-models", alertAPI.GetAIModels)
+	r.GET("/api/v1/cameras", camAPI.GetCameras)
 
 	r.GET("/api/v1/user/check-payment", userHandler.CheckPayment)
 

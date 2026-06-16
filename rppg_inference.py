@@ -8,6 +8,7 @@ import os
 from collections import deque
 
 import torch
+torch.set_num_threads(1)
 import mediapipe as mp
 from scipy.signal import butter, filtfilt
 
@@ -800,7 +801,7 @@ if __name__ == "__main__":
             # Draw warmup message on screen
             cv2.putText(frame, "Warming up camera sensor...", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 1, lineType=cv2.LINE_AA)
-            global_frame = frame.copy()
+            global_frame = cv2.resize(frame, (640, 480))
             if not args.headless:
                 cv2.imshow("Remote Heart Rate Monitor (rPPG)", frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -888,8 +889,8 @@ if __name__ == "__main__":
             threading.Thread(target=push_pain_to_go, args=(pain_score,), daemon=True).start()
             last_pain_push_time = curr_time
             
-        # Save a copy for virtual streaming
-        global_frame = frame.copy()
+        # Save a copy for virtual streaming (resized to 640x480 to optimize CPU load)
+        global_frame = cv2.resize(frame, (640, 480))
         
         if not args.headless:
             cv2.imshow("Remote Heart Rate Monitor (rPPG)", frame)

@@ -1,9 +1,15 @@
 package camera
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
+
+	"go-backend/internal/auth"
 
 	"github.com/gin-gonic/gin"
 	"go-backend/internal/model"
@@ -23,10 +29,10 @@ func NewAPI(db *mongo.Database, manager *Manager) *API {
 }
 
 func (a *API) RegisterRoutes(router *gin.RouterGroup) {
-	router.GET("/cameras", a.GetCameras)
 	router.GET("/cameras/discovery", a.DiscoverCameras) // Route mới
 	router.POST("/cameras", a.AddCamera)
 	router.DELETE("/cameras/:id", a.DeleteCamera)
+	router.POST("/cameras/imou/devices", a.GetImouDevices)
 }
 
 // DiscoverCameras thực hiện quét mạng và trả về danh sách IP camera tìm thấy
@@ -40,20 +46,42 @@ func (a *API) DiscoverCameras(c *gin.Context) {
 }
 
 func (a *API) GetCameras(c *gin.Context) {
+	apiKey := c.GetHeader("X-API-Key")
+	expectedKey := os.Getenv("INTERNAL_API_KEY")
+
+	var filter bson.M
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Không tìm thấy userID"})
-		return
+		// Try to extract from Authorization header manually
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString := parts[1]
+				if decodedUserID, err := auth.ValidateToken(tokenString); err == nil {
+					userID = decodedUserID
+					exists = true
+				}
+			}
+		}
 	}
 
-	objID, err := primitive.ObjectIDFromHex(userID.(string))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID người dùng không hợp lệ"})
+	if exists {
+		objID, err := primitive.ObjectIDFromHex(userID.(string))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ID người dùng không hợp lệ"})
+			return
+		}
+		filter = bson.M{"user_id": objID}
+	} else if expectedKey != "" && apiKey == expectedKey {
+		filter = bson.M{}
+	} else {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: Invalid or Missing credentials"})
 		return
 	}
 
 	var cams []model.Camera = []model.Camera{}
-	cursor, err := a.db.Collection("cameras").Find(context.Background(), bson.M{"user_id": objID})
+	cursor, err := a.db.Collection("cameras").Find(context.Background(), filter)
 	if err == nil {
 		cursor.All(context.Background(), &cams)
 	}
@@ -240,7 +268,7 @@ func (a *API) RegisterBridge(c *gin.Context) {
 	filter := bson.M{"user_id": objID, "name": "Cardiac Sync Camera"}
 	update := bson.M{
 		"$set": bson.M{
-			"url":         streamURL,
+			"rtsp_url":    streamURL,
 			"type":        "bridge",
 			"status":      "online",
 			"bridge_url":  payload.URL,
@@ -260,4 +288,50 @@ func (a *API) RegisterBridge(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Bridge registered successfully", "stream_url": streamURL})
+}
+
+func (a *API) GetImouDevices(c *gin.Context) {
+	var req struct {
+		AppID     string `json:"app_id" binding:"required"`
+		AppSecret string `json:"app_secret" binding:"required"`
+		Region    string `json:"region"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Thiếu App ID hoặc App Secret"})
+		return
+	}
+
+	// Forward to Python service
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi dữ liệu"})
+		return
+	}
+
+	resp, err := http.Post("http://localhost:8001/imou/devices", "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Không thể kết nối tới máy chủ AI-Brain"})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errorDetail struct {
+			Detail string `json:"detail"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errorDetail); err == nil {
+			c.JSON(resp.StatusCode, gin.H{"error": errorDetail.Detail})
+			return
+		}
+		c.JSON(resp.StatusCode, gin.H{"error": "Lỗi xác thực từ IMOU Cloud"})
+		return
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể đọc dữ liệu từ máy chủ AI-Brain"})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }

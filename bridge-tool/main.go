@@ -19,13 +19,13 @@ const (
 	go2rtcExe      = "go2rtc.exe"
 	cloudflaredExe = "cloudflared.exe"
 	configFile     = "go2rtc.yaml"
-	backendURL     = "http://localhost:8080/api/v1/bridge/register"
 )
 
 // Config represents the user's local config
 type Config struct {
-	RTSPUrl string `json:"rtsp_url"`
-	UserID  string `json:"user_id"`
+	RTSPUrl    string `json:"rtsp_url"`
+	UserID     string `json:"user_id"`
+	BackendURL string `json:"backend_url"`
 }
 
 func main() {
@@ -93,15 +93,15 @@ func main() {
 					fmt.Println("======================================\n")
 					
 					// 6. Send URL to Backend
-					registerBridgeURL(config.UserID, tunnelURL)
+					registerBridgeURL(config.BackendURL, config.UserID, tunnelURL)
 				}
 			}
 		}
-	}()
+	}
 
 	// Wait for user to exit
-	fmt.Println("[*] Press ENTER to stop the bridge...")
-	bufio.NewReader(os.Stdin).ReadBytes('\n')
+	fmt.Println("[*] Bridge is running. Press Ctrl+C to stop...")
+	select {}
 }
 
 func loadConfig() Config {
@@ -110,8 +110,9 @@ func loadConfig() Config {
 	if err != nil {
 		fmt.Println("[-] config.json not found. Creating a default one...")
 		defaultConfig := Config{
-			RTSPUrl: "rtsp://username:password@192.168.1.100:554/stream",
-			UserID:  "test-user-123",
+			RTSPUrl:    "rtsp://username:password@192.168.1.100:554/stream",
+			UserID:     "test-user-123",
+			BackendURL: "http://localhost:8080/api/v1/bridge/register",
 		}
 		data, _ := json.MarshalIndent(defaultConfig, "", "  ")
 		os.WriteFile("config.json", data, 0644)
@@ -121,6 +122,9 @@ func loadConfig() Config {
 
 	var config Config
 	json.Unmarshal(file, &config)
+	if config.BackendURL == "" {
+		config.BackendURL = "http://localhost:8080/api/v1/bridge/register"
+	}
 	if strings.Contains(config.RTSPUrl, "192.168.1.100") {
 		fmt.Println("[!] Warning: You are using the default RTSP URL in config.json. Make sure this is correct.")
 	}
@@ -134,7 +138,7 @@ func setupGo2rtcConfig(rtspURL string) {
 	os.WriteFile(configFile, []byte(configStr), 0644)
 }
 
-func registerBridgeURL(userID, url string) {
+func registerBridgeURL(backendURL, userID, url string) {
 	fmt.Println("[*] Registering tunnel URL with Backend API...")
 	
 	payload := map[string]string{

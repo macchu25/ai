@@ -1,0 +1,18 @@
+# AI Hub Vitals and Fall Detection dependencies
+opencv-python
+numpy
+requests
+torch
+mediapipe
+scipy
+flask
+flask-cors
+pygame
+ultralytics
+
+# AI Brain and gRPC dependencies
+chromadb
+fastapi
+uvicorn
+pydantic
+sentence-transformers

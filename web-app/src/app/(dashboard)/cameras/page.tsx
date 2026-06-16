@@ -15,6 +15,7 @@ export default function CamerasGridPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
   const [discoveredIps, setDiscoveredIps] = useState<string[]>([]);
+  const [streamMode, setStreamMode] = useState<'rtsp' | 'api'>('rtsp');
 
   const handleScan = async () => {
     setIsScanning(true);
@@ -158,6 +159,24 @@ export default function CamerasGridPage() {
           )}
         </div>
       )}
+      {/* Bộ chọn chế độ Stream */}
+      <div className="stream-mode-selector-container">
+        <span className="selector-label">Chế độ hiển thị luồng:</span>
+        <div className="stream-mode-tabs">
+          <button 
+            className={`btn-mode-tab ${streamMode === 'rtsp' ? 'active' : ''}`} 
+            onClick={() => setStreamMode('rtsp')}
+          >
+            <span>Luồng RTSP (HLS Cloud)</span>
+          </button>
+          <button 
+            className={`btn-mode-tab ${streamMode === 'api' ? 'active' : ''}`} 
+            onClick={() => setStreamMode('api')}
+          >
+            <span>Luồng API (MJPEG Local)</span>
+          </button>
+        </div>
+      </div>
 
       {isLoading ? (
         <div className="loading-grid">
@@ -168,16 +187,50 @@ export default function CamerasGridPage() {
         <div className={`cameras-layout ${viewMode}`}>
           {cameras.length > 0 ? (
             cameras.map((cam: any) => {
-              // Xác định luồng là MJPEG hay HLS
-              const isMJPEG = cam.rtspUrl && (cam.rtspUrl.startsWith('http') || cam.rtspUrl.includes(':5000'));
-              const streamUrl = isMJPEG 
-                ? (cam.rtspUrl.startsWith('http') ? cam.rtspUrl : `http://${cam.rtspUrl}`)
-                : `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8?token=${token}&t=${Date.now()}`;
+              // HLS Stream Url (RTSP)
+              const rtspStreamUrl = `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8?token=${token}&t=${Date.now()}`;
+              
+              // API Stream Url (MJPEG)
+              const actualRtspUrl = cam.rtsp_url || cam.rtspUrl || '';
+              const apiStreamUrl = actualRtspUrl && (actualRtspUrl.startsWith('http') || actualRtspUrl.includes(':5000'))
+                ? (actualRtspUrl.startsWith('http') ? actualRtspUrl : `http://${actualRtspUrl}`)
+                : `http://localhost:5000/video_feed`;
+
+              const streamUrl = streamMode === 'rtsp' ? rtspStreamUrl : apiStreamUrl;
+              const isMJPEG = streamMode === 'api';
+
+              const isOnline = cam.status === 'online';
 
               return (
                 <div key={cam.id} className="camera-grid-item">
                   <div className="camera-video-container">
-                    <VideoPlayer url={streamUrl} name={cam.name} isMJPEG={isMJPEG} />
+                    <div className="stream-type-tag">
+                      {isMJPEG ? 'API (MJPEG)' : 'RTSP (HLS)'}
+                    </div>
+                    {isOnline ? (
+                      <VideoPlayer url={streamUrl} name={cam.name} isMJPEG={isMJPEG} />
+                    ) : (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '240px',
+                        background: 'rgba(15, 23, 42, 0.05)',
+                        border: '1px solid rgba(0, 0, 0, 0.05)',
+                        borderRadius: '16px',
+                        color: '#64748b',
+                        padding: '20px',
+                        textAlign: 'center',
+                        gap: '8px'
+                      }}>
+                        <AlertTriangle size={36} color="#ef4444" />
+                        <span style={{ fontWeight: 700, color: '#1e293b' }}>
+                          Camera Ngoại Tuyến (Offline)
+                        </span>
+                        <span style={{ fontSize: '0.85rem' }}>{cam.name}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -208,6 +261,74 @@ export default function CamerasGridPage() {
           min-height: calc(100vh - 120px);
           display: flex;
           flex-direction: column;
+        }
+
+        .stream-mode-selector-container {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 24px;
+          background: rgba(255, 255, 255, 0.4);
+          backdrop-filter: blur(10px);
+          padding: 8px 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.5);
+          width: fit-content;
+        }
+
+        .selector-label {
+          font-size: 0.8rem;
+          font-weight: 800;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .stream-mode-tabs {
+          display: flex;
+          gap: 6px;
+        }
+
+        .stream-mode-tabs .btn-mode-tab {
+          background: transparent;
+          border: none;
+          padding: 8px 14px;
+          border-radius: 10px;
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .stream-mode-tabs .btn-mode-tab:hover {
+          color: #1e293b;
+          background: rgba(255, 255, 255, 0.6);
+        }
+
+        .stream-mode-tabs .btn-mode-tab.active {
+          background: #2563eb;
+          color: white;
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+        }
+
+        .camera-grid-item {
+          position: relative;
+        }
+
+        .stream-type-tag {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          background: rgba(15, 23, 42, 0.75);
+          color: white;
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          z-index: 10;
+          backdrop-filter: blur(4px);
+          pointer-events: none;
         }
 
         .header-actions {

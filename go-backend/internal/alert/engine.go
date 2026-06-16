@@ -24,10 +24,11 @@ import (
 )
 
 type AIResult struct {
-	CameraID   primitive.ObjectID
-	ModelName  string
-	Label      string
-	Confidence float32
+	CameraID      primitive.ObjectID
+	ModelName     string
+	Label         string
+	Confidence    float32
+	EvidenceImage []byte
 }
 
 type Engine struct {
@@ -122,7 +123,7 @@ func NewEngine(db *mongo.Database, hub *ws.Hub, hls *stream.HLSServer) *Engine {
 func (e *Engine) Start() {
 	go func() {
 		for result := range e.ResultCh {
-			e.Process(result.CameraID, result.ModelName, result.Label, result.Confidence)
+			e.Process(result.CameraID, result.ModelName, result.Label, result.Confidence, result.EvidenceImage)
 		}
 	}()
 }
@@ -157,7 +158,7 @@ func (e *Engine) getMedicalSummaryPlain(userID primitive.ObjectID) string {
 	return fmt.Sprintf("Nhóm máu: %s. Tiền sử bệnh: %s.", bloodType, history)
 }
 
-func (e *Engine) Process(camID primitive.ObjectID, modelName string, label string, conf float32) {
+func (e *Engine) Process(camID primitive.ObjectID, modelName string, label string, conf float32, imgBytes []byte) {
 	ctx := context.Background()
 
 	// KIỂM TRA MODEL CÓ ĐANG ACTIVE KHÔNG
@@ -356,7 +357,7 @@ func (e *Engine) Process(camID primitive.ObjectID, modelName string, label strin
 		// 2. Sau criticalAlertSeconds giây bất thường liên tục: Kích hoạt cuộc gọi khẩn cấp Twilio & Alert đỏ & Log vào DB
 		if durationAbnormal >= time.Duration(criticalAlertSeconds)*time.Second {
 			if state.LastAlert.IsZero() || time.Since(state.LastAlert) >= 3*time.Minute {
-				e.triggerAlert(camID, alertLabel, conf)
+				e.triggerAlert(camID, alertLabel, conf, imgBytes)
 				state.LastAlert = time.Now()
 			}
 		}
@@ -373,7 +374,7 @@ func (e *Engine) Process(camID primitive.ObjectID, modelName string, label strin
 	}
 }
 
-func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float32) {
+func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float32, imgBytes []byte) {
 	var cameraDoc model.Camera
 	if err := e.db.Collection("cameras").FindOne(context.Background(), bson.M{"_id": camID}).Decode(&cameraDoc); err != nil {
 		log.Printf("[Engine] Lỗi triggerAlert: không tìm thấy camera %s: %v\n", camID.Hex(), err)
@@ -393,9 +394,22 @@ func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float
 	}
 	go telephony.SendTelegramAlertCustom(chatID, msg, buttons)
 	
-	imgData, err := os.ReadFile("audio/mockup.png")
+	evidencePath := "audio/mockup.png"
+	caption := "🚨 BẰNG CHỨNG"
+	if len(imgBytes) > 0 {
+		evidencePath = "audio/evidence_temp.jpg"
+		err := os.WriteFile(evidencePath, imgBytes, 0644)
+		if err != nil {
+			log.Printf("[Engine] Lỗi ghi file ảnh bằng chứng: %v\n", err)
+			evidencePath = "audio/mockup.png"
+		} else {
+			caption = "🚨 BẰNG CHỨNG THỰC TẾ"
+		}
+	}
+
+	imgData, err := os.ReadFile(evidencePath)
 	if err == nil {
-		go telephony.SendTelegramPhotoCustom(chatID, "🚨 BẰNG CHỨNG", imgData, buttons)
+		go telephony.SendTelegramPhotoCustom(chatID, caption, imgData, buttons)
 	} else {
 		log.Printf("[Engine] Không thể đọc ảnh bằng chứng: %v\n", err)
 	}
@@ -404,7 +418,7 @@ func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float
 
 	// HYBRID CLOUD: Đẩy bằng chứng lên S3/Firebase
 	go func() {
-		e.cloudSync.UploadIncidentEvidence("audio/mockup.png")
+		e.cloudSync.UploadIncidentEvidence(evidencePath)
 	}()
 
 	// ─── LƯU INCIDENT VÀO VECTOR DB ───

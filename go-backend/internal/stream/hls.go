@@ -1,10 +1,12 @@
 package stream
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 	"go-backend/internal/logger"
 )
@@ -104,31 +106,46 @@ func (s *HLSServer) StartHLS(ctx context.Context, camID string, rtspURL string) 
 			
 			var args []string
 			if len(rtspURL) >= 4 && rtspURL[:4] == "http" {
-				// Cấu hình tối ưu cho luồng HTTP/MJPEG từ AI
-				args = []string{
-					"-y",
-					"-f", "mjpeg",
-					"-i", rtspURL,
-					"-c:v", "libx264",
-					"-preset", "ultrafast",
-					"-tune", "zerolatency",
-					"-b:v", "1000k",
-					"-hls_time", "1",
-					"-hls_list_size", "5",
-					"-hls_flags", "delete_segments+append_list+omit_endlist+discont_start",
-					"-f", "hls",
-					playlistPath,
+				if strings.Contains(rtspURL, "m3u8") || strings.Contains(rtspURL, "lechange") || strings.Contains(rtspURL, "easy4ip") {
+					// HLS stream from bridge: copy codecs directly (extremely efficient, zero transcoding latency!)
+					args = []string{
+						"-y",
+						"-i", rtspURL,
+						"-c:v", "copy",
+						"-c:a", "copy",
+						"-hls_time", "1",
+						"-hls_list_size", "5",
+						"-hls_flags", "delete_segments+append_list+omit_endlist+discont_start",
+						"-f", "hls",
+						playlistPath,
+					}
+				} else {
+					// Cấu hình tối ưu cho luồng HTTP/MJPEG từ AI
+					args = []string{
+						"-y",
+						"-f", "mjpeg",
+						"-i", rtspURL,
+						"-c:v", "libx264",
+						"-preset", "ultrafast",
+						"-tune", "zerolatency",
+						"-b:v", "1000k",
+						"-hls_time", "1",
+						"-hls_list_size", "5",
+						"-hls_flags", "delete_segments+append_list+omit_endlist+discont_start",
+						"-f", "hls",
+						playlistPath,
+					}
 				}
 			} else {
-				// Cấu hình mặc định cho camera RTSP
+				// Cấu hình mặc định cho camera RTSP (Dùng -c:v copy để không transcode, giảm 99% CPU và triệt tiêu độ trễ)
 				args = []string{
 					"-y",
 					"-rtsp_transport", "tcp",
+					"-fflags", "nobuffer",
+					"-flags", "low_delay",
 					"-i", rtspURL,
-					"-c:v", "libx264",
-					"-preset", "ultrafast",
-					"-tune", "zerolatency",
-					"-b:v", "1000k",
+					"-c:v", "copy",
+					"-an", // Tắt âm thanh để tối ưu dung lượng phân đoạn HLS và giảm tải truyền tải
 					"-hls_time", "1",
 					"-hls_list_size", "5",
 					"-hls_flags", "delete_segments+append_list+omit_endlist+discont_start",
@@ -137,13 +154,21 @@ func (s *HLSServer) StartHLS(ctx context.Context, camID string, rtspURL string) 
 				}
 			}
 
-			logger.Log.Infof("[HLS] Bắt đầu FFMPEG cho camera %s", camID)
-			cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+			logger.Log.Infof("[HLS] Bắt đầu FFMPEG cho camera %s với url: %s", camID, rtspURL)
+			ffmpegPath := "ffmpeg"
+			if _, err := os.Stat("ffmpeg.exe"); err == nil {
+				ffmpegPath = "./ffmpeg.exe"
+			}
+			cmd := exec.CommandContext(ctx, ffmpegPath, args...)
+			
+			var stderr bytes.Buffer
+			cmd.Stderr = &stderr
+			
 			err := cmd.Run()
 			
 			if ctx.Err() != nil { return }
 			if err != nil {
-				logger.Log.Errorf("[HLS] FFMPEG %s lỗi: %v. Restart in 5s...", camID, err)
+				logger.Log.Errorf("[HLS] FFMPEG %s lỗi: %v. Stderr: %s. Restart in 5s...", camID, err, stderr.String())
 				time.Sleep(5 * time.Second)
 			}
 		}
