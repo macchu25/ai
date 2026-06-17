@@ -16,3 +16,7 @@ fastapi
 uvicorn
 pydantic
 sentence-transformers
+python-dotenv
+google-genai
+aiohttp
+imouapi

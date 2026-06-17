@@ -126,7 +126,7 @@ python3 -m venv venv
 ./venv/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Cài đặt các gói Python hỗ trợ AI & APIs
-./venv/bin/pip install opencv-python-headless numpy requests mediapipe ultralytics flask flask-cors fastapi uvicorn chromadb google-generativeai pydantic sentence-transformers python-dotenv
+./venv/bin/pip install opencv-python-headless numpy requests mediapipe ultralytics flask flask-cors fastapi uvicorn chromadb google-genai pydantic sentence-transformers python-dotenv aiohttp imouapi
 ```
 
 ### Bước 5: Cấu hình khóa API Key của Gemini

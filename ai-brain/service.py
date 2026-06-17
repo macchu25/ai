@@ -4,14 +4,13 @@ import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
-import google.generativeai as genai
+from google import genai
 import aiohttp
 from imouapi.api import ImouAPIClient
 from imouapi.device_entity import ImouCamera
+from dotenv import load_dotenv
 
 app = FastAPI()
-
-from dotenv import load_dotenv
 
 # Load .env file
 load_dotenv()
@@ -20,8 +19,7 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY is not set in the environment or .env file")
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash-lite')
+ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Khởi tạo ChromaDB
 client_db = chromadb.PersistentClient(path="./chroma_data")
@@ -231,9 +229,9 @@ async def chat(request: ChatRequest):
         Quy tắc trả lời:
         - Trả lời đầy đủ câu, có chủ ngữ và vị ngữ rõ ràng (Lịch sự).
         - Nếu người dùng hỏi về danh sách (ví dụ: các camera, các gói), hãy liệt kê TOÀN BỘ mục tìm thấy.
-        - PHÂN BIỆT: Các hướng dẫn sử dụng (như Hủy gói, Kết nối Telegram, Sơ cứu) là thông tin công khai, CẦN trả lời chi tiết. 
-        - TUYỆT ĐỐI KHÔNG tiết lộ các bí mật kỹ thuật (như DB, Redis, cấu trúc code, thuật toán chi tiết).
-        - Nếu bị hỏi về bí mật kỹ thuật, hãy khéo léo từ chối và hướng dẫn họ liên hệ bộ phận hỗ trợ kỹ thuật.
+        - PHÂN BIỆT: Các hướng dẫn sử dụng (như Hủy gói, Kết nối Telegram, Sơ cứu, cách THÊM/XÓA camera, lấy link RTSP, quét thiết bị mạng, tích hợp IMOU Cloud) là thông tin công khai dành cho người dùng, CẦN TRẢ LỜI CHI TIẾT và hướng dẫn từng bước rõ ràng.
+        - TUYỆT ĐỐI KHÔNG tiết lộ các bí mật kỹ thuật nội bộ của lập trình viên (như thông tin đăng nhập DB, Redis, cấu trúc mã nguồn, thuật toán nhận diện chi tiết, file code cụ thể).
+        - Nếu bị hỏi về bí mật kỹ thuật nội bộ của lập trình viên, hãy khéo léo từ chối và hướng dẫn họ liên hệ bộ phận hỗ trợ kỹ thuật.
         - Trình bày sạch sẽ, sử dụng dấu gạch đầu dòng (-) cho danh sách.
         - Ngôn ngữ: Tiếng Việt.
 
@@ -245,7 +243,10 @@ async def chat(request: ChatRequest):
         """
 
         # 3. Gọi Gemini API
-        response = model.generate_content(prompt)
+        response = ai_client.models.generate_content(
+            model='gemini-2.5-flash-lite',
+            contents=prompt,
+        )
         
         return {
             "query": request.query,

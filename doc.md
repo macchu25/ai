@@ -221,7 +221,7 @@ GEMINI_API_KEY=your_google_gemini_api_key
 #### 1. Start AI Brain (RAG Service)
 ```powershell
 cd ai-brain
-pip install chromadb fastapi uvicorn pydantic sentence-transformers google-generativeai python-dotenv
+pip install chromadb fastapi uvicorn pydantic sentence-transformers google-genai python-dotenv aiohttp imouapi
 python service.py
 ```
 

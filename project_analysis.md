@@ -142,7 +142,7 @@ Hệ thống được xây dựng trên một ngăn xếp công nghệ hiệu n�
 *   **Web Framework:** **FastAPI** - framework xây dựng API hiệu năng cao, tự động sinh tài liệu Swagger.
 *   **Vector Database:** **ChromaDB** - cơ sở dữ liệu vector gọn nhẹ chạy trực tiếp trong ứng dụng (local/embedded) để lưu trữ và truy vấn ngữ cảnh y tế/lịch sử sự cố dạng nhúng.
 *   **Embedding Model:** `all-MiniLM-L6-v2` từ thư viện **Sentence Transformers** - chuyển đổi các câu chữ thành vector toán học 384 chiều.
-*   **Large Language Model (LLM):** **Gemini 2.5 Flash Lite** (thông qua SDK `google-generativeai`) - mô hình ngôn ngữ lớn tốc độ phản hồi cực nhanh, xử lý hội thoại thông minh dựa trên dữ liệu ngữ cảnh truy xuất từ ChromaDB.
+*   **Large Language Model (LLM):** **Gemini 2.5 Flash Lite** (thông qua SDK `google-genai`) - mô hình ngôn ngữ lớn tốc độ phản hồi cực nhanh, xử lý hội thoại thông minh dựa trên dữ liệu ngữ cảnh truy xuất từ ChromaDB.
 
 ### 4. Web Dashboard & Mobile App (`web-app/` & `mobile-app/`)
 *   **Next.js 14 (App Router & TypeScript)**: Xây dựng Dashboard quản trị phía Web, tối ưu SEO, hỗ trợ kết nối WebSocket thời gian thực, hiển thị các camera qua thư viện phát HLS Stream.

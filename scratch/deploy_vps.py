@@ -125,7 +125,7 @@ def main():
         "python3 -m venv venv && "
         "./venv/bin/pip install --upgrade pip && "
         "./venv/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu && "
-        "./venv/bin/pip install opencv-python-headless numpy requests mediapipe ultralytics flask flask-cors fastapi uvicorn chromadb google-generativeai pydantic sentence-transformers python-dotenv"
+        "./venv/bin/pip install opencv-python-headless numpy requests mediapipe ultralytics flask flask-cors fastapi uvicorn chromadb google-genai pydantic sentence-transformers python-dotenv aiohttp imouapi"
     )
     print("Executing virtual environment setup (this will take 2-4 minutes)...")
     stdin, stdout, stderr = ssh.exec_command(setup_env_cmd)
