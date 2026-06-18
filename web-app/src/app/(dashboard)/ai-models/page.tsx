@@ -85,7 +85,7 @@ export default function AIModelsPage() {
         </p>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '32px' }}>
+      <div className="responsive-grid-2col-sidebar">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
           {/* Models Table */}
@@ -241,7 +241,7 @@ export default function AIModelsPage() {
 
                <div style={{ height: '1px', background: 'var(--border)', margin: '8px 0' }}></div>
 
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+               <div className="responsive-grid-2col-equal">
                  <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)' }}>
                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>TEMPERATURE</div>
                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>62°C</div>

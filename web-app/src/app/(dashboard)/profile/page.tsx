@@ -349,7 +349,7 @@ export default function ProfilePage() {
             </h3>
 
             {/* AI Thresholds Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+            <div className="responsive-grid-2col-equal" style={{ marginBottom: '24px' }}>
               <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
                   <Activity size={14} color="#3b82f6" />
@@ -825,7 +825,7 @@ export default function ProfilePage() {
             <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                
                {/* Grid Họ tên & Tuổi */}
-               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '14px' }}>
+               <div className="responsive-grid-profile-main">
                  <div>
                     <label style={{ display: 'block', fontSize: '0.88rem', color: '#475569', marginBottom: '6px', fontWeight: 600 }}>Tên đối tượng giám sát</label>
                     <input 
@@ -875,7 +875,7 @@ export default function ProfilePage() {
                </div>
 
                {/* Grid Vị trí & Cảnh báo */}
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+               <div className="responsive-grid-2col-equal" style={{ gap: '14px' }}>
                  <div>
                     <label style={{ display: 'block', fontSize: '0.88rem', color: '#475569', marginBottom: '6px', fontWeight: 600 }}>Khu vực lắp đặt Cam</label>
                     <input 
@@ -950,7 +950,7 @@ export default function ProfilePage() {
                </div>
 
                {/* Grid thrLow & thrHigh */}
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+               <div className="responsive-grid-2col-equal" style={{ gap: '14px' }}>
                  <div>
                     <label style={{ display: 'block', fontSize: '0.88rem', color: '#475569', marginBottom: '6px', fontWeight: 600 }}>Ngưỡng ngã nhạy thấp (thrLow)</label>
                     <input 

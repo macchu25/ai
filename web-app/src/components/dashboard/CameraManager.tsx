@@ -236,7 +236,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
           </form>
         ) : (
           <div>
-            <form onSubmit={handleConnectImou} className="premium-form-grid" style={{ gridTemplateColumns: '1fr 1fr auto', gap: '16px', marginBottom: '16px' }}>
+            <form onSubmit={handleConnectImou} className="premium-form-grid imou-form-grid">
               <div className="input-field" style={{ minWidth: '200px' }}>
                 <LayoutGrid size={18} className="field-icon" />
                 <input 
@@ -267,18 +267,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {imouDevices.map(device => (
-                    <div 
-                      key={device.id} 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between', 
-                        background: 'rgba(255, 255, 255, 0.6)', 
-                        padding: '12px 20px', 
-                        borderRadius: '14px',
-                        border: '1px solid rgba(0,0,0,0.03)'
-                      }}
-                    >
+                    <div key={device.id} className="imou-device-row">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ 
                           width: '8px', 
@@ -299,7 +288,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
                       </div>
                       
                       {device.status === 'online' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div className="imou-device-actions">
                           <div className="input-field" style={{ padding: '0 10px', height: '36px', width: '150px' }}>
                             <MapPin size={14} className="field-icon" style={{ marginRight: '6px' }} />
                             <input 

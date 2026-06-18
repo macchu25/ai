@@ -12,10 +12,16 @@ import (
 )
 
 type CameraState struct {
-	SuspectStart   time.Time `json:"suspect_start"`
-	LastAlert      time.Time `json:"last_alert"`
-	LocalAlertSent bool      `json:"local_alert_sent"`
-	AlertPaused    bool      `json:"alert_paused"`
+	SuspectStart          time.Time `json:"suspect_start"`
+	LastAlert             time.Time `json:"last_alert"`
+	LocalAlertSent        bool      `json:"local_alert_sent"`
+	AlertPaused           bool      `json:"alert_paused"`
+	SnapshotCaptured      bool      `json:"snapshot_captured"`
+	TelegramAlertSent     bool      `json:"telegram_alert_sent"`
+	PhoneCallInitiated    bool      `json:"phone_call_initiated"`
+	CapturedImageBytes    []byte    `json:"captured_image_bytes,omitempty"`
+	LastTelegramAlertTime time.Time `json:"last_telegram_alert_time"`
+	LastPhoneCallTime     time.Time `json:"last_phone_call_time"`
 }
 
 type StateStorage interface {
@@ -33,6 +39,30 @@ func NewRedisStorage(url string) *RedisStorage {
 	rdb := redis.NewClient(&redis.Options{
 		Addr: url,
 	})
+	return &RedisStorage{client: rdb}
+}
+
+func NewSmartStorage(redisURL string) StateStorage {
+	if redisURL == "" {
+		fmt.Println("[Storage] Sử dụng bộ nhớ MemoryStorage (RAM).")
+		return NewMemoryStorage()
+	}
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr:        redisURL,
+		DialTimeout: 1 * time.Second,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	_, err := rdb.Ping(ctx).Result()
+	if err != nil {
+		fmt.Printf("[Storage] ⚠️ Không thể kết nối tới Redis (%v). Tự động chuyển sang sử dụng bộ nhớ MemoryStorage (RAM).\n", err)
+		return NewMemoryStorage()
+	}
+
+	fmt.Println("[Storage] ✅ Kết nối tới Redis thành công.")
 	return &RedisStorage{client: rdb}
 }
 

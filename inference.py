@@ -17,8 +17,11 @@ from mediapipe.tasks.python.vision import (
     RunningMode,
 )
 
-# Cấu hình API Endpoint (Mặc định trỏ về production, có thể ghi đè qua biến môi trường BACKEND_URL)
-API_BASE = os.getenv("BACKEND_URL", "https://be-casos-production.up.railway.app/api/v1")
+from dotenv import load_dotenv
+load_dotenv()
+
+# Cấu hình API Endpoint (Mặc định trỏ về local, có thể ghi đè qua biến môi trường BACKEND_URL)
+API_BASE = os.getenv("BACKEND_URL", "http://localhost:8080/api/v1")
 
 
 # ── State Machine ──────────────────────────────────────────────
@@ -47,11 +50,11 @@ class TrackedPerson:
         self.fall_start_time = 0
         self.played_audio = False
         self.fall_streak = 0  # Đếm số frame liên tục predict "fall"
-        self.FALL_STREAK_REQUIRED = 8  # Giảm xuống 8 frame để nhạy hơn
+        self.FALL_STREAK_REQUIRED = 12  # Tăng lên 12 frame (1.2s) để tăng độ ổn định, tránh báo động giả
         self.pose_history = deque(maxlen=60) # Lưu 2 giây lịch sử tư thế
         self.angle_history = deque(maxlen=30) # Lưu 1 giây lịch sử góc lưng
         self.recovery_streak = 0 # Đếm số frame thực sự hồi phục liên tục
-        self.RECOVERY_THRESHOLD = 180 # Cần 6 giây (30fps) để xác nhận hồi phục
+        self.RECOVERY_THRESHOLD = 20 # Cần 2 giây (10fps sau chia 3) để xác nhận hồi phục
         self.prev_label = "normal"  # Label trước đó
         self.last_seen_time = time.time()
         self.centroid = None  # (x, y)
@@ -79,10 +82,12 @@ class TrackedPerson:
 
     def _classify_pose_from_angles(self, torso_angle, thigh_angle):
         """Phân loại tư thế đứng, ngồi, nằm dựa trên góc đã tính."""
-        if torso_angle > 45: 
-            return "di ngu"
-        if torso_angle < 30:
-            if thigh_angle > 50: return "ngoi"
+        if torso_angle > 65: 
+            if thigh_angle < 35:
+                return "cui nguoi" # Thân gập nhưng đùi đứng thẳng => cúi người
+            return "di ngu" # Cả thân và đùi nằm ngang => nằm đất
+        if torso_angle < 55:
+            if thigh_angle > 45: return "ngoi"
             else: return "normal"
         return "normal"
 
@@ -126,6 +131,10 @@ class TrackedPerson:
         self.buffer.append(keypoints)
 
         if len(self.buffer) < self.n_frames:
+            # Nếu bộ đệm chưa đầy, sử dụng phân tích hình học tức thì để xác định trạng thái an toàn
+            pose = self._classify_pose(landmarks)
+            if pose in ["normal", "ngoi", "cui nguoi"]:
+                return pose, 1.0, landmarks, None, self.state
             return "waiting", 0.0, landmarks, None, self.state
 
         # ── STATE MACHINE ──────────────────────────────────────
@@ -142,18 +151,21 @@ class TrackedPerson:
             # Thuật toán "Bắt chặt" Té ngã đột ngột trong 1s:
             is_sudden_drop = False
             if len(self.angle_history) == self.angle_history.maxlen:
-                if self.angle_history[0] < 25 and self.angle_history[-1] > 60:
+                if self.angle_history[0] < 25 and self.angle_history[-1] > 65:
                     is_sudden_drop = True
 
             # Kích hoạt trạng thái Té ngã
-            model_conf_thr = 0.80
+            model_conf_thr = 0.85
             if is_sudden_drop:
-                model_conf_thr = 0.40 
+                model_conf_thr = 0.70 
 
             if label in ["fall"] and conf > model_conf_thr:
                 if is_on_furniture:
                     self.fall_streak = 0
                     if label == "fall": label = "on furniture"
+                elif current_pose == "cui nguoi":
+                    self.fall_streak = 0
+                    if label == "fall": label = "cui nguoi"
                 else:
                     sitting_frames = list(self.pose_history).count("ngoi")
                     
@@ -168,7 +180,7 @@ class TrackedPerson:
 
             # Kích hoạt trạng thái FALL_DETECTED
             required_streak = self.FALL_STREAK_REQUIRED
-            if is_sudden_drop: required_streak = 3
+            if is_sudden_drop: required_streak = 7
 
             if self.fall_streak >= required_streak:
                 self.state = State.FALL_DETECTED
@@ -189,21 +201,16 @@ class TrackedPerson:
             
             label_check, conf_check, _ = self._model_predict()
 
-            if elapsed <= 3.0 and label_check == "normal":
-                pose = self._classify_pose(landmarks)
-                if pose in ["normal", "ngoi"]: 
-                    self.recovery_streak += 1
-                else:
-                    self.recovery_streak = 0
-                
-                if self.recovery_streak >= self.RECOVERY_THRESHOLD:
-                    self.state = State.MONITORING
-                    self.recovery_streak = 0
-                    return f"{pose} (hoi phuc)", conf_check, landmarks, None, self.state
+            pose = self._classify_pose(landmarks)
+            if pose in ["normal", "ngoi", "cui nguoi"]: 
+                self.recovery_streak += 1
             else:
-                pose = self._classify_pose(landmarks)
-                if pose not in ["normal", "ngoi"]:
-                    self.recovery_streak = 0
+                self.recovery_streak = 0
+            
+            if self.recovery_streak >= self.RECOVERY_THRESHOLD:
+                self.state = State.MONITORING
+                self.recovery_streak = 0
+                return f"{pose} (hoi phuc)", conf_check, landmarks, None, self.state
 
             if elapsed >= 5.0 and not self.played_audio:
                 self.played_audio = True
@@ -225,21 +232,16 @@ class TrackedPerson:
         elif self.state == State.POST_FALL:
             label_check, conf_check, _ = self._model_predict()
 
-            if label_check == "normal":
-                pose = self._classify_pose(landmarks)
-                if pose in ["normal", "ngoi"]:
-                    self.recovery_streak += 1
-                else:
-                    self.recovery_streak = 0
-
-                if self.recovery_streak >= self.RECOVERY_THRESHOLD:
-                    self.state = State.MONITORING
-                    self.recovery_streak = 0
-                    return f"{pose} (hoi phuc)", conf_check, landmarks, None, self.state
+            pose = self._classify_pose(landmarks)
+            if pose in ["normal", "ngoi", "cui nguoi"]: 
+                self.recovery_streak += 1
             else:
-                pose = self._classify_pose(landmarks)
-                if pose not in ["normal", "ngoi"]:
-                    self.recovery_streak = 0
+                self.recovery_streak = 0
+            
+            if self.recovery_streak >= self.RECOVERY_THRESHOLD:
+                self.state = State.MONITORING
+                self.recovery_streak = 0
+                return f"{pose} (hoi phuc)", conf_check, landmarks, None, self.state
 
             return "fall", 1.0, landmarks, None, self.state
 
@@ -254,7 +256,7 @@ class FallDetector:
         
         self.tracked_people = {}
         self.next_person_id = 1
-        self.max_people = 3
+        self.max_people = 1
         
         self.last_mp_time = 0
         self.last_torch_time = 0
@@ -269,6 +271,9 @@ class FallDetector:
                 ),
                 running_mode=RunningMode.VIDEO,
                 num_poses=self.max_people,
+                min_pose_detection_confidence=0.5,
+                min_pose_presence_confidence=0.5,
+                min_tracking_confidence=0.5,
             )
             print("   [DEBUG] Creating PoseLandmarker from options...")
             self.landmarker = PoseLandmarker.create_from_options(options)
@@ -280,8 +285,9 @@ class FallDetector:
 
         self.yolo_enabled = False
         self.yolo_model = None
-        self.furniture_classes = [56, 57, 59, 63] # chair, couch, bed, dining table
+        self.furniture_classes = [56, 57, 59, 60] # chair, couch, bed, dining table
         self.is_on_furniture = False
+        self.current_yolo_results = None
         
         threading.Thread(target=self._poll_model_status, daemon=True).start()
 
@@ -299,30 +305,36 @@ class FallDetector:
                         if m.get("name") == "YOLO Furniture Detector":
                             is_active = m.get("status") == "Active"
                             if is_active and not self.yolo_enabled:
-                                print("   [AI] YOLO Furniture Detector ACTIVATED.")
-                                from ultralytics import YOLO
-                                self.yolo_model = YOLO("yolov11n.pt")
-                                self.yolo_enabled = True
+                                try:
+                                    from ultralytics import YOLO
+                                    print("   [AI] YOLO Furniture Detector ACTIVATED.")
+                                    self.yolo_model = YOLO("yolo11n.pt")
+                                    self.yolo_enabled = True
+                                except (ImportError, ModuleNotFoundError):
+                                    print("   [WARN] Không thể kích hoạt YOLO Furniture Detector vì thiếu thư viện 'ultralytics'.")
+                                    print("          Vui lòng cài đặt bằng lệnh: pip install ultralytics")
+                                    # Tránh spam log liên tục bằng cách set tạm thời yolo_enabled về False
+                                    self.yolo_enabled = False
                             elif not is_active and self.yolo_enabled:
                                 print("   [AI] YOLO Furniture Detector DEACTIVATED.")
                                 self.yolo_enabled = False
                                 self.yolo_model = None
             except Exception as e:
-                print(f"   [WARN] Failed to poll model status: {e}")
+                # Tránh in log lỗi lặp lại nếu chỉ là lỗi thiếu import đã được handle ở trên
+                if "No module named 'ultralytics'" not in str(e):
+                    print(f"   [WARN] Failed to poll model status: {e}")
             
             time.sleep(5)
 
-    def _check_furniture_collision(self, frame, landmarks):
+    def _check_furniture_collision(self, landmarks):
         """Kiểm tra xem người có đang ở trên giường/ghế không."""
-        if not self.yolo_enabled or self.yolo_model is None or landmarks is None:
+        if not self.yolo_enabled or self.current_yolo_results is None or landmarks is None:
             return False
             
-        results = self.yolo_model(frame, verbose=False)[0]
-        
         px = (landmarks[23].x + landmarks[24].x) / 2
         py = (landmarks[23].y + landmarks[24].y) / 2
         
-        for box in results.boxes:
+        for box in self.current_yolo_results.boxes:
             cls = int(box.cls[0])
             if cls in self.furniture_classes:
                 x1, y1, x2, y2 = box.xyxyn[0].tolist()
@@ -330,6 +342,7 @@ class FallDetector:
                 if (x1-margin) < px < (x2+margin) and (y1-margin) < py < (y2+margin):
                     return True
         return False
+
 
     def extract_multi_keypoints(self, frame):
         """Trích xuất tối đa 3 tư thế landmarks từ ảnh."""
@@ -350,6 +363,15 @@ class FallDetector:
         detected_poses = []
         if result.pose_landmarks and len(result.pose_landmarks) > 0:
             for raw_landmarks in result.pose_landmarks:
+                # Sắp xếp độ tin cậy của các khớp từ cao xuống thấp
+                visibilities = sorted([lm.visibility for lm in raw_landmarks], reverse=True)
+                # Lấy trung bình của 10 khớp xương rõ nhất (giúp giữ liên kết ổn định khi ngồi nghiêng hoặc bị che khuất một phía)
+                top_visibility = sum(visibilities[:10]) / 10 if len(visibilities) >= 10 else 0.0
+                
+                # Cột nhà hoặc nhiễu tĩnh sẽ không có điểm nào đạt độ tin cậy cao (tất cả các điểm đều thấp < 30%)
+                if top_visibility < 0.53:
+                    continue
+                
                 keypoints = []
                 for lm in raw_landmarks:
                     keypoints.extend([lm.x, lm.y, lm.z])
@@ -359,6 +381,13 @@ class FallDetector:
     def update(self, frame):
         detected_poses = self.extract_multi_keypoints(frame)
         current_time = time.time()
+        
+        # Chạy YOLO một lần duy nhất cho toàn bộ frame để tối ưu hiệu năng
+        self.current_yolo_results = None
+        if self.yolo_enabled and self.yolo_model is not None and len(detected_poses) > 0:
+            t_start = time.perf_counter()
+            self.current_yolo_results = self.yolo_model(frame, verbose=False)[0]
+            self.last_torch_time = (time.perf_counter() - t_start) * 1000
         
         detected_centroids = []
         for keypoints, landmarks in detected_poses:
@@ -377,7 +406,7 @@ class FallDetector:
         unmatched_detections = list(range(len(detected_poses)))
         matched_people = {}
 
-        DIST_THRESHOLD = 0.20
+        DIST_THRESHOLD = 0.45
 
         for pid, person in list(self.tracked_people.items()):
             if person.centroid is None:
@@ -396,10 +425,14 @@ class FallDetector:
                 unmatched_detections.remove(best_idx)
 
         results = []
+        any_on_furniture = False
+
         for pid, idx in matched_people.items():
             keypoints, landmarks = detected_poses[idx]
             person = self.tracked_people[pid]
-            is_on_furniture = self._check_furniture_collision(frame, landmarks)
+            is_on_furniture = self._check_furniture_collision(landmarks)
+            if is_on_furniture:
+                any_on_furniture = True
             label, conf, landmarks, all_probs, state = person.update(keypoints, landmarks, is_on_furniture)
             results.append((label, conf, landmarks, all_probs, state, pid))
 
@@ -409,21 +442,26 @@ class FallDetector:
                 pid = self.next_person_id
                 self.next_person_id += 1
                 person = TrackedPerson(pid, self.model, self.label_map, self.n_frames)
-                is_on_furniture = self._check_furniture_collision(frame, landmarks)
+                is_on_furniture = self._check_furniture_collision(landmarks)
+                if is_on_furniture:
+                    any_on_furniture = True
                 label, conf, landmarks, all_probs, state = person.update(keypoints, landmarks, is_on_furniture)
                 self.tracked_people[pid] = person
                 results.append((label, conf, landmarks, all_probs, state, pid))
 
+        self.is_on_furniture = any_on_furniture
+
         stale_pids = []
         for pid, person in list(self.tracked_people.items()):
             if pid not in matched_people:
-                if current_time - person.last_seen_time > 1.0:
+                if current_time - person.last_seen_time > 3.0:
                     stale_pids.append(pid)
 
         for pid in stale_pids:
             del self.tracked_people[pid]
 
         return results
+
 
 
 # ── Drawing ────────────────────────────────────────────────────
@@ -457,7 +495,7 @@ if __name__ == "__main__":
     import requests
     parser = argparse.ArgumentParser()
     parser.add_argument("--camera_id", type=str, help="ID của Camera trong Database")
-    parser.add_argument("--source", type=str, default="0", help="Nguồn video (0: webcam, hoặc RTSP URL, hoặc file video)")
+    parser.add_argument("--source", type=str, default=None, help="Nguồn video (0: webcam, hoặc RTSP URL, hoặc file video)")
     parser.add_argument("--headless", action="store_true", help="Chạy không có giao diện hiển thị GUI")
     parser.add_argument("--port", type=int, default=5000, help="Cổng chạy server MJPEG stream")
     args = parser.parse_known_args()[0]
@@ -487,14 +525,25 @@ if __name__ == "__main__":
             if selected_cam:
                 target_cam_id = selected_cam["id"]
                 print(f"-> Lien ket truc tiep voi Dashboard thanh cong! Dang stream cho: {selected_cam.get('name')}")
-                # Tự động gán nguồn video nếu người dùng chưa chỉ định nguồn khác webcam
-                if args.source == "0" and selected_cam.get("rtsp_url") and selected_cam.get("rtsp_url") != "webcam":
+                
+            # Xác định nguồn video: ưu tiên tham số dòng lệnh nếu có truyền vào
+            if args.source is None:
+                if selected_cam and selected_cam.get("rtsp_url") and selected_cam.get("rtsp_url") != "webcam":
                     args.source = selected_cam["rtsp_url"]
                     print(f"-> Tu dong phat hien nguon RTSP camera tu database: {args.source}")
+                else:
+                    args.source = "0"
+                    print("-> Mac dinh su dung webcam local (0)")
+            else:
+                print(f"-> Su dung nguon video chi dinh tu dong lenh: {args.source}")
         else:
             print(f"! Khong the lay thong tin camera (HTTP {res.status_code}).")
+            if args.source is None:
+                args.source = "0"
     except Exception as e:
         print(f"! Khong ket noi duoc Backend hoac lay thong tin camera: {e}")
+        if args.source is None:
+            args.source = "0"
 
     print("-> STAGE 1: Checking environment...")
     import sys
@@ -606,6 +655,24 @@ if __name__ == "__main__":
 
     import requests
     import threading
+    import queue
+
+    request_queue = queue.Queue()
+
+    def web_sender_worker():
+        session = requests.Session()
+        while True:
+            try:
+                url, payload, headers, timeout = request_queue.get()
+                try:
+                    session.post(url, json=payload, headers=headers, timeout=timeout)
+                except:
+                    pass
+                request_queue.task_done()
+            except Exception:
+                time.sleep(0.1)
+
+    threading.Thread(target=web_sender_worker, daemon=True).start()
 
     def push_to_go(lbl, cnf, img_frame=None):
         try:
@@ -621,28 +688,35 @@ if __name__ == "__main__":
                 if ret:
                     payload["EvidenceImage"] = base64.b64encode(jpeg_buffer).decode('utf-8')
             
-            requests.post(f"{API_BASE}/ai-result", 
-                json=payload, 
-                headers={"X-API-Key": "ai_secret_key_12345"},
-                timeout=2.0)
+            request_queue.put((
+                f"{API_BASE}/ai-result",
+                payload,
+                {"X-API-Key": "ai_secret_key_12345"},
+                2.0
+            ))
         except: pass
 
     prev_time = time.time()
 
     frame_count = 0
+    last_pushed_is_alert = False
     last_results = []
     
     while cap.isOpened():
         ret, frame = cap.read()
-        if not ret:
-            print("Không thể đọc frame từ webcam.")
-            break
+        if not ret or frame is None or frame.size == 0:
+            time.sleep(0.03)
+            continue
 
         frame_count += 1
         
         # ── TỐI ƯU HÓA: Chỉ chạy AI mỗi 3 frame để Video chạy mượt 30 FPS ──
         if frame_count % 3 == 0:
-            small_frame = cv2.resize(frame, (640, 480))
+            try:
+                small_frame = cv2.resize(frame, (640, 480))
+            except Exception as e:
+                print(f"[WARN] Failed to resize frame: {e}")
+                continue
             
             t_loop_start = time.perf_counter()
             results = detector.update(small_frame)
@@ -653,15 +727,29 @@ if __name__ == "__main__":
                 print(f"[PERF ALERT] Loop={loop_time_ms:.1f}ms | MP={detector.last_mp_time:.1f}ms | Torch={detector.last_torch_time:.1f}ms")
 
             # Chỉ gửi cảnh báo nếu là các trạng thái nguy hiểm
+            any_alert_this_frame = False
             for label, conf, landmarks, all_probs, state, pid in results:
                 alert_labels = ["fall"]
                 is_alert = any(alert in label.lower() for alert in alert_labels)
                 
                 if is_alert and label != "waiting":
+                    any_alert_this_frame = True
                     frame_copy = small_frame.copy() if small_frame is not None else None
                     alert_label = f"Person {pid} Fall"
-                    threading.Thread(target=push_to_go, args=(alert_label, conf, frame_copy)).start()
+                    
+                    now = time.time()
+                    # Chỉ gửi gói ngã tối đa 1 lần mỗi 0.5 giây để tránh quá tải mạng/CPU của backend, trừ phi là gói đầu tiên
+                    if not last_pushed_is_alert or (now - last_pushed_time >= 0.5):
+                        last_pushed_time = now
+                        push_to_go(alert_label, conf, frame_copy)
             
+            # GỬI LỆNH CLEAR ALERT KHI NẠN NHÂN ĐÃ HỒI PHỤC/BÌNH THƯỜNG
+            if not any_alert_this_frame and last_pushed_is_alert:
+                print("   [AI] Người dùng đã bình thường. Gửi lệnh reset cảnh báo về backend.")
+                last_pushed_time = 0.0
+                push_to_go("normal", 1.0, None)
+                
+            last_pushed_is_alert = any_alert_this_frame
             last_results = results
 
         # Áp dụng kết quả AI gần nhất để vẽ lên hình
@@ -685,6 +773,7 @@ if __name__ == "__main__":
                 text = f"P{pid}: {label} ({conf:.0%})"
                 cv2.putText(frame, text, (max(10, head_x - 50), max(20, head_y)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2, cv2.LINE_AA)
+
 
         # FPS
         curr_time = time.time()

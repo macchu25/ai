@@ -5,6 +5,7 @@ import { ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useNotification } from '@/app/context/NotificationContext';
+import { useDashboardSocket } from '@/hooks/useDashboardSocket';
 
 // Components
 import CameraManager from '@/components/dashboard/CameraManager';
@@ -30,6 +31,11 @@ export default function IncidentsPage() {
   const [activeTestCam, setActiveTestCam] = useState<any | null>(null);
   
   const token = session?.user ? (session.user as any).accessToken : '';
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+
+  useDashboardSocket(apiBase, token, undefined, () => {
+    loadData();
+  });
 
   useEffect(() => {
     if (status === "unauthenticated") {

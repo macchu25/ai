@@ -1,14 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
 
-export function useDashboardSocket(apiBase: string, token: string, onSubscriptionUpdate?: (payload?: any) => Promise<void> | void) {
+export function useDashboardSocket(
+  apiBase: string, 
+  token: string, 
+  onSubscriptionUpdate?: (payload?: any) => Promise<void> | void,
+  onIncident?: (payload?: any) => Promise<void> | void
+) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<NodeJS.Timeout | null>(null);
   const [alertState, setAlertState] = useState<Record<string, boolean>>({});
   const onSubscriptionUpdateRef = useRef(onSubscriptionUpdate);
+  const onIncidentRef = useRef(onIncident);
 
   useEffect(() => {
     onSubscriptionUpdateRef.current = onSubscriptionUpdate;
   }, [onSubscriptionUpdate]);
+
+  useEffect(() => {
+    onIncidentRef.current = onIncident;
+  }, [onIncident]);
 
   useEffect(() => {
     if (!token) return;
@@ -36,8 +46,10 @@ export function useDashboardSocket(apiBase: string, token: string, onSubscriptio
 
           if (eventType === 'alert') {
             setAlertState(prev => ({...prev, [data.camera_id]: true}));
+            if (onIncidentRef.current) onIncidentRef.current(data);
           } else if (eventType === 'clear_alert') {
             setAlertState(prev => ({...prev, [data.camera_id]: false}));
+            if (onIncidentRef.current) onIncidentRef.current(data);
           } else if (eventType === 'local_warning') {
             console.log('%c[Socket] Local Warning Triggered! 🔊', 'color: #ef4444; font-weight: bold;');
             // Play a synthetic alarm sound
@@ -62,6 +74,7 @@ export function useDashboardSocket(apiBase: string, token: string, onSubscriptio
             playSiren(1.2);
             
             setAlertState(prev => ({...prev, [data.camera_id]: true}));
+            if (onIncidentRef.current) onIncidentRef.current(data);
           } else if (eventType === 'subscription_updated') {
             console.log('%c[Socket] Subscription Updated! 🚀', 'color: #3b82f6; font-weight: bold;');
             if (onSubscriptionUpdateRef.current) onSubscriptionUpdateRef.current(data.payload);

@@ -33,19 +33,15 @@ export default function LoginPage() {
   return (
     <div className="login-container">
       {/* Left Panel: The Decorative Side */}
-      <div className="left-panel" style={{ 
-        backgroundImage: `url('/hospital_ai_background_1776913436381.png')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center'
-      }}>
+      <div className="left-panel">
         <div className="overlay-left"></div>
-        <div className="branding" style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '30px', marginBottom: '60px' }}>
-          <img src="/logo.png" alt="Casos Logo" style={{ width: '120px', height: '120px', objectFit: 'contain', filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.3))' }} />
-          <span className="brand-name" style={{ color: '#fff', fontSize: '3.5rem', fontWeight: 950, letterSpacing: '-2px' }}>CASOS<span style={{ color: '#60a5fa' }}>.ai</span></span>
+        <div className="branding">
+          <img src="/logo.png" alt="Casos Logo" />
+          <span className="brand-name">CASOS<span className="brand-ai">.ai</span></span>
         </div>
         
-        <div className="hero-text" style={{ position: 'relative', zIndex: 2 }}>
-          <h1 style={{ color: '#fff' }}>Bảo vệ tối đa bằng <br/>các <span style={{ background: 'linear-gradient(90deg, #60a5fa, #93c5fd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>mô hình AI</span> <br/>với CASOS ngay.</h1>
+        <div className="hero-text">
+          <h1>Bảo vệ tối đa bằng <br/>các <span className="hero-highlight">mô hình AI</span> <br/>với CASOS ngay.</h1>
         </div>
 
         <div className="camera-marquee-container">
@@ -108,9 +104,9 @@ export default function LoginPage() {
             <a href="#" className="forgot-link">Quên mật khẩu?</a>
           </div>
 
-          <button className="submit-btn" style={{ marginBottom: '12px' }}>Đăng nhập</button>
+          <button className="submit-btn">Đăng nhập</button>
 
-          <div className="signup-prompt" style={{ marginBottom: '30px' }}>
+          <div className="signup-prompt">
             Bạn chưa có tài khoản? <a href="#">Đăng ký ngay</a>
           </div>
 
@@ -118,16 +114,16 @@ export default function LoginPage() {
             <span>HOẶC</span>
           </div>
 
-          <div className="social-logins" style={{ marginBottom: '40px' }}>
+          <div className="social-logins">
             <button onClick={() => signIn('google')} className="social-btn">
               <Mail size={18} color="#ea4335" />
               <span>Tiếp tục với Google</span>
             </button>
-            <button onClick={() => signIn('facebook')} className="social-btn" style={{ marginTop: '12px' }}>
+            <button onClick={() => signIn('facebook')} className="social-btn social-btn-margin">
               <Globe size={18} color="#1877F2" />
               <span>Tiếp tục với Facebook</span>
             </button>
-            <button onClick={() => signIn('github')} className="social-btn" style={{ marginTop: '12px' }}>
+            <button onClick={() => signIn('github')} className="social-btn social-btn-margin">
               <GitBranch size={18} color="#000" />
               <span>Tiếp tục với Github</span>
             </button>
@@ -193,6 +189,9 @@ export default function LoginPage() {
           flex-direction: column;
           position: relative;
           overflow: hidden;
+          background-image: url('/hospital_ai_background_1776913436381.png');
+          background-size: cover;
+          background-position: center;
         }
 
         .overlay-left {
@@ -203,33 +202,53 @@ export default function LoginPage() {
         }
 
         .branding {
+          position: relative;
+          z-index: 2;
           display: flex;
           align-items: center;
-          gap: 12px;
-          margin-bottom: 80px;
+          gap: 30px;
+          margin-bottom: 60px;
+        }
+
+        .branding img {
+          width: 120px;
+          height: 120px;
+          object-fit: contain;
+          filter: drop-shadow(0 15px 30px rgba(0,0,0,0.3));
+          transition: all 0.3s ease;
         }
 
         .brand-name {
-          font-weight: 900;
-          font-size: 1.5rem;
-          color: #1e293b;
-          letter-spacing: -1px;
+          color: #fff;
+          font-size: 3.5rem;
+          font-weight: 950;
+          letter-spacing: -2px;
+          transition: all 0.3s ease;
+        }
+
+        .brand-ai {
+          color: #60a5fa;
+        }
+
+        .hero-text {
+          position: relative;
+          z-index: 2;
         }
 
         .hero-text h1 {
-          font-size: 3rem;
+          font-size: clamp(2rem, 3.5vw, 3rem);
           font-weight: 900;
           line-height: 1.1;
-          color: #1e293b;
+          color: #fff;
           letter-spacing: -2px;
+          transition: all 0.3s ease;
         }
 
-        .hero-text h1 span {
-          background: linear-gradient(90deg, #ec4899, #8b5cf6);
+        .hero-highlight {
+          background: linear-gradient(90deg, #60a5fa, #93c5fd);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
-
 
         /* Right Panel Styles */
         .right-panel {
@@ -240,6 +259,8 @@ export default function LoginPage() {
           align-items: center;
           padding: 60px;
           position: relative;
+          overflow-y: auto;
+          min-height: 100vh;
         }
 
         .login-form-wrapper {
@@ -247,6 +268,8 @@ export default function LoginPage() {
           max-width: 440px;
           position: relative;
           padding-bottom: 50px;
+          margin-top: auto;
+          margin-bottom: auto;
         }
 
         .form-header h2 {
@@ -336,19 +359,10 @@ export default function LoginPage() {
           font-size: 1rem;
           cursor: pointer;
           transition: all 0.2s ease;
-          margin-bottom: 20px;
+          margin-bottom: 12px;
         }
 
         .submit-btn:hover { background: #0045b8; }
-
-        .iam-links {
-          text-align: center;
-          font-size: 0.8rem;
-          color: #cbd5e1;
-          margin-bottom: 30px;
-        }
-
-        .iam-links a { color: #64748b; text-decoration: none; margin: 0 5px; }
 
         .method-divider {
           display: flex;
@@ -380,13 +394,22 @@ export default function LoginPage() {
 
         .social-btn:hover { background: #f8fafc; }
 
+        .social-btn-margin {
+          margin-top: 12px;
+        }
+
         .signup-prompt {
           text-align: center;
           color: #64748b;
           font-size: 0.9rem;
+          margin-bottom: 30px;
         }
 
         .signup-prompt a { color: #0052d9; text-decoration: none; font-weight: 700; }
+
+        .social-logins {
+          margin-bottom: 40px;
+        }
 
         .form-footer {
           position: absolute;
@@ -399,6 +422,7 @@ export default function LoginPage() {
           gap: 30px;
           font-size: 0.8rem;
           color: #94a3b8;
+          box-sizing: border-box;
         }
 
         .footer-links { display: flex; gap: 20px; }
@@ -469,6 +493,10 @@ export default function LoginPage() {
           pointer-events: none;
         }
 
+        .digital-overlay span {
+          white-space: nowrap;
+        }
+
         .marquee-fade {
           position: absolute;
           top: 0;
@@ -493,10 +521,96 @@ export default function LoginPage() {
           100% { transform: translateX(calc(-450px * 4)); }
         }
 
+        /* ─── Responsive Styles for smaller heights / 19-inch monitors ─── */
+        @media (max-width: 1366px) or (max-height: 900px) {
+          .left-panel {
+            padding: 40px;
+          }
+          .branding {
+            margin-bottom: 40px;
+            gap: 20px;
+          }
+          .branding img {
+            width: 80px;
+            height: 80px;
+          }
+          .brand-name {
+            font-size: 2.5rem;
+          }
+          .hero-text h1 {
+            font-size: 2.2rem;
+          }
+          .camera-marquee-container {
+            height: 140px;
+            bottom: 40px;
+          }
+          .marquee-slide {
+            height: 140px;
+            width: 350px;
+          }
+          @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(calc(-350px * 4)); }
+          }
+          
+          .form-header h2 {
+            margin-bottom: 30px;
+            font-size: 1.75rem;
+          }
+          .input-group {
+            margin-bottom: 16px;
+          }
+          .form-options {
+            margin-bottom: 20px;
+          }
+          .signup-prompt {
+            margin-bottom: 20px;
+          }
+          .social-logins {
+            margin-bottom: 20px;
+          }
+          .form-input {
+            height: 48px;
+          }
+          .submit-btn, .social-btn {
+            height: 48px;
+          }
+        }
+
+        @media (max-height: 780px) {
+          .right-panel {
+            padding: 40px 20px;
+            justify-content: flex-start;
+          }
+          .login-form-wrapper {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+          }
+          .form-footer {
+            position: relative;
+            bottom: auto;
+            width: 100%;
+            max-width: 440px;
+            padding: 20px 0 0 0;
+            margin-top: auto;
+            border-top: 1px solid #f1f5f9;
+          }
+        }
+
         @media (max-width: 1024px) {
           .left-panel { display: none; }
-          .right-panel { flex: 1; }
+          .right-panel { flex: 1; width: 100%; padding: 40px 20px; }
           .marquee-fade.left, .marquee-fade.right { display: none; }
+          .form-footer {
+            position: relative;
+            bottom: auto;
+            width: 100%;
+            max-width: 440px;
+            padding: 20px 0 0 0;
+            margin-top: auto;
+            border-top: 1px solid #f1f5f9;
+          }
         }
       `}</style>
     </div>

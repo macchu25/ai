@@ -394,7 +394,7 @@ export default function RPPGPage() {
         </p>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '32px' }}>
+      <div className="responsive-grid-2col-sidebar">
         
         {/* Left Column: Live Feed & Chart */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -856,7 +856,7 @@ export default function RPPGPage() {
             </div>
 
             {/* Stats Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '32px' }}>
+            <div className="responsive-grid-3col" style={{ marginBottom: '32px' }}>
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '16px', textAlign: 'center' }}>
                 <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Trung bình</span>
                 <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>

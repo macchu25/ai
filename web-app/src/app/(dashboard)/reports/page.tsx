@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useSession } from "next-auth/react";
 
 interface PatientInfo {
+  id?: string;
   name: string;
   age: number;
   bloodType: string;
@@ -35,10 +36,11 @@ export default function ReportsPage() {
       });
       const data = await res.json();
       setPatient({
-        name: data.name || "Bệnh nhân mẫu",
-        age: data.age || 72,
-        bloodType: data.bloodType || "O+",
-        conditions: data.conditions || ["Cao huyết áp", "Tiểu đường Type 2"]
+        id: data.id || "",
+        name: data.name || "Chưa cập nhật",
+        age: data.age || 0,
+        bloodType: data.bloodType || "Chưa cập nhật",
+        conditions: data.conditions || []
       });
     } catch (err) {
       console.error("Lỗi lấy thông tin:", err);
@@ -79,7 +81,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px' }}>
+      <div className="responsive-grid-2col-sidebar" style={{ gap: '24px' }}>
         
         {/* LEFT COLUMN: CHARTS & LOGS */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -134,7 +136,7 @@ export default function ReportsPage() {
                 { time: '02:15 - 28/04', type: 'Dấu hiệu bất thường', severity: 'Medium', action: 'Bệnh nhân tự đứng dậy' },
                 { time: '09:40 - 25/04', type: 'Té ngã', severity: 'High', action: 'Đã báo người thân' }
               ].map((item, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '150px 1fr 120px 150px', alignItems: 'center', padding: '16px 20px', borderRadius: '20px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                <div key={i} className="responsive-grid-report-row" style={{ padding: '16px 20px', borderRadius: '20px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
                   <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>{item.time}</span>
                   <span style={{ fontWeight: 850, color: '#1e293b' }}>{item.type}</span>
                   <span style={{ 
@@ -162,14 +164,16 @@ export default function ReportsPage() {
               </div>
               <div>
                 <h4 style={{ fontSize: '1.2rem', fontWeight: 900, margin: 0 }}>{patient?.name}</h4>
-                <p style={{ opacity: 0.8, fontSize: '0.85rem', fontWeight: 600 }}>{patient?.age} Tuổi • Hồ sơ #8821</p>
+                <p style={{ opacity: 0.8, fontSize: '0.85rem', fontWeight: 600 }}>
+                  {patient?.age ? `${patient.age} Tuổi` : 'Chưa cập nhật tuổi'} • Hồ sơ #{patient?.id ? patient.id.slice(-4) : '8821'}
+                </p>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="responsive-grid-2col-equal" style={{ gap: '12px' }}>
               <div style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '16px' }}>
-                <p style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.7, marginBottom: '4px' }}>NHÓM MÁU</p>
-                <span style={{ fontSize: '1.1rem', fontWeight: 950 }}>{patient?.bloodType}</span>
+                <p style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.7, marginBottom: '4px' }}>KÊNH BÁO ĐỘNG</p>
+                <span style={{ fontSize: '1.1rem', fontWeight: 950 }}>{patient?.bloodType || 'Chưa cập nhật'}</span>
               </div>
               <div style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '16px' }}>
                 <p style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.7, marginBottom: '4px' }}>SỨC KHỎE</p>
@@ -178,11 +182,15 @@ export default function ReportsPage() {
             </div>
 
             <div style={{ marginTop: '20px' }}>
-              <p style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.7, marginBottom: '8px' }}>TIỀN SỬ BỆNH LÝ</p>
+              <p style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.7, marginBottom: '8px' }}>CAMERA GIÁM SÁT</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {patient?.conditions.map((c, i) => (
-                  <span key={i} style={{ background: 'rgba(255,255,255,0.15)', padding: '4px 10px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 700 }}>{c}</span>
-                ))}
+                {patient?.conditions && patient.conditions.length > 0 ? (
+                  patient.conditions.map((c, i) => (
+                    <span key={i} style={{ background: 'rgba(255,255,255,0.15)', padding: '4px 10px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 700 }}>{c}</span>
+                  ))
+                ) : (
+                  <span style={{ opacity: 0.8, fontSize: '0.85rem', fontWeight: 600 }}>Chưa liên kết camera</span>
+                )}
               </div>
             </div>
           </div>

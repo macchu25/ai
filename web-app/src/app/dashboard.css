@@ -188,7 +188,7 @@ body {
   line-height: 1;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1280px) or (max-height: 850px) {
   .widget-grid-container {
     position: relative !important;
     display: flex;
