@@ -20,7 +20,7 @@ graph TD
         F4[MediaPipe Trích Xuất Khung Xương]
         F5[Mô Hình CNN-LSTM Phân Loại Tư Thế]
         F6[YOLOv11 Phát Hiện Vật Dụng]
-        F7[Phân Tích Động Học Seizure & Unconscious]
+        F7[Theo Dõi Hồi Phục Sau Khi Ngã]
     end
 
     subgraph Alert_Pipeline [Hệ Thống Cảnh Báo Đa Kênh]
@@ -73,10 +73,8 @@ Hệ thống lõi phân tích hình ảnh chuyển động để phát hiện c�
     *   **Hoạt động:** Bộ đệm trượt lưu giữ 30 khung hình gần nhất (tương đương 1 giây chuyển động). Chuỗi $30 \times 99$ này được đưa vào mô hình học sâu kết hợp **CNN-1D** và **LSTM** để đưa ra phân loại 4 tư thế: `normal` (đứng/đi lại bình thường), `fall` (té ngã), `ngoi` (ngồi), `di ngu` (nằm ngủ).
 3.  **Phát Hiện Té Ngã Siêu Tốc (Sudden Spine Angle Drop):**
     *   **Hoạt động:** Đo góc lưng (spine angle) được tạo bởi trung điểm vai và trung điểm hông so với phương thẳng đứng. Nếu góc lưng tăng đột biến từ dưới $25^\circ$ lên trên $60^\circ$ chỉ trong vòng dưới 1 giây, hệ thống tự động hạ ngưỡng tin cậy phân loại ngã của AI xuống $40\%$ (thay vì $80\%$) để kích hoạt báo động khẩn cấp tức thời (Instant Fall) mà không cần chờ đủ số khung hình tích lũy.
-4.  **Nhận Diện Co Giật (Seizure) và Nằm Bất Động (Unconscious):**
-    *   **Hoạt động:** Khi bệnh nhân đã ngã xuống đất và chuyển sang trạng thái theo dõi nâng cao (`POST_FALL`), AI sẽ tính toán phương sai biến động chuyển động (Variance) của các nhóm khớp xương (cánh tay, chân, thân mình) trong bộ đệm.
-        *   Nếu phương sai cực thấp ($\text{Variance} < 0.01$): Phân loại là **Unconscious** (Ngất/Bất tỉnh) $\rightarrow$ Mức độ cực kỳ khẩn cấp.
-        *   Nếu phương sai biến động liên tục ở mức trung bình-cao ($0.01 \le \text{Variance} \le 0.02$): Phân loại là **Seizure** (Co giật/Động kinh) $\rightarrow$ Cần can thiệp y tế ngay.
+4.  **Theo Dõi Hồi Phục Sau Khi Ngã (Post-Fall Recovery Check):**
+    *   **Hoạt động:** Khi phát hiện té ngã, hệ thống chuyển sang trạng thái theo dõi. Nếu bệnh nhân đứng dậy hoặc ngồi dậy ổn định trở lại (đáp ứng điều kiện tư thế an toàn liên tục trong khoảng thời gian nhất định), hệ thống sẽ ghi nhận hồi phục và tự động tắt còi báo động.
 5.  **Thuật Toán Loại Bỏ Báo Động Giả Bằng YOLO (YOLO Furniture Collision):**
     *   **Hoạt động:** AI tích hợp mô hình **YOLOv11-Nano** phát hiện các vật dụng như giường, ghế sofa, ghế tựa. Nếu hông của bệnh nhân có tọa độ nằm đè lên các vùng nhận diện của vật dụng này, AI sẽ tự động bỏ qua trạng thái báo động ngã và phân loại thành hành động nghỉ ngơi/ngủ (Resting on furniture).
 
@@ -183,7 +181,7 @@ Chi tiết các tầng cấu tạo bên trong [model_def.py](file:///c:/cardiac-
     *   Hệ thống lấy trạng thái ẩn cuối cùng của chuỗi từ LSTM (`h[-1]`) đi qua mạng MLP kết nối đầy đủ:
         *   `Linear(256 -> 128) + ReLU + Dropout(0.3)`.
         *   `Linear(128 -> 4)` đại diện cho điểm số của 4 lớp hành động.
-    *   Lớp đầu ra sử dụng hàm **Softmax** để xuất ra xác suất phần trăm của từng nhãn hành động tương ứng (`normal`, `fall`, `unconscious`, `seizure`).
+    *   Lớp đầu ra sử dụng hàm **Softmax** để xuất ra xác suất phần trăm của từng nhãn hành động tương ứng (`normal`, `fall`), trong đó các nhãn co giật/ngất được cấu hình gộp trực tiếp vào nhãn `normal` để loại bỏ báo động giả.
 
 ---
 

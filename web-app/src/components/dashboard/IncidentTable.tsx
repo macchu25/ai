@@ -1,5 +1,6 @@
 import React from 'react';
 import { Database, Download, Cloud } from 'lucide-react';
+import Link from 'next/link';
 
 interface Incident {
   id: string;
@@ -14,6 +15,19 @@ interface IncidentTableProps {
   incidents: Incident[];
   onExport?: () => void;
 }
+
+const getFirstAidType = (typeStr: string): string => {
+  const t = (typeStr || '').toLowerCase();
+  if (t.includes('tachycardia') || t.includes('nhanh') || t.includes('high hr') || t.includes('tim cao')) return 'hr_high';
+  if (t.includes('bradycardia') || t.includes('chậm') || t.includes('low hr') || t.includes('tim thấp')) return 'hr_low';
+  if (t.includes('apnea') || t.includes('ngừng thở') || t.includes('suy hô hấp') || t.includes('resp')) return 'apnea';
+  if (t.includes('seizure') || t.includes('co giật') || t.includes('động kinh')) return 'seizure';
+  if (t.includes('chấn thương đầu') || t.includes('bất tỉnh') || t.includes('head')) return 'head';
+  if (t.includes('gãy xương') || t.includes('bone')) return 'bone';
+  if (t.includes('chảy máu') || t.includes('blood')) return 'blood';
+  if (t.includes('đột quỵ') || t.includes('stroke')) return 'stroke';
+  return 'fall'; // default to CPR/fall
+};
 
 const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) => {
   return (
@@ -39,6 +53,7 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
               <th>Độ tin cậy</th>
               <th>Thời gian</th>
               <th>Lưu trữ</th>
+              <th>Sơ cứu</th>
               <th>Trạng thái</th>
             </tr>
           </thead>
@@ -72,6 +87,33 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
                   </div>
                 </td>
                 <td>
+                  <Link 
+                    href={`/cpr?type=${getFirstAidType(incident.type)}`}
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.speechSynthesis?.cancel();
+                      }
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      color: 'var(--danger)',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      textDecoration: 'none',
+                      padding: '4px 8px',
+                      background: 'rgba(239, 68, 68, 0.05)',
+                      borderRadius: '6px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'}
+                  >
+                    📖 Sơ cứu
+                  </Link>
+                </td>
+                <td>
                   <div className={`status-pill ${(incident.status || 'resolved').toLowerCase()}`}>
                     <div className="pulse-dot"></div>
                     {incident.status === 'Active' ? 'Đang xử lý' : 'Đã hoàn thành'}
@@ -81,7 +123,7 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
             ))}
             {incidents.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
                   Chưa có nhật ký sự cố nào được ghi nhận.
                 </td>
               </tr>

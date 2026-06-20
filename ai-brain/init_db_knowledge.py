@@ -167,21 +167,14 @@ def update_system_knowledge():
                        "Hệ thống tích hợp trực tiếp với IMOU Open Platform. Người dùng điền thông tin App ID và App Secret của tài khoản nhà phát triển IMOU. AI Brain và Go Backend sẽ tự động kết nối qua API của IMOU (Easy4ip), lấy toàn bộ danh sách thiết bị liên kết, trạng thái online/offline, và tự động cấu hình luồng stream trực tiếp từ Cloud về Dashboard mà không cần cấu hình RTSP/Modem phức tạp."
         },
         
-        # 17. KHÔNG PHÂN BIỆT CO GIẬT VÀ NGẤT (ĐÃ TẮT THEO YÊU CẦU)
-        {
-            "category": "technical",
-            "key": "seizure_vs_unconscious",
-            "content": "Trạng thái nhận diện co giật (Seizure) và ngất/bất động (Unconscious) trên Casos:\n"
-                       "Tính năng nhận diện co giật và ngất đã được tắt hoàn toàn theo yêu cầu của người dùng. AI hiện tại chỉ phát hiện hành động Té ngã (Fall) và kích hoạt trực tiếp chu trình cảnh báo khẩn cấp (Emergency Alert) mà không phân biệt mức độ co giật hay bất tỉnh sau khi ngã nữa."
-        },
-        
+
         # 18. CHỐNG BÁO ĐỘNG GIẢ BẰNG YOLO
         {
             "category": "technical",
             "key": "yolo_false_alarm_suppression",
             "content": "Cơ chế chống báo động giả bằng YOLO (YOLO Furniture Collision) trên Casos:\n"
-                       "Để tránh báo động giả khi người dùng nằm nghỉ ngơi bình thường, AI tích hợp mô hình YOLOv11-Nano để phát hiện và định vị các đồ nội thất trong phòng như giường, ghế sofa, ghế tựa.\n"
-                       "Nếu tọa độ vùng hông của người bệnh trùng lấp lên các vùng nhận diện của giường hoặc ghế sofa, AI sẽ tự động bỏ qua trạng thái ngã và phân loại thành tư thế nghỉ ngơi/ngủ (Resting on furniture) giúp hệ thống không phát chuông cảnh báo sai."
+                       "Để tránh báo động giả khi người dùng nằm nghỉ ngơi hoặc bị nhiễu vật thể tĩnh, AI tích hợp mô hình YOLOv11-Nano để phát hiện và định vị các đồ nội thất (giường, ghế sofa, ghế tựa, bàn ăn) và các vật dụng dễ gây nhận diện nhầm khung xương (xe đạp, xe máy, cột đèn giao thông, chậu cây cảnh).\n"
+                       "Nếu tọa độ vùng hông của người bệnh hoặc vùng nhiễu khung xương trùng lấp lên các vùng nhận diện của các vật thể này, AI sẽ tự động bỏ qua trạng thái báo động ngã để tránh chuông cảnh báo sai."
         },
         
         # 19. CỔNG GỌI ĐIỆN CỨU HỘ ADB ANDROID

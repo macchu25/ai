@@ -12,16 +12,17 @@ import (
 )
 
 type CameraState struct {
-	SuspectStart          time.Time `json:"suspect_start"`
-	LastAlert             time.Time `json:"last_alert"`
-	LocalAlertSent        bool      `json:"local_alert_sent"`
-	AlertPaused           bool      `json:"alert_paused"`
-	SnapshotCaptured      bool      `json:"snapshot_captured"`
-	TelegramAlertSent     bool      `json:"telegram_alert_sent"`
-	PhoneCallInitiated    bool      `json:"phone_call_initiated"`
-	CapturedImageBytes    []byte    `json:"captured_image_bytes,omitempty"`
-	LastTelegramAlertTime time.Time `json:"last_telegram_alert_time"`
-	LastPhoneCallTime     time.Time `json:"last_phone_call_time"`
+	SuspectStart               time.Time `json:"suspect_start"`
+	LastAlert                  time.Time `json:"last_alert"`
+	LocalAlertSent             bool      `json:"local_alert_sent"`
+	AlertPaused                bool      `json:"alert_paused"`
+	SnapshotCaptured           bool      `json:"snapshot_captured"`
+	TelegramAlertSent          bool      `json:"telegram_alert_sent"`
+	PhoneCallInitiated         bool      `json:"phone_call_initiated"`
+	CapturedImageBytes         []byte    `json:"captured_image_bytes,omitempty"`
+	CapturedSkeletonImageBytes []byte    `json:"captured_skeleton_image_bytes,omitempty"`
+	LastTelegramAlertTime      time.Time `json:"last_telegram_alert_time"`
+	LastPhoneCallTime          time.Time `json:"last_phone_call_time"`
 }
 
 type StateStorage interface {

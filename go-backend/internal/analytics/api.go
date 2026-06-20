@@ -29,10 +29,35 @@ func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 
 	// 1. Thống kê tổng quát
 	totalIncidents, _ := h.db.Collection("events").CountDocuments(ctx, bson.M{})
-	last24h := time.Now().Add(-24 * time.Hour)
+	
+	now := time.Now()
+	// Today start (midnight)
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	// Week start (Monday of this week)
+	offset := int(now.Weekday()) - 1
+	if offset < 0 {
+		offset = 6
+	}
+	weekStart := todayStart.AddDate(0, 0, -offset)
+
+	// Month start (1st of this month)
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
 	recentIncidents, _ := h.db.Collection("events").CountDocuments(ctx, bson.M{
-		"detected_at": bson.M{"$gte": last24h},
+		"detected_at": bson.M{"$gte": todayStart}, // Use today start for recent_24h/daily compatibility if needed
 	})
+	
+	todayIncidents, _ := h.db.Collection("events").CountDocuments(ctx, bson.M{
+		"detected_at": bson.M{"$gte": todayStart},
+	})
+	weekIncidents, _ := h.db.Collection("events").CountDocuments(ctx, bson.M{
+		"detected_at": bson.M{"$gte": weekStart},
+	})
+	monthIncidents, _ := h.db.Collection("events").CountDocuments(ctx, bson.M{
+		"detected_at": bson.M{"$gte": monthStart},
+	})
+
 	activeCameras, _ := h.db.Collection("cameras").CountDocuments(ctx, bson.M{})
 
 	// 2. PHÂN LOẠI SỰ CỐ THỰC TẾ (Cho biểu đồ tròn)
@@ -78,6 +103,9 @@ func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"total_incidents":  totalIncidents,
 		"recent_24h":       recentIncidents,
+		"today_incidents":  todayIncidents,
+		"week_incidents":   weekIncidents,
+		"month_incidents":  monthIncidents,
 		"active_cameras":   activeCameras,
 		"categories":       categories, // Dữ liệu thật cho Pie Chart
 		"system_health":    "Excellent",

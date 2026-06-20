@@ -937,6 +937,99 @@ export default function RPPGPage() {
               )}
             </div>
 
+            {/* Dynamic First-Aid instructions inside modals */}
+            <div style={{
+              marginTop: '20px',
+              padding: '20px',
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(245, 158, 11, 0.04) 100%)',
+              border: '1px solid rgba(239, 68, 68, 0.15)',
+              borderRadius: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontWeight: 700, fontSize: '0.95rem' }}>
+                <AlertCircle size={18} color="var(--danger)" />
+                Hướng dẫn sơ cứu khẩn cấp chuyên khoa
+              </div>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                Khi gặp sự cố nhịp sinh tồn vượt ngưỡng hoặc có biểu hiện suy hô hấp, co giật, hãy kích hoạt ngay chế độ hướng dẫn giọng nói để hỗ trợ sơ cứu kịp thời.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
+                {activeModal === 'heart' ? (
+                  <>
+                    <button 
+                      onClick={() => {
+                        window.speechSynthesis?.cancel();
+                        router.push('/cpr?type=hr_high');
+                      }}
+                      style={{
+                        background: 'var(--danger)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 16px',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Nhịp Tim Nhanh (Tachycardia) 🩺
+                    </button>
+                    <button 
+                      onClick={() => {
+                        window.speechSynthesis?.cancel();
+                        router.push('/cpr?type=hr_low');
+                      }}
+                      style={{
+                        background: 'var(--accent)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 16px',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Nhịp Tim Chậm (Bradycardia) 🩺
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      window.speechSynthesis?.cancel();
+                      router.push('/cpr?type=apnea');
+                    }}
+                    style={{
+                      background: 'var(--accent)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 16px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    Ngừng Thở / Suy Hô Hấp (Apnea) 🩺
+                  </button>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
       )}

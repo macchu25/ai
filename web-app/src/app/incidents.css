@@ -549,17 +549,6 @@
   z-index: 10;
 }
 
-/* Shaking animation for seizure state */
-.skeleton-seizure {
-  animation: shakeSkeleton 0.15s infinite alternate;
-  transform-origin: center bottom;
-}
-
-@keyframes shakeSkeleton {
-  0% { transform: translate(-2px, -1px) rotate(-0.5deg); }
-  100% { transform: translate(2px, 1px) rotate(0.5deg); }
-}
-
 /* Controls Panel */
 .webcam-controls-panel {
   display: flex;
@@ -622,14 +611,16 @@
 .btn-state-selector.normal.active { background: #f0fdf4; border-color: #86efac; color: #166534; }
 .btn-state-selector.normal.active .selector-indicator { background: #10b981; box-shadow: 0 0 8px #10b981; }
 
-.btn-state-selector.fall.active { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
-.btn-state-selector.fall.active .selector-indicator { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+.btn-state-selector.fall.active,
+.btn-state-selector.hr_high.active,
+.btn-state-selector.hr_low.active,
+.btn-state-selector.apnea.active { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
 
-.btn-state-selector.seizure.active { background: #faf5ff; border-color: #d8b4fe; color: #6b21a8; }
-.btn-state-selector.seizure.active .selector-indicator { background: #a855f7; box-shadow: 0 0 8px #a855f7; }
+.btn-state-selector.fall.active .selector-indicator,
+.btn-state-selector.hr_high.active .selector-indicator,
+.btn-state-selector.hr_low.active .selector-indicator,
+.btn-state-selector.apnea.active .selector-indicator { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
 
-.btn-state-selector.unconscious.active { background: #fff7ed; border-color: #ffedd5; color: #9a3412; }
-.btn-state-selector.unconscious.active .selector-indicator { background: #f97316; box-shadow: 0 0 8px #f97316; }
 
 .slider-header {
   display: flex;
@@ -723,11 +714,6 @@
 .btn-send-signal.fall { background: #ef4444; box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25); }
 .btn-send-signal.fall:hover { background: #dc2626; }
 
-.btn-send-signal.seizure { background: #a855f7; box-shadow: 0 8px 20px rgba(168, 85, 247, 0.25); }
-.btn-send-signal.seizure:hover { background: #9333ea; }
-
-.btn-send-signal.unconscious { background: #f97316; box-shadow: 0 8px 20px rgba(249, 115, 22, 0.25); }
-.btn-send-signal.unconscious:hover { background: #ea580c; }
 
 .testing-hint-box {
   background: rgba(255, 255, 255, 0.3);

@@ -18,7 +18,7 @@ interface WebcamTestModalProps {
   token: string;
 }
 
-type AIState = 'normal' | 'fall' | 'seizure' | 'unconscious';
+type AIState = 'normal' | 'fall' | 'hr_high' | 'hr_low' | 'apnea';
 
 const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, token }) => {
   const { showToast } = useNotification();
@@ -107,8 +107,9 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
     const labelMapping: Record<AIState, string> = {
       normal: 'normal',
       fall: 'fall',
-      seizure: 'seizure',
-      unconscious: 'unconscious'
+      hr_high: 'rPPG: 135.0 BPM | Resp: 16.0 RPM',
+      hr_low: 'rPPG: 35.0 BPM | Resp: 16.0 RPM',
+      apnea: 'rPPG: 70.0 BPM | Resp: 0.0 RPM'
     };
 
     try {
@@ -165,19 +166,26 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
       bgGlow: 'rgba(239, 68, 68, 0.25)',
       icon: <ShieldAlert className="text-red-400" size={16} />
     },
-    seizure: {
-      color: '#a855f7',
-      text: 'Co giật (Seizure)',
-      borderClass: 'border-purple-flash',
-      bgGlow: 'rgba(168, 85, 247, 0.25)',
-      icon: <Activity className="text-purple-400" size={16} />
+    hr_high: {
+      color: '#ef4444',
+      text: 'Nhịp tim cao (Tachycardia)',
+      borderClass: 'border-red-flash',
+      bgGlow: 'rgba(239, 68, 68, 0.25)',
+      icon: <Activity className="text-red-400" size={16} />
     },
-    unconscious: {
-      color: '#f97316',
-      text: 'Bất tỉnh (Unconscious)',
-      borderClass: 'border-orange-flash',
-      bgGlow: 'rgba(249, 115, 22, 0.2)',
-      icon: <AlertCircle className="text-orange-400" size={16} />
+    hr_low: {
+      color: '#ef4444',
+      text: 'Nhịp tim thấp (Bradycardia)',
+      borderClass: 'border-red-flash',
+      bgGlow: 'rgba(239, 68, 68, 0.25)',
+      icon: <Activity className="text-red-400" size={16} />
+    },
+    apnea: {
+      color: '#ef4444',
+      text: 'Ngưng thở (Apnea)',
+      borderClass: 'border-red-flash',
+      bgGlow: 'rgba(239, 68, 68, 0.25)',
+      icon: <Activity className="text-red-400" size={16} />
     }
   };
 
@@ -239,7 +247,7 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
 
                   {/* Dynamic Pose SVG Skeleton Overlay */}
                   <svg className="pose-skeleton-overlay" viewBox="0 0 640 480">
-                    {activeState === 'normal' && (
+                    {(activeState === 'normal' || activeState === 'hr_high' || activeState === 'hr_low' || activeState === 'apnea') && (
                       <g className="skeleton-normal">
                         {/* Head */}
                         <circle cx="320" cy="120" r="22" stroke="#10b981" strokeWidth="3" fill="rgba(16, 185, 129, 0.2)" />
@@ -274,44 +282,6 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
                         {/* Legs */}
                         <line x1="320" y1="350" x2="420" y2="340" stroke="#ef4444" strokeWidth="3.5" />
                         <line x1="320" y1="410" x2="440" y2="415" stroke="#ef4444" strokeWidth="3.5" />
-                      </g>
-                    )}
-
-                    {activeState === 'seizure' && (
-                      <g className="skeleton-seizure">
-                        {/* Head lying down shaking */}
-                        <circle cx="160" cy="380" r="22" stroke="#a855f7" strokeWidth="3" fill="rgba(168, 85, 247, 0.2)" />
-                        {/* Spine */}
-                        <line x1="182" y1="380" x2="320" y2="380" stroke="#a855f7" strokeWidth="4" />
-                        {/* Shoulders */}
-                        <line x1="200" y1="345" x2="200" y2="415" stroke="#a855f7" strokeWidth="3" />
-                        {/* Arms */}
-                        <line x1="200" y1="345" x2="155" y2="325" stroke="#a855f7" strokeWidth="3" />
-                        <line x1="200" y1="415" x2="245" y2="435" stroke="#a855f7" strokeWidth="3" />
-                        {/* Hips */}
-                        <line x1="320" y1="345" x2="320" y2="415" stroke="#a855f7" strokeWidth="3" />
-                        {/* Legs */}
-                        <line x1="320" y1="345" x2="415" y2="335" stroke="#a855f7" strokeWidth="3.5" />
-                        <line x1="320" y1="415" x2="435" y2="420" stroke="#a855f7" strokeWidth="3.5" />
-                      </g>
-                    )}
-
-                    {activeState === 'unconscious' && (
-                      <g className="skeleton-unconscious">
-                        {/* Head lying down flat */}
-                        <circle cx="160" cy="390" r="22" stroke="#f97316" strokeWidth="3" fill="rgba(249, 115, 22, 0.2)" />
-                        {/* Spine */}
-                        <line x1="182" y1="390" x2="320" y2="390" stroke="#f97316" strokeWidth="4" />
-                        {/* Shoulders */}
-                        <line x1="200" y1="360" x2="200" y2="420" stroke="#f97316" strokeWidth="3" />
-                        {/* Arms */}
-                        <line x1="200" y1="360" x2="150" y2="360" stroke="#f97316" strokeWidth="3" />
-                        <line x1="200" y1="420" x2="250" y2="420" stroke="#f97316" strokeWidth="3" />
-                        {/* Hips */}
-                        <line x1="320" y1="360" x2="320" y2="420" stroke="#f97316" strokeWidth="3" />
-                        {/* Legs */}
-                        <line x1="320" y1="360" x2="430" y2="360" stroke="#f97316" strokeWidth="3.5" />
-                        <line x1="320" y1="420" x2="430" y2="420" stroke="#f97316" strokeWidth="3.5" />
                       </g>
                     )}
                   </svg>
@@ -354,17 +324,24 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
             )}
 
             <div className="control-section-card">
-              <h4>1. Chọn tư thế kiểm thử (AI States)</h4>
-              <div className="state-selection-grid">
-                {(['normal', 'fall', 'seizure', 'unconscious'] as AIState[]).map((st) => (
+              <h4>1. Chọn tư thế & chỉ số kiểm thử</h4>
+              <div className="state-selection-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {(['normal', 'fall', 'hr_high', 'hr_low', 'apnea'] as AIState[]).map((st) => (
                   <button
                     key={st}
                     onClick={() => setActiveState(st)}
                     className={`btn-state-selector ${st} ${activeState === st ? 'active' : ''}`}
                     type="button"
+                    style={st === 'normal' ? { gridColumn: 'span 2' } : {}}
                   >
                     <div className="selector-indicator"></div>
-                    <span className="selector-text">{stateConfig[st].text.split(' ')[0]}</span>
+                    <span className="selector-text">
+                      {st === 'normal' && 'Bình thường'}
+                      {st === 'fall' && 'Té ngã'}
+                      {st === 'hr_high' && 'Tim nhanh'}
+                      {st === 'hr_low' && 'Tim chậm'}
+                      {st === 'apnea' && 'Ngưng thở'}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -416,7 +393,7 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
                 <h5>Hướng dẫn kiểm thử:</h5>
               </div>
               <ul>
-                <li>Chọn <strong>Té ngã</strong> hoặc <strong>Co giật</strong> và bấm <strong>Gửi tín hiệu</strong>.</li>
+                <li>Chọn <strong>Té ngã</strong> hoặc <strong>chỉ số sinh tồn bất thường</strong> và bấm <strong>Gửi tín hiệu</strong>.</li>
                 <li>Xem cảnh báo nguy hiểm nhấp nháy trực tiếp trên màn hình chính.</li>
                 <li>Cuộc gọi cảnh báo khẩn cấp và Telegram sẽ tự động kích hoạt nếu cấu hình hoàn tất.</li>
                 <li>Chọn lại <strong>Bình thường</strong> để hủy cảnh báo và hồi phục hệ thống.</li>

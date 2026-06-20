@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { 
   TrendingUp, Activity, Shield, Zap, AlertCircle, 
-  Download, ArrowLeft, PieChart 
+  Download, ArrowLeft, PieChart, Clock, Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from "next-auth/react";
@@ -18,6 +18,9 @@ interface IncidentCategory {
 interface SummaryData {
   total_incidents: number;
   recent_24h: number;
+  today_incidents?: number;
+  week_incidents?: number;
+  month_incidents?: number;
   active_cameras: number;
   categories: IncidentCategory[];
   system_health: string;
@@ -95,10 +98,12 @@ export default function AnalyticsPage() {
       </div>
 
       {/* METRICS ROW: COMPACT */}
-      <div className="responsive-grid-4col" style={{ marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', marginBottom: '20px' }}>
         {[
           { label: 'TỔNG SỰ CỐ', value: summary?.total_incidents || 0, icon: AlertCircle, color: 'var(--danger)' },
-          { label: 'TRONG 24H QUA', value: summary?.recent_24h || 0, icon: Activity, color: '#f59e0b' },
+          { label: 'TRONG NGÀY', value: summary?.today_incidents ?? summary?.recent_24h ?? 0, icon: Clock, color: '#f59e0b' },
+          { label: 'TRONG TUẦN', value: summary?.week_incidents ?? 0, icon: TrendingUp, color: 'var(--accent)' },
+          { label: 'TRONG THÁNG', value: summary?.month_incidents ?? 0, icon: Calendar, color: '#8b5cf6' },
           { label: 'SENSORS ACTIVE', value: summary?.active_cameras || 0, icon: Zap, color: 'var(--accent)' },
           { label: 'AI STATUS', value: 'OPTIMIZED', icon: Shield, color: 'var(--success)' },
         ].map((stat, i) => (

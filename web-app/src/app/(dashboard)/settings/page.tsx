@@ -115,57 +115,7 @@ export default function SettingsPage() {
       <div className="settings-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
-          {/* AI Sensitivity Section */}
-          <section className="overview-card">
-            <h2 style={{ margin: '0 0 32px 0', display: 'flex', alignItems: 'center', gap: '16px', fontSize: '1.35rem', color: 'var(--text-main)' }}>
-              <div className="icon-badge accent" style={{ width: '44px', height: '44px', borderRadius: '12px' }}>
-                <Shield size={22} color="var(--accent)" />
-              </div>
-              Độ nhạy AI (Thresholds)
-            </h2>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'flex-end' }}>
-                  <label style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1.05rem' }}>Ngưỡng Bất Động (THR_LOW)</label>
-                  <span style={{ background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 800, padding: '4px 12px', borderRadius: '8px', fontSize: '1rem' }}>{thrLow.toFixed(3)}</span>
-                </div>
-                <input 
-                  type="range" 
-                  min="0.005" 
-                  max="0.030" 
-                  step="0.001" 
-                  value={thrLow} 
-                  onChange={(e) => setThrLow(parseFloat(e.target.value))}
-                  style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer', height: '6px' }}
-                />
-                <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '12px', lineHeight: '1.5', fontWeight: 500 }}>
-                  Dưới mức này AI sẽ coi là đối tượng đang nằm bất động (Unconscious).
-                </p>
-              </div>
-
-              <div style={{ height: '1px', background: 'var(--border)', width: '100%' }}></div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'flex-end' }}>
-                  <label style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1.05rem' }}>Ngưỡng Co Giật (THR_HIGH)</label>
-                  <span style={{ background: 'var(--warning-light)', color: 'var(--warning)', fontWeight: 800, padding: '4px 12px', borderRadius: '8px', fontSize: '1rem' }}>{thrHigh.toFixed(3)}</span>
-                </div>
-                <input 
-                  type="range" 
-                  min="0.030" 
-                  max="0.100" 
-                  step="0.005" 
-                  value={thrHigh} 
-                  onChange={(e) => setThrHigh(parseFloat(e.target.value))}
-                  style={{ width: '100%', accentColor: 'var(--warning)', cursor: 'pointer', height: '6px' }}
-                />
-                <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '12px', lineHeight: '1.5', fontWeight: 500 }}>
-                  Trên mức này AI sẽ kích hoạt cảnh báo co giật (Seizure).
-                </p>
-              </div>
-            </div>
-          </section>
 
           {/* Notifications Section */}
           <section className="overview-card">

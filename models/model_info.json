@@ -10,8 +10,8 @@
   "labels": {
     "0": "normal",
     "1": "fall",
-    "2": "unconscious",
-    "3": "seizure"
+    "2": "normal",
+    "3": "normal"
   },
-  "note": "Model: 4 classes (normal/fall/unconscious/seizure). Vector logic added for sitting/sleeping distinction within 'normal'."
+  "note": "Model: 4 classes (normal/fall). Unconscious and seizure classes deactivated and mapped to normal."
 }

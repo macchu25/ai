@@ -24,11 +24,12 @@ import (
 )
 
 type AIResult struct {
-	CameraID      primitive.ObjectID
-	ModelName     string
-	Label         string
-	Confidence    float32
-	EvidenceImage []byte
+	CameraID              primitive.ObjectID
+	ModelName             string
+	Label                 string
+	Confidence            float32
+	EvidenceImage         []byte
+	EvidenceSkeletonImage []byte
 }
 
 type Engine struct {
@@ -105,10 +106,175 @@ func NewEngine(db *mongo.Database, hub *ws.Hub, hls *stream.HLSServer) *Engine {
 				},
 			}
 			telephony.SendTelegramAlertCustom(senderID, msg, buttons)
+		case "guide_vitals":
+			msg := "🤔 <b>Trợ lý Casos (Chỉ số sinh tồn):</b> Bạn có đang ở gần nạn nhân không?"
+			buttons := telephony.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telephony.InlineButton{
+					{{Text: "✅ CÓ, TÔI Ở GẦN", CallbackData: "athome_yes_vitals:" + data}},
+					{{Text: "❌ KHÔNG, TÔI Ở XA", CallbackData: "athome_no:" + data}},
+				},
+			}
+			telephony.SendTelegramAlertCustom(senderID, msg, buttons)
+		case "athome_yes_vitals":
+			msg := "🚑 <b>Trợ lý Cấp cứu Casos:</b> Hãy chọn đúng trạng thái nhịp sinh tồn hiện tại của nạn nhân bên dưới để nhận hướng dẫn sơ cứu khẩn cấp:"
+			buttons := telephony.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telephony.InlineButton{
+					{
+						{Text: "🫁 Ngưng tim / Ngưng thở (CPR)", CallbackData: "fa_cpr:" + data},
+					},
+					{
+						{Text: "❤️ Nhịp tim nhanh (Tachycardia)", CallbackData: "fa_hr_high:" + data},
+						{Text: "💙 Nhịp tim chậm (Bradycardia)", CallbackData: "fa_hr_low:" + data},
+					},
+					{
+						{Text: "🌬️ Ngừng thở lâm sàng (Apnea)", CallbackData: "fa_apnea:" + data},
+					},
+				},
+			}
+			telephony.SendTelegramAlertCustom(senderID, msg, buttons)
 		case "athome_yes":
-			telephony.SendTelegramAlertCustom(senderID, "🚑 <b>HÀNH ĐỘNG:</b> Đến ngay hiện trường, giữ nạn nhân nằm yên, gọi 115.", nil)
+			msg := "🚑 <b>Trợ lý Cấp cứu Casos:</b> Bạn đang ở gần nạn nhân. Hãy chọn đúng trường hợp thực tế của nạn nhân bên dưới để nhận hướng dẫn sơ cứu chuẩn y tế:"
+			buttons := telephony.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telephony.InlineButton{
+					{
+						{Text: "🧠 Chấn thương đầu", CallbackData: "fa_head:" + data},
+						{Text: "🫁 Hồi sức tim phổi (CPR)", CallbackData: "fa_cpr:" + data},
+					},
+					{
+						{Text: "🦴 Gãy xương/Khớp", CallbackData: "fa_bone:" + data},
+						{Text: "🩸 Chảy máu hở", CallbackData: "fa_blood:" + data},
+					},
+					{
+						{Text: "🧠 Nghi Đột quỵ", CallbackData: "fa_stroke:" + data},
+						{Text: "🌀 Co giật/Động kinh", CallbackData: "fa_seizure:" + data},
+					},
+					{
+						{Text: "❤️ Nhịp tim nhanh", CallbackData: "fa_hr_high:" + data},
+						{Text: "💙 Nhịp tim chậm", CallbackData: "fa_hr_low:" + data},
+					},
+					{
+						{Text: "🌬️ Ngừng thở (Apnea)", CallbackData: "fa_apnea:" + data},
+					},
+				},
+			}
+			telephony.SendTelegramAlertCustom(senderID, msg, buttons)
 		case "athome_no":
-			telephony.SendTelegramAlertCustom(senderID, "📡 <b>HÀNH ĐỘNG:</b> Gọi hàng xóm, cung cấp địa chỉ cho 115.", nil)
+			msg := "📡 <b>HƯỚNG DẪN XỬ LÝ KHẨN CẤP (KHI Ở XA):</b>\n\n" +
+				"<b>1. GỌI NGAY CỨU HỘ 115:</b>\n" +
+				"• Cung cấp địa chỉ nhà chính xác của nạn nhân.\n" +
+				"• Báo cáo rõ: <i>'Hệ thống AI giám sát báo động ngã khẩn cấp tại phòng khách/phòng ngủ.'</i>\n\n" +
+				"<b>2. LIÊN LẠC HÀNG XÓM / BAN QUẢN LÝ:</b>\n" +
+				"• Gọi ngay cho hàng xóm gần nhất hoặc bảo vệ tòa nhà chạy sang kiểm tra cứu giúp.\n\n" +
+				"<b>3. TIẾP CẬN VÀO NHÀ:</b>\n" +
+				"• Kích hoạt mở khóa thông minh (Smart Lock) từ xa nếu có.\n" +
+				"• Hướng dẫn hàng xóm/cứu hộ nơi để chìa khóa dự phòng hoặc lối vào nhanh nhất.\n\n" +
+				"<b>4. GIÁM SÁT QUA CAMERA:</b>\n" +
+				"• Bật camera trực tiếp trên ứng dụng Casos để cập nhật tình hình thực tế và báo cho đội cấp cứu khi họ đến."
+			telephony.SendTelegramAlertCustom(senderID, msg, nil)
+		case "fa_head":
+			msg := "🧠 <b>SƠ CỨU: CHẤN THƯƠNG ĐẦU / BẤT TỈNH</b>\n\n" +
+				"<b>1. CỐ ĐỊNH CỘT SỐNG CỔ (CỰC KỲ QUAN TRỌNG):</b>\n" +
+				"• Giữ đầu và cổ thẳng hàng với thân mình. ⚠️ <b>KHÔNG</b> tự ý bế xốc hay di chuyển đầu nạn nhân để tránh liệt vĩnh viễn nếu có chấn thương cổ.\n\n" +
+				"<b>2. KIỂM TRÃ ĐƯỜNG THỞ:</b>\n" +
+				"• Nếu bất tỉnh nhưng vẫn thở: Nghiêng nhẹ người nạn nhân sang tư thế nằm nghiêng an toàn (tư thế hồi phục) để đờm nhớt hoặc chất nôn chảy ra ngoài, tránh sặc đường thở.\n\n" +
+				"<b>3. XỬ LÝ CHẢY MÁU:</b>\n" +
+				"• Dùng gạc hoặc vải sạch ép nhẹ trực tiếp lên vết thương đầu để cầm máu.\n" +
+				"• ⚠️ <b>LƯU Ý:</b> Nếu có máu hoặc dịch trong chảy ra từ tai/mũi, <b>KHÔNG</b> bịt lại, hãy để chảy tự do và kê đầu cao nhẹ."
+			telephony.SendTelegramAlertCustom(senderID, msg, nil)
+		case "fa_cpr":
+			msg := "🫁 <b>SƠ CỨU: NGỪNG TIM / NGỪNG THỞ (CPR)</b>\n\n" +
+				"<b>1. CHUẨN BỊ:</b>\n" +
+				"• Đặt nạn nhân nằm ngửa trên mặt phẳng cứng (sàn nhà, không nằm trên đệm).\n\n" +
+				"<b>2. ÉP TIM LIÊN TỤC (CPR):</b>\n" +
+				"• Đặt gót bàn tay lên giữa xương ức (giữa hai núm vú). Tay kia chồng lên trên, khóa các ngón tay.\n" +
+				"• Dùng lực toàn thân ép thẳng góc xuống ngực sâu 5-6 cm, tần số 100-120 lần/phút (nhịp nhạc <i>'Staying Alive'</i>).\n" +
+				"• Đảm bảo lồng ngực nở hoàn toàn sau mỗi lần ép.\n\n" +
+				"<b>3. HÀ HƠI THỔI NGẠT (NẾU BIẾT CÁCH):</b>\n" +
+				"• Tỉ lệ: 30 lần ép tim - 2 lần hà hơi thổi ngạt.\n" +
+				"• Nếu không được huấn luyện thổi ngạt: <b>ÉP TIM LIÊN TỤC</b> không dừng cho đến khi y tế đến."
+			telephony.SendTelegramAlertCustom(senderID, msg, nil)
+		case "fa_bone":
+			msg := "🦴 <b>SƠ CỨU: NGHI NGỜ GÃY XƯƠNG / CHẤN THƯƠNG KHỚP</b>\n\n" +
+				"<b>1. GIỮ NGUYÊN TƯ THẾ:</b>\n" +
+				"• ⚠️ <b>KHÔNG</b> di chuyển nạn nhân. Tuyệt đối không cố nắn, bẻ thẳng hoặc ấn xương gãy lệch về vị trí cũ.\n\n" +
+				"<b>2. NẸP CỐ ĐỊNH TẠM THỜI:</b>\n" +
+				"• Dùng thanh gỗ, bìa carton cứng hoặc báo cuộn chặt đặt dọc theo chi chấn thương.\n" +
+				"• Dùng vải buộc cố định nẹp ở khớp trên và khớp dưới vùng bị gãy để cố định xương gãy hoàn toàn.\n\n" +
+				"<b>3. CHƯỜM LẠNH & GIẢM ĐAU:</b>\n" +
+				"• Đặt túi đá lạnh chườm lên vùng sưng đau 15-20 phút để giảm đau co mạch (không đắp đá trực tiếp lên da).\n" +
+				"• Liên tục đắp ấm và trấn an tinh thần nạn nhân chờ xe cứu thương."
+			telephony.SendTelegramAlertCustom(senderID, msg, nil)
+		case "fa_blood":
+			msg := "🩸 <b>SƠ CỨU: VẾT THƯƠNG HỞ / CHẢY MÁU NHIỀU</b>\n\n" +
+				"<b>1. ĐÈ CHẶT TRỰC TIẾP:</b>\n" +
+				"• Sử dụng gạc vô trùng hoặc vải sạch ấn chặt trực tiếp lên vị trí vết thương chảy máu.\n\n" +
+				"<b>2. NÂNG CAO CHI CHẤN THƯƠNG:</b>\n" +
+				"• Nếu chảy máu ở tay/chân, hãy nâng cao tay hoặc chân bị thương cao hơn mức tim của nạn nhân để giảm bớt áp lực máu chảy.\n\n" +
+				"<b>3. BĂNG ÉP CỐ ĐỊNH:</b>\n" +
+				"• Quấn băng thun đè lên miếng gạc để giữ áp lực cầm máu liên tục (kiểm tra ngón tay/chân xem có bị tím tái không để nới lỏng).\n" +
+				"• ⚠️ <b>NẾU CÓ DỊ VẬT CẮM SÂU:</b> <b>KHÔNG RÚT RA</b>. Dùng vải quấn đệm xung quanh dị vật để cố định rồi băng lại."
+			telephony.SendTelegramAlertCustom(senderID, msg, nil)
+		case "fa_stroke":
+			msg := "🧠 <b>SƠ CỨU: NGHI NGỜ ĐỘT QUỴ (TAI BIẾN)</b>\n\n" +
+				"<b>1. QUY TẮC F.A.S.T:</b>\n" +
+				"• <b>Face:</b> Mặt méo xệch một bên khi cười.\n" +
+				"• <b>Arm:</b> Yếu/liệt một bên tay chân, không nâng lên được.\n" +
+				"• <b>Speech:</b> Nói ngọng, phát âm khó hoặc không hiểu lời nói.\n" +
+				"• <b>Time:</b> Gọi ngay <b>115</b> lập tức. Ghi nhớ giờ khởi phát đầu tiên.\n\n" +
+				"<b>2. TƯ THẾ NẰM AN TOÀN:</b>\n" +
+				"• Đặt nạn nhân nằm đầu cao khoảng 30 độ (hoặc nằm nghiêng nếu có dấu hiệu nôn mửa) ở nơi thoáng mát.\n\n" +
+				"<b>3. ⚠️ NGUYÊN TẮC VÀNG:</b>\n" +
+				"• <b>KHÔNG</b> cho ăn, uống hoặc nuốt bất kỳ thứ gì (dễ sặc đường thở gây ngạt).\n" +
+				"• <b>KHÔNG</b> tự ý cho uống thuốc hạ huyết áp, aspirin hoặc chích lể nặn máu vì có thể làm trầm trọng thêm tình trạng chảy máu não."
+			telephony.SendTelegramAlertCustom(senderID, msg, nil)
+		case "fa_seizure":
+			msg := "🌀 <b>SƠ CỨU: CO GIẬT / ĐỘNG KINH</b>\n\n" +
+				"<b>1. TẠO KHÔNG GIAN AN TOÀN:</b>\n" +
+				"• Di chuyển ngay các vật sắc nhọn, thủy tinh, đồ đạc cứng xung quanh để tránh nạn nhân va đập tự gây thương tích.\n\n" +
+				"<b>2. BẢO VỆ ĐẦU:</b>\n" +
+				"• Đặt một chiếc gối mỏng, mềm hoặc tấm áo cuộn lại dưới đầu nạn nhân để chống va đập xuống sàn.\n\n" +
+				"<b>3. THEO DÕI ĐƯỜNG THỞ:</b>\n" +
+				"• Nới lỏng cổ áo, thắt lưng. Khi cơn giật dịu đi, xoay nhẹ người nạn nhân nằm nghiêng để đờm dãi chảy ra ngoài.\n\n" +
+				"<b>4. ⚠️ ĐIỀU CẤM KỴ:</b>\n" +
+				"• <b>KHÔNG</b> ghì chặt hay cố đè giữ tay chân nạn nhân để cắt cơn giật (dễ gây gãy xương/rách cơ).\n" +
+				"• <b>KHÔNG</b> đút ngón tay, muỗng, hoặc bất cứ vật cứng nào vào miệng nạn nhân vì có thể gây gãy răng hoặc bít tắc đường thở."
+			telephony.SendTelegramAlertCustom(senderID, msg, nil)
+		case "fa_hr_high":
+			msg := "❤️ <b>SƠ CỨU: NHỊP TIM QUÁ NHANH (TACHYCARDIA)</b>\n\n" +
+				"<b>1. NGHỈ NGƠI & NỚI LỎNG QUẦN ÁO:</b>\n" +
+				"• Hướng dẫn nạn nhân ngồi nghỉ ở tư thế nửa nằm nửa ngồi thoải mái.\n" +
+				"• Nới lỏng khuy áo ở cổ, thắt lưng để hỗ trợ thở.\n\n" +
+				"<b>2. KỸ THUẬT HÍT THỞ SÂU:</b>\n" +
+				"• Yêu cầu nạn nhân hít vào thật sâu bằng mũi, nén hơi 2-3 giây rồi thở ra chậm bằng miệng (giúp kích hoạt hệ phó giao cảm làm chậm nhịp tim).\n\n" +
+				"<b>3. NGHIỆM PHÁP VALSALVA (NẾU TỈNH TÁO):</b>\n" +
+				"• Bảo nạn nhân bịt mũi, ngậm chặt miệng và cố gắng thở mạnh ra trong 10-15 giây (như động tác rặn) để hạ nhịp tim.\n" +
+				"• Có thể chườm khăn mát/nước lạnh lên vùng trán và má.\n\n" +
+				"<b>4. ⚠️ LƯU Ý QUAN TRỌNG:</b>\n" +
+				"• <b>KHÔNG</b> tự ý cho uống bất kỳ thuốc hạ nhịp tim nào nếu không có đơn thuốc chỉ định của bác sĩ điều trị."
+			telephony.SendTelegramAlertCustom(senderID, msg, nil)
+		case "fa_hr_low":
+			msg := "💙 <b>SƠ CỨU: NHỊP TIM QUÁ CHẬM (BRADYCARDIA)</b>\n\n" +
+				"<b>1. NẰM NGỬA NÂNG CAO CHÂN:</b>\n" +
+				"• Đặt nạn nhân nằm ngửa trên giường hoặc sàn nhà.\n" +
+				"• <b>Kê cao hai chân lên khoảng 30-45 độ</b> (dùng gối hoặc chăn cuộn) để dồn máu từ chân về tim và não nhanh hơn, phòng tránh ngất xỉu.\n\n" +
+				"<b>2. GIỮ ẤM & THÔNG THOÁNG:</b>\n" +
+				"• Đắp chăn giữ ấm cơ thể nếu nạn nhân cảm thấy lạnh hoặc da tái nhợt.\n" +
+				"• Nới lỏng cổ áo và thắt lưng.\n\n" +
+				"<b>3. THEO DÕI SÁT SAO:</b>\n" +
+				"• Liên tục kiểm tra ý thức và nhịp thở. Nếu nạn nhân đột ngột bất tỉnh và ngừng thở, phải lập tức chuyển sang tiến hành ép tim ngoài lồng ngực (CPR)."
+			telephony.SendTelegramAlertCustom(senderID, msg, nil)
+		case "fa_apnea":
+			msg := "🌬️ <b>SƠ CỨU: NGỪNG THỞ LÂM SÀNG / SUY HÔ HẤP (APNEA)</b>\n\n" +
+				"<b>1. KHAI THÔNG ĐƯỜNG THỞ (AIRWAY):</b>\n" +
+				"• Đặt nạn nhân nằm ngửa trên nền phẳng, cứng.\n" +
+				"• Thực hiện kỹ thuật ngửa đầu - nâng cằm để mở rộng đường thở.\n" +
+				"• Kiểm tra và lấy nhanh mọi dị vật, đờm nhớt trong miệng nạn nhân ra.\n\n" +
+				"<b>2. HÀ HƠI THỔI NGẠT KHẨN CẤP:</b>\n" +
+				"• Bịt mũi nạn nhân, áp miệng thổi một hơi thật mạnh trong 1 giây để lồng ngực phồng lên.\n" +
+				"• Thực hiện 2 lần thổi ngạt liên tục.\n\n" +
+				"<b>3. PHỐI HỢP ÉP TIM NGOÀI LỒNG NGỰC:</b>\n" +
+				"• Kiểm tra mạch đập ở cổ. Nếu không có mạch, bắt đầu chu kỳ 30 lần ép tim ngoài lồng ngực xen kẽ 2 lần thổi ngạt liên tục cho đến khi y tế đến."
+			telephony.SendTelegramAlertCustom(senderID, msg, nil)
 		}
 	})
 
@@ -118,7 +284,7 @@ func NewEngine(db *mongo.Database, hub *ws.Hub, hls *stream.HLSServer) *Engine {
 func (e *Engine) Start() {
 	go func() {
 		for result := range e.ResultCh {
-			e.Process(result.CameraID, result.ModelName, result.Label, result.Confidence, result.EvidenceImage)
+			e.Process(result.CameraID, result.ModelName, result.Label, result.Confidence, result.EvidenceImage, result.EvidenceSkeletonImage)
 		}
 	}()
 }
@@ -153,7 +319,7 @@ func (e *Engine) getMedicalSummaryPlain(userID primitive.ObjectID) string {
 	return fmt.Sprintf("Nhóm máu: %s. Tiền sử bệnh: %s.", bloodType, history)
 }
 
-func (e *Engine) Process(camID primitive.ObjectID, modelName string, label string, conf float32, imgBytes []byte) {
+func (e *Engine) Process(camID primitive.ObjectID, modelName string, label string, conf float32, imgBytes []byte, skeletonImgBytes []byte) {
 	ctx := context.Background()
 
 	// KIỂM TRA MODEL CÓ ĐANG ACTIVE KHÔNG
@@ -345,7 +511,7 @@ func (e *Engine) Process(camID primitive.ObjectID, modelName string, label strin
 			// 2. Sau criticalAlertSeconds giây bất thường liên tục: Kích hoạt cuộc gọi khẩn cấp Twilio & Alert đỏ & Log vào DB
 			if durationAbnormal >= time.Duration(criticalAlertSeconds)*time.Second {
 				if state.LastAlert.IsZero() || time.Since(state.LastAlert) >= 3*time.Minute {
-					e.triggerAlert(camID, alertLabel, conf, imgBytes)
+					e.triggerAlert(camID, alertLabel, conf, imgBytes, nil)
 					state.LastAlert = time.Now()
 				}
 			}
@@ -373,6 +539,10 @@ func (e *Engine) Process(camID primitive.ObjectID, modelName string, label strin
 				if !state.SnapshotCaptured && len(imgBytes) > 0 {
 					state.CapturedImageBytes = make([]byte, len(imgBytes))
 					copy(state.CapturedImageBytes, imgBytes)
+					if len(skeletonImgBytes) > 0 {
+						state.CapturedSkeletonImageBytes = make([]byte, len(skeletonImgBytes))
+						copy(state.CapturedSkeletonImageBytes, skeletonImgBytes)
+					}
 					state.SnapshotCaptured = true
 					log.Printf("[Engine] Đã chụp ảnh bằng chứng té ngã ở giây thứ 8 cho camera %s\n", camID.Hex())
 				}
@@ -384,16 +554,20 @@ func (e *Engine) Process(camID primitive.ObjectID, modelName string, label strin
 				if len(photoToSend) == 0 {
 					photoToSend = imgBytes
 				}
+				skeletonPhotoToSend := state.CapturedSkeletonImageBytes
+				if len(skeletonPhotoToSend) == 0 {
+					skeletonPhotoToSend = skeletonImgBytes
+				}
 
 				if !state.TelegramAlertSent {
-					go e.triggerTelegramAlertOnly(camID, alertLabel, conf, photoToSend)
+					go e.triggerTelegramAlertOnly(camID, alertLabel, conf, photoToSend, skeletonPhotoToSend)
 					state.TelegramAlertSent = true
 					state.LastTelegramAlertTime = time.Now()
 					state.LastAlert = time.Now()
 					log.Printf("[Engine] Đã gửi Telegram đỏ cảnh báo khẩn cấp ở giây thứ 13 cho camera %s\n", camID.Hex())
 				} else if time.Since(state.LastTelegramAlertTime) >= 5*time.Second {
 					// Gửi lặp lại mỗi 5 giây kèm ảnh giây thứ 8 (nếu có) hoặc ảnh hiện tại
-					go e.triggerTelegramAlertOnly(camID, alertLabel, conf, photoToSend)
+					go e.triggerTelegramAlertOnly(camID, alertLabel, conf, photoToSend, skeletonPhotoToSend)
 					state.LastTelegramAlertTime = time.Now()
 					log.Printf("[Engine] Gửi lại Telegram đỏ (mỗi 5s) cho camera %s\n", camID.Hex())
 				}
@@ -434,6 +608,7 @@ func (e *Engine) resetCameraState(ctx context.Context, camID primitive.ObjectID,
 	state.TelegramAlertSent = false
 	state.PhoneCallInitiated = false
 	state.CapturedImageBytes = nil
+	state.CapturedSkeletonImageBytes = nil
 	state.LastTelegramAlertTime = time.Time{}
 	state.LastPhoneCallTime = time.Time{}
 	metrics.ActiveAlerts.Dec()
@@ -445,7 +620,7 @@ func (e *Engine) resetCameraState(ctx context.Context, camID primitive.ObjectID,
 	log.Printf("[Engine] Đã reset trạng thái cho camera %s về bình thường\n", camID.Hex())
 }
 
-func (e *Engine) triggerTelegramAlertOnly(camID primitive.ObjectID, label string, conf float32, imgBytes []byte) {
+func (e *Engine) triggerTelegramAlertOnly(camID primitive.ObjectID, label string, conf float32, imgBytes []byte, skeletonImgBytes []byte) {
 	var cameraDoc model.Camera
 	if err := e.db.Collection("cameras").FindOne(context.Background(), bson.M{"_id": camID}).Decode(&cameraDoc); err != nil {
 		log.Printf("[Engine] Lỗi triggerTelegramAlertOnly: không tìm thấy camera %s: %v\n", camID.Hex(), err)
@@ -456,9 +631,22 @@ func (e *Engine) triggerTelegramAlertOnly(camID primitive.ObjectID, label string
 	medical := e.getMedicalSummary(cameraDoc.UserID)
 
 	msg := fmt.Sprintf("🚨 <b>[Casos - KHẨN CẤP]</b>\n🆘 <b>SỰ CỐ:</b> %s\n👤 <b>Nạn nhân:</b> %s\n📍 <b>Tại:</b> %s\n📋 <b>HỒ SƠ Y TẾ:</b>\n%s", html.EscapeString(label), html.EscapeString(patientName), html.EscapeString(camName), medical)
+	
+	guideCallback := "guide:" + camID.Hex()
+	labelLower := strings.ToLower(label)
+	if strings.Contains(labelLower, "bpm") || 
+		strings.Contains(labelLower, "rpm") || 
+		strings.Contains(labelLower, "nhịp tim") || 
+		strings.Contains(labelLower, "nhịp thở") || 
+		strings.Contains(labelLower, "tachycardia") || 
+		strings.Contains(labelLower, "bradycardia") || 
+		strings.Contains(labelLower, "apnea") {
+		guideCallback = "guide_vitals:" + camID.Hex()
+	}
+
 	buttons := telephony.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telephony.InlineButton{
-			{{Text: "📖 HƯỚNG DẪN XỬ LÝ", CallbackData: "guide:" + camID.Hex()}},
+			{{Text: "📖 HƯỚNG DẪN XỬ LÝ", CallbackData: guideCallback}},
 			{{Text: "⏹️ TẠM DỪNG BÁO ĐỘNG", CallbackData: "pause:" + camID.Hex()}},
 			{{Text: "⚡ GỌI LẠI KHẨN CẤP", CallbackData: "call:" + cameraDoc.UserID.Hex()}},
 		},
@@ -466,7 +654,7 @@ func (e *Engine) triggerTelegramAlertOnly(camID primitive.ObjectID, label string
 	go telephony.SendTelegramAlertCustom(chatID, msg, buttons)
 	
 	evidencePath := "audio/mockup.png"
-	caption := "🚨 BẰNG CHỨNG"
+	caption := "🚨 BẰNG CHỨNG THỰC TẾ"
 	if len(imgBytes) > 0 {
 		evidencePath = "audio/evidence_temp.jpg"
 		_ = os.MkdirAll("audio", 0755) // Đảm bảo thư mục audio luôn tồn tại
@@ -474,21 +662,43 @@ func (e *Engine) triggerTelegramAlertOnly(camID primitive.ObjectID, label string
 		if err != nil {
 			log.Printf("[Engine] Lỗi ghi file ảnh bằng chứng (%s): %v\n", evidencePath, err)
 			evidencePath = "audio/mockup.png"
-		} else {
-			caption = "🚨 BẰNG CHỨNG THỰC TẾ"
 		}
 	}
 
 	imgData, err := os.ReadFile(evidencePath)
 	if err == nil {
-		go telephony.SendTelegramPhotoCustom(chatID, caption, imgData, buttons)
+		// Gửi ảnh thường trước (không kèm nút để tránh trùng lặp)
+		go telephony.SendTelegramPhotoCustom(chatID, caption, imgData, nil)
 	} else {
 		log.Printf("[Engine] Không thể đọc ảnh bằng chứng (%s): %v\n", evidencePath, err)
+	}
+
+	// Gửi ảnh khung xương nếu có
+	skeletonPath := ""
+	if len(skeletonImgBytes) > 0 {
+		skeletonPath = "audio/evidence_skeleton_temp.jpg"
+		_ = os.MkdirAll("audio", 0755)
+		err := os.WriteFile(skeletonPath, skeletonImgBytes, 0644)
+		if err != nil {
+			log.Printf("[Engine] Lỗi ghi file ảnh khung xương (%s): %v\n", skeletonPath, err)
+			skeletonPath = ""
+		}
+	}
+	if skeletonPath != "" {
+		skeletonData, err := os.ReadFile(skeletonPath)
+		if err == nil {
+			skeletonCaption := "💀 KHUNG XƯƠNG AI QUÉT"
+			// Gửi ảnh khung xương kèm các nút điều khiển
+			go telephony.SendTelegramPhotoCustom(chatID, skeletonCaption, skeletonData, buttons)
+		}
 	}
 
 	// HYBRID CLOUD: Đẩy bằng chứng lên S3/Firebase
 	go func() {
 		e.cloudSync.UploadIncidentEvidence(evidencePath)
+		if skeletonPath != "" {
+			e.cloudSync.UploadIncidentEvidence(skeletonPath)
+		}
 	}()
 
 	// ─── LƯU INCIDENT VÀO VECTOR DB ───
@@ -535,8 +745,8 @@ func (e *Engine) triggerPhoneCallOnly(camID primitive.ObjectID, label string) {
 	go e.gateway.InitiateAndroidCall(cameraDoc.UserID, camID, label, telephony.CallRelative, camName)
 }
 
-func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float32, imgBytes []byte) {
-	e.triggerTelegramAlertOnly(camID, label, conf, imgBytes)
+func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float32, imgBytes []byte, skeletonImgBytes []byte) {
+	e.triggerTelegramAlertOnly(camID, label, conf, imgBytes, skeletonImgBytes)
 	e.triggerPhoneCallOnly(camID, label)
 }
 

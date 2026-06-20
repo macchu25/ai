@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/twilio/twilio-go"
@@ -91,7 +92,19 @@ func (t *TwilioGateway) InitiateOutboundCall(toPhone, contactName, camName, inci
 	})
 
 	now := time.Now().In(time.FixedZone("ICT", 7*3600)).Format("15 giờ 04 phút")
-	message := fmt.Sprintf("Khẩn cấp, hệ thống Casốt thông báo. %s ơi, phát hiện có người bị ngã trong phạm vi quan sát của %s lúc %s. Hãy kiểm tra ngay lập tức. Đây là cuộc gọi tự động.", contactName, camName, now)
+	
+	// Xác định lý do cuộc gọi dựa trên loại sự cố
+	reasonSpoken := "có người bị ngã"
+	incidentLower := strings.ToLower(incidentType)
+	if strings.Contains(incidentLower, "bpm") || strings.Contains(incidentLower, "rpm") || 
+		strings.Contains(incidentLower, "nhịp tim") || strings.Contains(incidentLower, "nhịp thở") ||
+		strings.Contains(incidentLower, "suy hô hấp") || strings.Contains(incidentLower, "ngừng tim") {
+		reasonSpoken = "chỉ số sinh tồn nhịp tim nhịp thở vượt ngưỡng an toàn nguy hiểm"
+	} else if incidentLower == "yêu cầu khẩn cấp" {
+		reasonSpoken = "yêu cầu hỗ trợ khẩn cấp"
+	}
+
+	message := fmt.Sprintf("Khẩn cấp, hệ thống Casốt thông báo. %s ơi, phát hiện %s trong phạm vi quan sát của %s lúc %s. Hãy kiểm tra ngay lập tức. Đây là cuộc gọi tự động.", contactName, reasonSpoken, camName, now)
 	
 	twiml := fmt.Sprintf(`
 		<Response>

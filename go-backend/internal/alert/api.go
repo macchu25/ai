@@ -128,11 +128,12 @@ func (a *API) AIResult(c *gin.Context) {
 	}
 
 	var payload struct {
-		CameraID      string  `json:"CameraID"`
-		ModelName     string  `json:"ModelName"`
-		Label         string  `json:"Label"`
-		Confidence    float32 `json:"Confidence"`
-		EvidenceImage string  `json:"EvidenceImage,omitempty"`
+		CameraID              string  `json:"CameraID"`
+		ModelName             string  `json:"ModelName"`
+		Label                 string  `json:"Label"`
+		Confidence            float32 `json:"Confidence"`
+		EvidenceImage         string  `json:"EvidenceImage,omitempty"`
+		EvidenceSkeletonImage string  `json:"EvidenceSkeletonImage,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&payload); err == nil {
 		camID, err := primitive.ObjectIDFromHex(payload.CameraID)
@@ -150,12 +151,22 @@ func (a *API) AIResult(c *gin.Context) {
 			}
 		}
 
+		var skeletonImgBytes []byte
+		if payload.EvidenceSkeletonImage != "" {
+			var errDec error
+			skeletonImgBytes, errDec = base64.StdEncoding.DecodeString(payload.EvidenceSkeletonImage)
+			if errDec != nil {
+				log.Printf("[API] Lỗi giải mã ảnh khung xương Base64: %v\n", errDec)
+			}
+		}
+
 		a.engine.ResultCh <- AIResult{
-			CameraID:      camID,
-			ModelName:     payload.ModelName,
-			Label:         payload.Label,
-			Confidence:    payload.Confidence,
-			EvidenceImage: imgBytes,
+			CameraID:              camID,
+			ModelName:             payload.ModelName,
+			Label:                 payload.Label,
+			Confidence:            payload.Confidence,
+			EvidenceImage:         imgBytes,
+			EvidenceSkeletonImage: skeletonImgBytes,
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	} else {
@@ -201,9 +212,14 @@ func (a *API) SimulateAI(c *gin.Context) {
 		return
 	}
 
+	modelName := "Fall Detection Engine (Simulation)"
+	if strings.HasPrefix(payload.Label, "rPPG:") {
+		modelName = "Remote Heart Rate Monitor (rPPG)"
+	}
+
 	a.engine.ResultCh <- AIResult{
 		CameraID:   camID,
-		ModelName:  "Fall Detection Engine (Simulation)",
+		ModelName:  modelName,
 		Label:      payload.Label,
 		Confidence: payload.Confidence,
 	}

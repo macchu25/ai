@@ -3,7 +3,7 @@ tìm hiểu kĩ mới làm k làm hời hợt qua chuyện
 
 # 🏥 Cardiac Alert System (CAS) - Comprehensive Technical Documentation
 
-The **Cardiac Alert System (CAS)** is a smart medical monitoring ecosystem integrated with Artificial Intelligence (AI) to detect falls and seizures in real-time. It supports multi-channel alerts to protect the health of the elderly and cardiac patients.
+The **Cardiac Alert System (CAS)** is a smart medical monitoring ecosystem integrated with Artificial Intelligence (AI) to detect falls in real-time. It supports multi-channel alerts to protect the health of the elderly and cardiac patients.
 
 The system is multi-platform, consisting of a **Web Dashboard (Next.js)**, a **Mobile App (Expo React Native)**, a high-performance **Go Backend**, and an **AI Hub** that analyzes video feeds from RTSP streams or local Webcams.
 
@@ -107,7 +107,7 @@ Powered by the **Gin Gonic** framework, integrated with **MongoDB** for configur
     *   **Three-State Machine** logic:
         1.  `monitoring`: Standard monitoring. If a fall label is detected for 8 consecutive frames (or just 3 frames if the spinal angle drops suddenly from <25° to >60°), it enters `fall_detected`.
         2.  `fall_detected`: Waits 10 seconds to detect if the patient stands back up (recovery count). If they remain down, it triggers local voice alerts and transitions to `post_fall`.
-        3.  `post_fall`: Continuously posts emergency events to `/api/v1/ai-result`. Analyzes skeletal movement variance to distinguish between a seizure (`seizure` - high variance) and unconsciousness (`unconscious` - zero variance).
+        3.  `post_fall`: Continuously posts emergency events to `/api/v1/ai-result` until the patient stands back up or the alarm is resolved.
     *   Integrated **YOLOv11-Nano Furniture Detector**: If the model detects that the patient's hip overlaps with furniture (bed, couch, chair), it suppresses the fall alarm (classifies it as resting/sleeping) to prevent false alerts.
     *   Exposes a 0ms-latency virtual MJPEG video stream on `http://localhost:5000/video_feed`.
 *   `ai-service/`:

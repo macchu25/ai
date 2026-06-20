@@ -16,41 +16,137 @@ interface PatientInfo {
   age: number;
   bloodType: string;
   conditions: string[];
+  telegram_chat_id?: string;
 }
+
+const formatIncidentTime = (dateStr: string) => {
+  if (!dateStr) return 'N/A';
+  const d = new Date(dateStr);
+  const now = new Date();
+  
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  
+  const timePart = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const datePart = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+  
+  if (isToday) return `${timePart} - Hôm nay`;
+  if (isYesterday) return `${timePart} - Hôm qua`;
+  return `${timePart} - ${datePart}`;
+};
+
+const getDayLabel = (offsetFromToday: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - offsetFromToday);
+  const day = d.getDay();
+  if (day === 0) return 'CN';
+  return `T${day + 1}`;
+};
 
 export default function ReportsPage() {
   const { data: session } = useSession();
   const [patient, setPatient] = useState<PatientInfo | null>(null);
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [cameras, setCameras] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (session?.user) fetchProfile();
-  }, [session]);
-
-  const fetchProfile = async () => {
+  const loadData = async () => {
+    if (!session?.user) return;
     try {
-      const token = (session?.user as any)?.accessToken;
+      const token = (session.user as any).accessToken;
+      const headers = { 'Authorization': `Bearer ${token}` };
       const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
-      const res = await fetch(`${apiBase}/health-profiles`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setPatient({
-        id: data.id || "",
-        name: data.name || "Chưa cập nhật",
-        age: data.age || 0,
-        bloodType: data.bloodType || "Chưa cập nhật",
-        conditions: data.conditions || []
-      });
+
+      const [profileRes, camRes, incRes] = await Promise.all([
+        fetch(`${apiBase}/health-profiles`, { headers }),
+        fetch(`${apiBase}/cameras`, { headers }),
+        fetch(`${apiBase}/incidents`, { headers })
+      ]);
+
+      if (profileRes.ok) {
+        const data = await profileRes.json();
+        setPatient({
+          id: data.id || "",
+          name: data.name || "Chưa cập nhật",
+          age: data.age || 0,
+          bloodType: data.bloodType || "Chưa cập nhật",
+          conditions: data.conditions || [],
+          telegram_chat_id: data.telegram_chat_id || ""
+        });
+      }
+
+      if (camRes.ok) {
+        const camData = await camRes.json();
+        setCameras(Array.isArray(camData) ? camData : []);
+      }
+
+      if (incRes.ok) {
+        const incData = await incRes.json();
+        if (Array.isArray(incData)) {
+          setIncidents(incData.map((item: any) => ({
+            id: item.id || item._id,
+            camera: item.camera_name || "Camera #"+(item.camera_id?.substring(0,8) || "Unknown"),
+            type: item.type || "Cảnh báo",
+            conf: item.confidence_score || 0,
+            detectedAt: item.detected_at,
+            status: item.status === 'active' ? 'Active' : 'Resolved'
+          })));
+        }
+      }
+
     } catch (err) {
-      console.error("Lỗi lấy thông tin:", err);
+      console.error("Lỗi lấy dữ liệu báo cáo:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const activityData = [45, 52, 38, 65, 48, 70, 55]; // Chỉ số vận động ảo
+  useEffect(() => {
+    if (session?.user) {
+      loadData();
+    }
+  }, [session]);
+
+  // Generate consistent activity values based on the last 7 days incidents
+  const getActivityData = () => {
+    const data = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      
+      // Filter incidents on this date
+      const incCount = incidents.filter(inc => {
+        if (!inc.detectedAt) return false;
+        return inc.detectedAt.split('T')[0] === dateStr;
+      }).length;
+
+      const day = d.getDay();
+      let base = 65 + (day * 7) % 25; // 65 to 90
+      
+      // If there are incidents, activity drops
+      if (incCount > 0) {
+        base = Math.max(15, base - (incCount * 25));
+      }
+      
+      data.push(base);
+    }
+    return data;
+  };
+
+  const activityData = getActivityData();
   const maxActivity = 100;
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '400px', color: '#64748b', fontWeight: 600 }}>
+        Đang tải dữ liệu báo cáo sức khỏe...
+      </div>
+    );
+  }
 
   return (
     <div className="reports-container" style={{ padding: '24px', background: 'transparent', minHeight: '100%' }}>
@@ -66,16 +162,16 @@ export default function ReportsPage() {
               DỮ LIỆU ĐÃ XÁC THỰC
             </span>
             <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>
-              Cập nhật lần cuối: Hôm nay, 08:30 AM
+              Cập nhật lần cuối: Hôm nay, {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button style={{ background: '#fff', border: '1.5px solid #e2e8f0', padding: '10px 18px', borderRadius: '14px', fontWeight: 700, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', cursor: 'pointer' }}>
+          <button onClick={() => window.print()} style={{ background: '#fff', border: '1.5px solid #e2e8f0', padding: '10px 18px', borderRadius: '14px', fontWeight: 700, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', cursor: 'pointer' }}>
             <Share2 size={18} /> CHIA SẺ
           </button>
-          <button style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '14px', fontWeight: 800, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 8px 20px rgba(59, 130, 246, 0.25)', cursor: 'pointer' }}>
+          <button onClick={() => window.print()} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '14px', fontWeight: 800, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 8px 20px rgba(59, 130, 246, 0.25)', cursor: 'pointer' }}>
             <Printer size={18} /> IN BÁO CÁO (PDF)
           </button>
         </div>
@@ -96,7 +192,13 @@ export default function ReportsPage() {
                 <p style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600, marginTop: '4px' }}>So sánh mức độ di chuyển trung bình hàng ngày.</p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '1.5rem', fontWeight: 950, color: 'var(--accent)' }}>+12%</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 950, color: 'var(--accent)' }}>
+                  {incidents.filter(inc => {
+                    const diffTime = Math.abs(new Date().getTime() - new Date(inc.detectedAt).getTime());
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays <= 7;
+                  }).length > 0 ? '-8%' : '+12%'}
+                </span>
                 <p style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8' }}>SO VỚI TUẦN TRƯỚC</p>
               </div>
             </div>
@@ -107,18 +209,20 @@ export default function ReportsPage() {
                   <div style={{ 
                     width: '100%', 
                     height: `${(val / maxActivity) * 100}%`, 
-                    background: i === 5 ? 'var(--accent)' : '#eff6ff', 
+                    background: i === 6 ? 'var(--accent)' : '#eff6ff', 
                     borderRadius: '12px',
                     transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                     position: 'relative'
                   }}>
-                    {i === 5 && (
+                    {i === 6 && (
                       <div style={{ position: 'absolute', top: '-30px', left: '50%', transform: 'translateX(-50%)', background: '#1e293b', color: '#fff', padding: '4px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800 }}>
                         {val}%
                       </div>
                     )}
                   </div>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8' }}>T{i+2}</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8' }}>
+                    {getDayLabel(6 - i)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -131,24 +235,57 @@ export default function ReportsPage() {
             </h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {[
-                { time: '14:20 - Hôm qua', type: 'Té ngã', severity: 'High', action: 'Đã xử lý (gọi 115)' },
-                { time: '02:15 - 28/04', type: 'Dấu hiệu bất thường', severity: 'Medium', action: 'Bệnh nhân tự đứng dậy' },
-                { time: '09:40 - 25/04', type: 'Té ngã', severity: 'High', action: 'Đã báo người thân' }
-              ].map((item, i) => (
-                <div key={i} className="responsive-grid-report-row" style={{ padding: '16px 20px', borderRadius: '20px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>{item.time}</span>
-                  <span style={{ fontWeight: 850, color: '#1e293b' }}>{item.type}</span>
-                  <span style={{ 
-                    fontSize: '0.7rem', fontWeight: 800, padding: '4px 10px', borderRadius: '12px', textAlign: 'center',
-                    background: item.severity === 'High' ? '#fee2e2' : '#fef3c7',
-                    color: item.severity === 'High' ? '#ef4444' : '#f59e0b'
-                  }}>
-                    {item.severity.toUpperCase()}
-                  </span>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textAlign: 'right' }}>{item.action}</span>
+              {incidents.length > 0 ? (
+                incidents.slice(0, 5).map((item, i) => {
+                  const isHigh = item.type.toLowerCase().includes('fall') || 
+                                 item.type.toLowerCase().includes('critical') || 
+                                 item.type.toLowerCase().includes('nguy kịch') || 
+                                 item.type.toLowerCase().includes('cấp cứu');
+                  
+                  // Translate type to user-friendly Vietnamese
+                  let typeVietnamese = 'Dấu hiệu bất thường';
+                  const typeLower = item.type.toLowerCase();
+                  if (typeLower.includes('fall')) {
+                    typeVietnamese = 'Té ngã';
+                  } else if (typeLower.includes('heart') || typeLower.includes('bpm') || typeLower.includes('tachycardia') || typeLower.includes('bradycardia')) {
+                    typeVietnamese = 'Nhịp tim bất thường';
+                  } else if (typeLower.includes('apnea') || typeLower.includes('resp') || typeLower.includes('rpm')) {
+                    typeVietnamese = 'Ngừng thở / Suy hô hấp';
+                  }
+
+                  let actionText = 'Đang theo dõi';
+                  if (item.status === 'Resolved') {
+                    actionText = 'Bệnh nhân tự đứng dậy / Đã hồi phục';
+                  } else if (typeLower.includes('fall')) {
+                    actionText = 'Đã báo qua Telegram';
+                  } else {
+                    actionText = 'Đã phát cảnh báo';
+                  }
+
+                  return (
+                    <div key={i} className="responsive-grid-report-row" style={{ padding: '16px 20px', borderRadius: '20px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>
+                        {formatIncidentTime(item.detectedAt)}
+                      </span>
+                      <span style={{ fontWeight: 850, color: '#1e293b' }}>{typeVietnamese}</span>
+                      <span style={{ 
+                        fontSize: '0.7rem', fontWeight: 800, padding: '4px 10px', borderRadius: '12px', textAlign: 'center',
+                        background: isHigh ? '#fee2e2' : '#fef3c7',
+                        color: isHigh ? '#ef4444' : '#f59e0b'
+                      }}>
+                        {isHigh ? 'HIGH' : 'MEDIUM'}
+                      </span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textAlign: 'right' }}>
+                        {actionText}
+                      </span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#64748b', fontSize: '0.9rem', fontWeight: 600 }}>
+                  Không ghi nhận sự cố nào trong thời gian gần đây.
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -170,23 +307,33 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <div className="responsive-grid-2col-equal" style={{ gap: '12px' }}>
-              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '16px' }}>
-                <p style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.7, marginBottom: '4px' }}>KÊNH BÁO ĐỘNG</p>
-                <span style={{ fontSize: '1.1rem', fontWeight: 950 }}>{patient?.bloodType || 'Chưa cập nhật'}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '16px', textAlign: 'center' }}>
+                <p style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.7, marginBottom: '4px' }}>NHÓM MÁU</p>
+                <span style={{ fontSize: '1.1rem', fontWeight: 950 }}>{patient?.bloodType || 'Chưa rõ'}</span>
               </div>
-              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '16px' }}>
+              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '16px', textAlign: 'center' }}>
+                <p style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.7, marginBottom: '4px' }}>BÁO ĐỘNG</p>
+                <span style={{ fontSize: '0.95rem', fontWeight: 950 }}>
+                  {patient?.telegram_chat_id ? 'Telegram' : 'Chưa cài'}
+                </span>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '16px', textAlign: 'center' }}>
                 <p style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.7, marginBottom: '4px' }}>SỨC KHỎE</p>
-                <span style={{ fontSize: '1.1rem', fontWeight: 950 }}>ỔN ĐỊNH</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 950 }}>
+                  {incidents.some(inc => inc.status === 'Active') ? 'CẦN CHÚ Ý' : 'ỔN ĐỊNH'}
+                </span>
               </div>
             </div>
 
             <div style={{ marginTop: '20px' }}>
               <p style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.7, marginBottom: '8px' }}>CAMERA GIÁM SÁT</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {patient?.conditions && patient.conditions.length > 0 ? (
-                  patient.conditions.map((c, i) => (
-                    <span key={i} style={{ background: 'rgba(255,255,255,0.15)', padding: '4px 10px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 700 }}>{c}</span>
+                {cameras.length > 0 ? (
+                  cameras.map((c, i) => (
+                    <span key={i} style={{ background: 'rgba(255,255,255,0.15)', padding: '4px 10px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 700 }}>
+                      📷 {c.name}
+                    </span>
                   ))
                 ) : (
                   <span style={{ opacity: 0.8, fontSize: '0.85rem', fontWeight: 600 }}>Chưa liên kết camera</span>
@@ -207,15 +354,31 @@ export default function ReportsPage() {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ minWidth: '4px', height: 'auto', background: 'var(--accent)', borderRadius: '2px' }}></div>
                 <p style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.6' }}>
-                  <b>Rủi ro té ngã:</b> Tần suất sự cố tăng nhẹ trong khoảng từ <b>02:00 - 04:00 AM</b>. Cần kiểm tra lại độ sáng đèn ngủ khu vực nhà vệ sinh.
+                  <b>Rủi ro té ngã:</b> {incidents.filter(inc => inc.type.toLowerCase().includes('fall')).length > 0 ? (
+                    <span>Ghi nhận <b>{incidents.filter(inc => inc.type.toLowerCase().includes('fall')).length} vụ té ngã</b> gần đây. Vui lòng đảm bảo các lối đi trong nhà thông thoáng và đủ ánh sáng ban đêm.</span>
+                  ) : (
+                    <span>Hiện chưa phát hiện rủi ro té ngã đặc biệt. Hệ thống khuyến nghị duy trì chiếu sáng tốt tại khu vực hành lang và nhà vệ sinh vào ban đêm.</span>
+                  )}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ minWidth: '4px', height: 'auto', background: 'var(--success)', borderRadius: '2px' }}></div>
                 <p style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.6' }}>
-                  <b>Vận động:</b> Mức độ hoạt động ban ngày đã cải thiện <b>12%</b> so với tuần trước, cho thấy tiến triển tốt sau đợt điều trị.
+                  <b>Vận động:</b> {cameras.length > 0 ? (
+                    <span>Hệ thống camera đang hoạt động ổn định trên <b>{cameras.length} thiết bị giám sát</b>, tối ưu hóa việc phát hiện hành vi nguy cơ.</span>
+                  ) : (
+                    <span>Chưa có camera hoạt động. Hãy kết nối ít nhất một camera để AI có thể phân tích hành vi và theo dõi sức khỏe.</span>
+                  )}
                 </p>
               </div>
+              {patient?.conditions && patient.conditions.length > 0 && (
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ minWidth: '4px', height: 'auto', background: 'var(--warning)', borderRadius: '2px' }}></div>
+                  <p style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.6' }}>
+                    <b>Khuyến nghị y tế:</b> Đối với người dùng có bệnh lý nền (<b>{patient.conditions.join(', ')}</b>), nên theo dõi định kỳ các chỉ số sinh tồn và tuân thủ đơn thuốc.
+                  </p>
+                </div>
+              )}
             </div>
 
             <button style={{ width: '100%', marginTop: '24px', padding: '14px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s' }}>

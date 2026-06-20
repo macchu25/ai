@@ -106,11 +106,10 @@ class TrackedPerson:
         conf = probs[pred_idx].item()
         label = self.label_map[str(pred_idx)]
         
-        # Map "unconscious" and "seizure" to "fall"
-        if label in ["unconscious", "seizure"]:
-            label = "fall"
-            
-        all_probs = {self.label_map[str(i)]: probs[i].item() for i in range(len(probs))}
+        all_probs = {
+            "normal": probs[0].item() + probs[2].item() + probs[3].item(),
+            "fall": probs[1].item()
+        }
         return label, conf, all_probs
 
     def update(self, keypoints, landmarks, is_on_furniture):
@@ -166,6 +165,9 @@ class TrackedPerson:
                 elif current_pose == "cui nguoi":
                     self.fall_streak = 0
                     if label == "fall": label = "cui nguoi"
+                elif current_pose == "normal":
+                    self.fall_streak = 0
+                    if label == "fall": label = "normal"
                 else:
                     sitting_frames = list(self.pose_history).count("ngoi")
                     
@@ -271,9 +273,9 @@ class FallDetector:
                 ),
                 running_mode=RunningMode.VIDEO,
                 num_poses=self.max_people,
-                min_pose_detection_confidence=0.5,
-                min_pose_presence_confidence=0.5,
-                min_tracking_confidence=0.5,
+                min_pose_detection_confidence=0.7,
+                min_pose_presence_confidence=0.65,
+                min_tracking_confidence=0.6,
             )
             print("   [DEBUG] Creating PoseLandmarker from options...")
             self.landmarker = PoseLandmarker.create_from_options(options)
@@ -285,7 +287,7 @@ class FallDetector:
 
         self.yolo_enabled = False
         self.yolo_model = None
-        self.furniture_classes = [56, 57, 59, 60] # chair, couch, bed, dining table
+        self.furniture_classes = [1, 3, 9, 56, 57, 58, 59, 60] # bicycle, motorcycle, traffic light, chair, couch, potted plant, bed, dining table
         self.is_on_furniture = False
         self.current_yolo_results = None
         
@@ -369,7 +371,7 @@ class FallDetector:
                 top_visibility = sum(visibilities[:10]) / 10 if len(visibilities) >= 10 else 0.0
                 
                 # Cột nhà hoặc nhiễu tĩnh sẽ không có điểm nào đạt độ tin cậy cao (tất cả các điểm đều thấp < 30%)
-                if top_visibility < 0.53:
+                if top_visibility < 0.65:
                     continue
                 
                 keypoints = []
@@ -574,7 +576,7 @@ if __name__ == "__main__":
     # 4. Open Webcam
     print("=" * 50)
     print("  FALL DETECTION - Hybrid Mode")
-    print("  Model: fall/normal | Pose: sitting/sleeping | Var: seizure")
+    print("  Model: fall/normal | Pose: sitting/sleeping")
     print("  Nhan 'q' de thoat")
     print("  Nhan 'c' de in variance ra console (calibrate)")
     print("=" * 50)
@@ -674,7 +676,7 @@ if __name__ == "__main__":
 
     threading.Thread(target=web_sender_worker, daemon=True).start()
 
-    def push_to_go(lbl, cnf, img_frame=None):
+    def push_to_go(lbl, cnf, img_frame=None, skeleton_frame=None):
         try:
             payload = {
                 "CameraID": target_cam_id,
@@ -687,6 +689,11 @@ if __name__ == "__main__":
                 ret, jpeg_buffer = cv2.imencode('.jpg', img_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
                 if ret:
                     payload["EvidenceImage"] = base64.b64encode(jpeg_buffer).decode('utf-8')
+            if skeleton_frame is not None:
+                import base64
+                ret, jpeg_buffer = cv2.imencode('.jpg', skeleton_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                if ret:
+                    payload["EvidenceSkeletonImage"] = base64.b64encode(jpeg_buffer).decode('utf-8')
             
             request_queue.put((
                 f"{API_BASE}/ai-result",
@@ -713,7 +720,7 @@ if __name__ == "__main__":
         # ── TỐI ƯU HÓA: Chỉ chạy AI mỗi 3 frame để Video chạy mượt 30 FPS ──
         if frame_count % 3 == 0:
             try:
-                small_frame = cv2.resize(frame, (640, 480))
+                small_frame = cv2.resize(frame, (1280, 720))
             except Exception as e:
                 print(f"[WARN] Failed to resize frame: {e}")
                 continue
@@ -737,17 +744,28 @@ if __name__ == "__main__":
                     frame_copy = small_frame.copy() if small_frame is not None else None
                     alert_label = f"Person {pid} Fall"
                     
+                    skeleton_frame = small_frame.copy() if small_frame is not None else None
+                    if skeleton_frame is not None and landmarks is not None:
+                        draw_landmarks(skeleton_frame, landmarks)
+                        h, w, _ = skeleton_frame.shape
+                        head_x = int(landmarks[0].x * w)
+                        head_y = int(landmarks[0].y * h) - 20
+                        color = (0, 0, 255)  # Red for fall
+                        text = f"P{pid}: {label} ({conf:.0%})"
+                        cv2.putText(skeleton_frame, text, (max(10, head_x - 50), max(20, head_y)),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2, cv2.LINE_AA)
+                    
                     now = time.time()
                     # Chỉ gửi gói ngã tối đa 1 lần mỗi 0.5 giây để tránh quá tải mạng/CPU của backend, trừ phi là gói đầu tiên
                     if not last_pushed_is_alert or (now - last_pushed_time >= 0.5):
                         last_pushed_time = now
-                        push_to_go(alert_label, conf, frame_copy)
+                        push_to_go(alert_label, conf, frame_copy, skeleton_frame)
             
             # GỬI LỆNH CLEAR ALERT KHI NẠN NHÂN ĐÃ HỒI PHỤC/BÌNH THƯỜNG
             if not any_alert_this_frame and last_pushed_is_alert:
                 print("   [AI] Người dùng đã bình thường. Gửi lệnh reset cảnh báo về backend.")
                 last_pushed_time = 0.0
-                push_to_go("normal", 1.0, None)
+                push_to_go("normal", 1.0, None, None)
                 
             last_pushed_is_alert = any_alert_this_frame
             last_results = results
@@ -807,8 +825,8 @@ if __name__ == "__main__":
 
         # Lưu bản sao hình ảnh hiện tại cho Web xem
         try:
-            # Thu nhỏ ảnh xuống 640x480 để giảm tải CPU khi mã hóa JPEG truyền về Web
-            global_frame = cv2.resize(frame, (640, 480))
+            # Thu nhỏ ảnh xuống 1280x720 để giảm tải CPU khi mã hóa JPEG truyền về Web
+            global_frame = cv2.resize(frame, (1280, 720))
         except: pass
 
         if not args.headless:

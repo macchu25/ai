@@ -71,9 +71,10 @@ def analyze_sequence(request: AnalyzeRequest):
     pred_idx = probs.argmax().item()
     confidence = probs[pred_idx].item()
     label = label_map.get(str(pred_idx), "unknown")
-
-    # Dictionary mapping class names to probabilities
-    probabilities = {label_map.get(str(i), f"class_{i}"): probs[i].item() for i in range(len(probs))}
+    probabilities = {
+        "normal": probs[0].item() + probs[2].item() + probs[3].item(),
+        "fall": probs[1].item()
+    }
 
     return {
         "label": label,
