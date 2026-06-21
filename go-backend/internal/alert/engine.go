@@ -601,6 +601,17 @@ func (e *Engine) Process(camID primitive.ObjectID, modelName string, label strin
 }
 
 func (e *Engine) resetCameraState(ctx context.Context, camID primitive.ObjectID, state *CameraState) {
+	// Gửi thông báo hồi phục qua Telegram nếu trước đó đã có cảnh báo phát đi
+	if state.TelegramAlertSent || state.LocalAlertSent {
+		var cameraDoc model.Camera
+		if err := e.db.Collection("cameras").FindOne(ctx, bson.M{"_id": camID}).Decode(&cameraDoc); err == nil {
+			camName, patientName := e.getDetailedInfo(camID, cameraDoc.UserID)
+			chatID := e.getUserChatID(cameraDoc.UserID)
+			msg := fmt.Sprintf("🟢 <b>[Casos - HỒI PHỤC]</b>\n🆘 <b>Sự cố trước đó đã được giải quyết</b>\n👤 <b>Nạn nhân:</b> %s\n📍 <b>Tại:</b> %s\n✅ Hệ thống ghi nhận nạn nhân đã đứng dậy hoặc trở lại trạng thái bình thường.", html.EscapeString(patientName), html.EscapeString(camName))
+			go telephony.SendTelegramAlertCustom(chatID, msg, nil)
+		}
+	}
+
 	state.SuspectStart = time.Time{}
 	state.AlertPaused = false
 	state.LocalAlertSent = false
@@ -743,6 +754,27 @@ func (e *Engine) triggerPhoneCallOnly(camID primitive.ObjectID, label string) {
 	camName, _ := e.getDetailedInfo(camID, cameraDoc.UserID)
 	metrics.EmergencyCalls.Inc()
 	go e.gateway.InitiateAndroidCall(cameraDoc.UserID, camID, label, telephony.CallRelative, camName)
+
+	// Cập nhật sự kiện trong database để báo đã gọi điện thoại
+	go func() {
+		time.Sleep(1 * time.Second) // Đợi sự kiện mốc 13s chèn xong
+		coll := e.db.Collection("events")
+		filter := bson.M{
+			"camera_id": camID,
+			"user_id":   cameraDoc.UserID,
+			"status":    "active",
+		}
+		update := bson.M{
+			"$set": bson.M{
+				"call_initiated": true,
+				"description":    fmt.Sprintf("Phát hiện sự cố %s tại %s. Đã báo qua Telegram & Đang gọi điện thoại khẩn cấp.", label, camName),
+			},
+		}
+		_, err := coll.UpdateMany(context.Background(), filter, update)
+		if err != nil {
+			log.Printf("[Engine] Lỗi cập nhật trạng thái cuộc gọi vào DB: %v\n", err)
+		}
+	}()
 }
 
 func (e *Engine) triggerAlert(camID primitive.ObjectID, label string, conf float32, imgBytes []byte, skeletonImgBytes []byte) {

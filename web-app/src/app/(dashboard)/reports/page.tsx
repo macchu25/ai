@@ -58,6 +58,8 @@ export default function ReportsPage() {
   const [incidents, setIncidents] = useState<any[]>([]);
   const [cameras, setCameras] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('');
 
   const loadData = async () => {
     if (!session?.user) return;
@@ -98,7 +100,8 @@ export default function ReportsPage() {
             type: item.type || "Cảnh báo",
             conf: item.confidence_score || 0,
             detectedAt: item.detected_at,
-            status: item.status === 'active' ? 'Active' : 'Resolved'
+            status: item.status === 'active' ? 'Active' : 'Resolved',
+            callInitiated: item.call_initiated || false
           })));
         }
       }
@@ -237,62 +240,159 @@ export default function ReportsPage() {
 
           {/* INCIDENT LOG TABLE */}
           <div style={{ background: '#fff', borderRadius: '32px', padding: '28px', boxShadow: '0 10px 30px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#1e293b', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Clock size={20} color="var(--danger)" /> {t('reports.incidentsLogTitle')}
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                <Clock size={20} color="var(--danger)" /> {t('reports.incidentsLogTitle')}
+              </h3>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                {/* Type Filter */}
+                <div style={{ position: 'relative' }}>
+                  <select 
+                    value={typeFilter} 
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '12px',
+                      border: '1px solid #e2e8f0',
+                      background: '#fff',
+                      color: '#475569',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      outline: 'none',
+                      cursor: 'pointer',
+                      appearance: 'none',
+                      paddingRight: '32px'
+                    }}
+                  >
+                    <option value="all">{language === 'vi' ? 'Tất cả loại sự cố' : 'All Incident Types'}</option>
+                    <option value="fall">{language === 'vi' ? 'Té ngã' : 'Falls'}</option>
+                    <option value="heart">{language === 'vi' ? 'Tim mạch' : 'Heart Rate'}</option>
+                    <option value="apnea">{language === 'vi' ? 'Hô hấp' : 'Respiratory'}</option>
+                  </select>
+                  <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#94a3b8', fontSize: '0.65rem' }}>▼</span>
+                </div>
+
+                {/* Date Filter */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input 
+                    type="date"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '12px',
+                      border: '1px solid #e2e8f0',
+                      background: '#fff',
+                      color: '#475569',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      outline: 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                  {dateFilter && (
+                    <button 
+                      onClick={() => setDateFilter('')}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '12px',
+                        border: '1px solid #fee2e2',
+                        background: '#fef2f2',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
+                      title={language === 'vi' ? 'Xóa lọc ngày' : 'Clear date filter'}
+                    >
+                      {language === 'vi' ? 'Xóa lọc' : 'Clear'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {incidents.length > 0 ? (
-                incidents.slice(0, 5).map((item, i) => {
-                  const isHigh = item.type.toLowerCase().includes('fall') || 
-                                 item.type.toLowerCase().includes('critical') || 
-                                 item.type.toLowerCase().includes('nguy kịch') || 
-                                 item.type.toLowerCase().includes('cấp cứu');
-                  
-                  // Translate type to user-friendly text
-                  let typeLabel = t('reports.incidentTypeAbnormal');
-                  const typeLower = item.type.toLowerCase();
-                  if (typeLower.includes('fall')) {
-                    typeLabel = t('reports.incidentTypeFall');
-                  } else if (typeLower.includes('heart') || typeLower.includes('bpm') || typeLower.includes('tachycardia') || typeLower.includes('bradycardia')) {
-                    typeLabel = t('reports.incidentTypeHeart');
-                  } else if (typeLower.includes('apnea') || typeLower.includes('resp') || typeLower.includes('rpm')) {
-                    typeLabel = t('reports.incidentTypeApnea');
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+              {(() => {
+                const filteredIncidents = incidents.filter(item => {
+                  if (typeFilter !== 'all') {
+                    const typeLower = item.type.toLowerCase();
+                    if (typeFilter === 'fall' && !typeLower.includes('fall')) return false;
+                    if (typeFilter === 'heart' && !(typeLower.includes('heart') || typeLower.includes('bpm') || typeLower.includes('tachycardia') || typeLower.includes('bradycardia'))) return false;
+                    if (typeFilter === 'apnea' && !(typeLower.includes('apnea') || typeLower.includes('resp') || typeLower.includes('rpm'))) return false;
                   }
-
-                  let actionText = t('reports.incidentActionMonitoring');
-                  if (item.status === 'Resolved') {
-                    actionText = t('reports.incidentActionRecovered');
-                  } else if (typeLower.includes('fall')) {
-                    actionText = t('reports.incidentActionTelegram');
-                  } else {
-                    actionText = t('reports.incidentActionAlarmed');
+                  if (dateFilter) {
+                    if (!item.detectedAt) return false;
+                    const localDate = new Date(item.detectedAt);
+                    const year = localDate.getFullYear();
+                    const month = String(localDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(localDate.getDate()).padStart(2, '0');
+                    const itemDateStr = `${year}-${month}-${day}`;
+                    if (itemDateStr !== dateFilter) return false;
                   }
+                  return true;
+                });
 
+                if (filteredIncidents.length > 0) {
+                  return filteredIncidents.map((item, i) => {
+                    const isHigh = item.type.toLowerCase().includes('fall') || 
+                                   item.type.toLowerCase().includes('critical') || 
+                                   item.type.toLowerCase().includes('nguy kịch') || 
+                                   item.type.toLowerCase().includes('cấp cứu');
+                    
+                    let typeLabel = t('reports.incidentTypeAbnormal');
+                    const typeLower = item.type.toLowerCase();
+                    if (typeLower.includes('fall')) {
+                      typeLabel = t('reports.incidentTypeFall');
+                    } else if (typeLower.includes('heart') || typeLower.includes('bpm') || typeLower.includes('tachycardia') || typeLower.includes('bradycardia')) {
+                      typeLabel = t('reports.incidentTypeHeart');
+                    } else if (typeLower.includes('apnea') || typeLower.includes('resp') || typeLower.includes('rpm')) {
+                      typeLabel = t('reports.incidentTypeApnea');
+                    }
+
+                    let actionText = t('reports.incidentActionMonitoring');
+                    if (item.status === 'Resolved') {
+                      actionText = t('reports.incidentActionRecovered');
+                    } else if (item.callInitiated) {
+                      actionText = language === 'vi' ? 'Đã báo Telegram & Gọi điện' : 'Alerted Telegram & Called';
+                    } else if (typeLower.includes('fall')) {
+                      actionText = t('reports.incidentActionTelegram');
+                    } else {
+                      actionText = t('reports.incidentActionAlarmed');
+                    }
+
+                    return (
+                      <div key={i} className="responsive-grid-report-row" style={{ padding: '16px 20px', borderRadius: '20px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>
+                          {formatIncidentTime(item.detectedAt, language)}
+                        </span>
+                        <span style={{ fontWeight: 850, color: '#1e293b' }}>{typeLabel}</span>
+                        <span style={{ 
+                          fontSize: '0.7rem', fontWeight: 800, padding: '4px 10px', borderRadius: '12px', textAlign: 'center',
+                          background: isHigh ? '#fee2e2' : '#fef3c7',
+                          color: isHigh ? '#ef4444' : '#f59e0b'
+                        }}>
+                          {isHigh ? 'HIGH' : 'MEDIUM'}
+                        </span>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textAlign: 'right' }}>
+                          {actionText}
+                        </span>
+                      </div>
+                    );
+                  });
+                } else {
                   return (
-                    <div key={i} className="responsive-grid-report-row" style={{ padding: '16px 20px', borderRadius: '20px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>
-                        {formatIncidentTime(item.detectedAt, language)}
-                      </span>
-                      <span style={{ fontWeight: 850, color: '#1e293b' }}>{typeLabel}</span>
-                      <span style={{ 
-                        fontSize: '0.7rem', fontWeight: 800, padding: '4px 10px', borderRadius: '12px', textAlign: 'center',
-                        background: isHigh ? '#fee2e2' : '#fef3c7',
-                        color: isHigh ? '#ef4444' : '#f59e0b'
-                      }}>
-                        {isHigh ? 'HIGH' : 'MEDIUM'}
-                      </span>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textAlign: 'right' }}>
-                        {actionText}
-                      </span>
+                    <div style={{ textAlign: 'center', padding: '32px 20px', color: '#64748b', fontSize: '0.9rem', fontWeight: 600, background: '#f8fafc', borderRadius: '20px', border: '1px dashed #e2e8f0' }}>
+                      {language === 'vi' ? 'Không tìm thấy sự cố nào khớp với bộ lọc' : 'No incidents match the selected filters'}
                     </div>
                   );
-                })
-              ) : (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#64748b', fontSize: '0.9rem', fontWeight: 600 }}>
-                  {t('reports.noRecentIncidents')}
-                </div>
-              )}
+                }
+              })()}
             </div>
           </div>
         </div>

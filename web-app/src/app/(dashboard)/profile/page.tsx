@@ -452,8 +452,8 @@ export default function ProfilePage() {
                   {t('profile.noContacts')}
                 </div>
               )}
-              {patient.contacts?.map((contact: any) => (
-                <div key={contact.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '20px 24px', borderRadius: '20px', border: '1px solid var(--border)' }}>
+              {patient.contacts?.map((contact: any, idx: number) => (
+                <div key={contact.id || `contact-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '20px 24px', borderRadius: '20px', border: '1px solid var(--border)' }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-main)' }}>{contact.name}</div>
                     <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '6px', fontWeight: 500 }}>{contact.relation}</div>

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from 'react';
-import { HeartPulse, Activity, AlertCircle, Shield, Info, CheckCircle, RefreshCw, AlertTriangle, ExternalLink, Sun, Moon, Sliders, Sparkles, Wind } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { HeartPulse, Activity, AlertCircle, Shield, Info, CheckCircle, RefreshCw, AlertTriangle, ExternalLink, Sun, Moon, Sliders, Sparkles, Wind, Video, VideoOff } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useNotification } from '@/app/context/NotificationContext';
@@ -24,7 +24,7 @@ interface LightingStats {
 export default function RPPGPage() {
   const { data: session, status } = useSession();
   const { showToast } = useNotification();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   
   const [mounted, setMounted] = useState(false);
@@ -41,12 +41,16 @@ export default function RPPGPage() {
   const [heartRateHistory, setHeartRateHistory] = useState<number[]>([]);
   const [respirationRateHistory, setRespirationRateHistory] = useState<number[]>([]);
 
+  const [useLocalWebcam, setUseLocalWebcam] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+
   useEffect(() => {
-    if (!rppgEnabled || !isConnected) {
+    if (!rppgEnabled || (!isConnected && !useLocalWebcam)) {
       setHeartRateHistory([]);
       setRespirationRateHistory([]);
     }
-  }, [rppgEnabled, isConnected]);
+  }, [rppgEnabled, isConnected, useLocalWebcam]);
 
   useEffect(() => {
     setMounted(true);
@@ -64,6 +68,10 @@ export default function RPPGPage() {
 
   // Periodically check if the rPPG streaming service is online
   const checkConnection = async () => {
+    if (useLocalWebcam) {
+      setChecking(false);
+      return; // Do not check if using browser webcam
+    }
     setChecking(true);
     try {
       // Try to fetch image metadata or just do a ping to port 5001 (or direct image check)
@@ -80,7 +88,85 @@ export default function RPPGPage() {
     if (!mounted) return;
     const interval = setInterval(checkConnection, 5000);
     return () => clearInterval(interval);
-  }, [mounted]);
+  }, [mounted, useLocalWebcam]);
+
+  // Clean up browser webcam stream when component unmounts
+  useEffect(() => {
+    return () => {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  // Sync browser webcam to video element when it becomes available in DOM
+  useEffect(() => {
+    if (useLocalWebcam && localStreamRef.current && videoRef.current) {
+      videoRef.current.srcObject = localStreamRef.current;
+    }
+  }, [useLocalWebcam]);
+
+  // Web Browser Webcam toggler
+  const toggleLocalWebcam = async () => {
+    if (useLocalWebcam) {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+        localStreamRef.current = null;
+      }
+      setUseLocalWebcam(false);
+      setLightingStats(null);
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+        localStreamRef.current = stream;
+        setUseLocalWebcam(true);
+        setIsConnected(false); // Disconnect python stream
+      } catch (err) {
+        console.error("Webcam error:", err);
+        showToast("Không thể truy cập webcam của bạn. Vui lòng cấp quyền.", "error");
+      }
+    }
+  };
+
+  // Mock heart rate & respiration simulation when local webcam is active
+  useEffect(() => {
+    if (!useLocalWebcam) return;
+
+    let time = 0;
+    const interval = setInterval(() => {
+      time += 1;
+      const mockHr = 71.5 + Math.sin(time / 4) * 3 + Math.random() * 0.4;
+      const mockRr = 14.8 + Math.cos(time / 6) * 1.2 + Math.random() * 0.2;
+      const mockPain = 0.1 + Math.random() * 0.15;
+
+      setRespirationRate(mockRr);
+      
+      setHeartRateHistory(prev => {
+        const next = [...prev, mockHr];
+        return next.slice(-40);
+      });
+      setRespirationRateHistory(prev => {
+        const next = [...prev, mockRr];
+        return next.slice(-40);
+      });
+
+      setLightingStats({
+        mean_brightness: 115 + Math.random() * 3,
+        std_contrast: 26 + Math.random() * 1.5,
+        warning: null,
+        status: 'excellent',
+        has_face: true,
+        fps: 30.0,
+        rppg_enabled: true,
+        pain_enabled: true,
+        pain_score: mockPain,
+        heart_rate: mockHr,
+        respiration_rate: mockRr
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [useLocalWebcam]);
 
   // Periodically fetch lighting stats from the Python stream server
   useEffect(() => {
@@ -421,13 +507,36 @@ export default function RPPGPage() {
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Activity size={20} color="var(--accent)" /> {t('rppg.liveFeed')}
               </h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span className={`status-badge ${isConnected ? 'active' : 'inactive'}`}>
-                  {isConnected ? '● Connected' : '○ Disconnected'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <span className={`status-badge ${useLocalWebcam || isConnected ? 'active' : 'inactive'}`}>
+                  {useLocalWebcam ? '● Webcam Active' : isConnected ? '● Connected' : '○ Disconnected'}
                 </span>
+                
+                {/* Browser Webcam Toggle Button */}
+                <button 
+                  onClick={toggleLocalWebcam}
+                  style={{
+                    background: useLocalWebcam ? 'rgba(239, 68, 68, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                    color: useLocalWebcam ? '#ef4444' : 'var(--accent)',
+                    border: useLocalWebcam ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(59, 130, 246, 0.2)',
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: 700,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {useLocalWebcam ? <VideoOff size={12} /> : <Video size={12} />}
+                  {useLocalWebcam ? (language === 'vi' ? 'Tắt Webcam' : 'Stop Webcam') : (language === 'vi' ? 'Sử dụng Webcam Trình Duyệt' : 'Use Browser Webcam')}
+                </button>
+
                 <button 
                   onClick={checkConnection} 
-                  disabled={checking}
+                  disabled={checking || useLocalWebcam}
                   style={{
                     background: 'var(--bg-primary)',
                     border: '1px solid var(--border)',
@@ -437,14 +546,15 @@ export default function RPPGPage() {
                     fontSize: '0.8rem',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '6px',
+                    opacity: useLocalWebcam ? 0.5 : 1
                   }}
                 >
                   <RefreshCw size={12} className={checking ? 'animate-spin' : ''} /> {t('rppg.recheckBtn')}
                 </button>
               </div>
             </div>
-
+ 
             {/* Video Container */}
             <div style={{
               width: '100%',
@@ -458,7 +568,36 @@ export default function RPPGPage() {
               position: 'relative',
               border: '1px solid var(--border)'
             }}>
-              {isConnected ? (
+              {useLocalWebcam ? (
+                <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                  <video 
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+                  />
+                  {/* Neon scan simulator overlay */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '12px',
+                    left: '12px',
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    color: '#10b981',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 1.5s infinite' }}></span>
+                    BROWSER WEBCAM (DEMO MODE)
+                  </div>
+                </div>
+              ) : isConnected ? (
                 <img 
                   src={streamUrl} 
                   alt="rPPG Live Feed" 
