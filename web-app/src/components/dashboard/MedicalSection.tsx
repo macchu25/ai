@@ -1,11 +1,14 @@
 import React from 'react';
 import { Shield, Bell, Heart, BookOpen, Settings, Video, PhoneCall } from 'lucide-react';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 const MedicalSection: React.FC = () => {
+  const { t } = useLanguage();
+
   return (
     <div id="muc-y-te" className="dashboard-section">
       <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '40px', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-        Mục Y Tế & Giám Sát
+        {t('medical.title')}
       </h2>
 
       <div className="dashboard-grid-3" style={{ marginBottom: '64px' }}>
@@ -14,10 +17,10 @@ const MedicalSection: React.FC = () => {
             <Shield size={26} color="var(--accent)" strokeWidth={2.5} />
           </div>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px', color: 'var(--text-main)' }}>
-            Bảo Mật & Riêng Tư
+            {t('medical.securityTitle')}
           </h3>
           <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, fontSize: '0.95rem', margin: 0, fontWeight: 500 }}>
-            Dữ liệu y tế được mã hóa AES-256 đầu cuối, đảm bảo tuyệt đối quyền riêng tư và tuân thủ các tiêu chuẩn an toàn dữ liệu bệnh viện.
+            {t('medical.securityDesc')}
           </p>
         </div>
 
@@ -26,10 +29,10 @@ const MedicalSection: React.FC = () => {
             <Bell size={26} color="var(--danger)" strokeWidth={2.5} />
           </div>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px', color: 'var(--text-main)' }}>
-            Cảnh Báo Tức Thì
+            {t('medical.alertsTitle')}
           </h3>
           <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, fontSize: '0.95rem', margin: 0, fontWeight: 500 }}>
-            Hệ thống nhận diện té ngã hoặc dấu hiệu bất thường và gửi thông báo khẩn cấp đến đội ngũ y tế hoặc người nhà ngay trong vòng 0.5 giây.
+            {t('medical.alertsDesc')}
           </p>
         </div>
 
@@ -38,21 +41,21 @@ const MedicalSection: React.FC = () => {
             <Heart size={26} color="var(--success)" strokeWidth={2.5} />
           </div>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px', color: 'var(--text-main)' }}>
-            Nhịp Tim & Pose
+            {t('medical.heartTitle')}
           </h3>
           <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, fontSize: '0.95rem', margin: 0, fontWeight: 500 }}>
-            Phân tích tư thế cơ thể (Human Pose Estimation) để phân biệt chính xác giữa hành động cúi nhặt đồ và tình huống gục ngã thực tế.
+            {t('medical.heartDesc')}
           </p>
         </div>
       </div>
 
-      {/* Phần Hướng Dẫn Sử Dụng (Mới Thêm) */}
+      {/* Hướng Dẫn Sử Dụng */}
       <div id="huong-dan" style={{ background: 'var(--bg-secondary)', borderRadius: '32px', border: '1px solid var(--border)', padding: '48px', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
         <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '12px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <BookOpen size={28} color="var(--accent)" /> Hướng dẫn sử dụng hệ thống
+          <BookOpen size={28} color="var(--accent)" /> {t('medical.guideTitle')}
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginBottom: '40px', fontWeight: 500 }}>
-          Chỉ với 3 bước đơn giản dưới đây, hệ thống sẽ tự động giám sát và bảo vệ người thân của bạn.
+          {t('medical.guideSubtitle')}
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px' }}>
@@ -63,10 +66,10 @@ const MedicalSection: React.FC = () => {
               <div className="icon-badge success" style={{ width: '36px', height: '36px', borderRadius: '10px' }}>
                 <PhoneCall size={18} color="var(--success)" />
               </div>
-              <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>Khai báo Y Tế</h4>
+              <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>{t('medical.step1Title')}</h4>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.6, margin: 0 }}>
-              Vào <strong>Hồ Sơ Sức Khỏe</strong> để thêm thông tin bệnh án và đặc biệt là <em>Số điện thoại người thân</em> để hệ thống tự động gọi khi có sự cố.
+              {t('medical.step1Desc')}
             </p>
           </div>
 
@@ -76,10 +79,10 @@ const MedicalSection: React.FC = () => {
               <div className="icon-badge accent" style={{ width: '36px', height: '36px', borderRadius: '10px' }}>
                 <Video size={18} color="var(--accent)" />
               </div>
-              <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>Thêm Camera</h4>
+              <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>{t('medical.step2Title')}</h4>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.6, margin: 0 }}>
-              Sử dụng <strong>Webcam Local</strong> hoặc luồng <strong>Camera IP (RTSP)</strong> treo tường để bắt đầu truyền hình ảnh phân tích về AI Server.
+              {t('medical.step2Desc')}
             </p>
           </div>
 
@@ -89,10 +92,10 @@ const MedicalSection: React.FC = () => {
               <div className="icon-badge danger" style={{ width: '36px', height: '36px', borderRadius: '10px' }}>
                 <Bell size={18} color="var(--danger)" />
               </div>
-              <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>Bắt đầu Giám sát</h4>
+              <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>{t('medical.step3Title')}</h4>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.6, margin: 0 }}>
-              Thu nhỏ cửa sổ và hệ thống sẽ chạy ngầm. AI sẽ tự động hú còi và gọi Telegram ngay lập tức khi phát hiện có người ngã.
+              {t('medical.step3Desc')}
             </p>
           </div>
 

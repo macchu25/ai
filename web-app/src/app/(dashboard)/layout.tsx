@@ -6,7 +6,7 @@ import { signOut, useSession } from 'next-auth/react';
 import {
   Home, Video, Activity, HeartPulse, Settings, UserCircle,
   ShieldCheck, LogIn, Monitor, LayoutGrid, BarChart3,
-  AlertTriangle, Cpu, FileText, Send, Terminal, Zap, LogOut, ChevronDown, Bell, Sparkles, BookOpen, Search, X
+  AlertTriangle, Cpu, FileText, Send, Terminal, Zap, LogOut, ChevronDown, Bell, Sparkles, BookOpen, Search, X, Globe
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ScrollToTop from '@/components/ScrollToTop';
@@ -14,18 +14,77 @@ import { NotificationProvider } from '@/app/context/NotificationContext';
 import { usePathname, useRouter } from 'next/navigation';
 import Loading from './loading';
 import ChatBot from '@/components/ChatBot';
+import { useLanguage } from '@/app/context/LanguageContext';
 
-function formatRelativeVi(iso: string): string {
+function formatRelative(iso: string, tFunc: (key: string) => string): string {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return '';
   const diff = Math.max(0, Date.now() - t);
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'Vừa xong';
-  if (m < 60) return `${m} phút trước`;
+  if (m < 1) return tFunc('header.justNow');
+  if (m < 60) return `${m} ${tFunc('header.minutesAgo')}`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} giờ trước`;
+  if (h < 24) return `${h} ${tFunc('header.hoursAgo')}`;
   const d = Math.floor(h / 24);
-  return `${d} ngày trước`;
+  return `${d} ${tFunc('header.daysAgo')}`;
+}
+
+function getLocalizedNotification(
+  n: { kind: string; title: string; body: string },
+  language: string
+) {
+  if (language === 'vi') {
+    return { title: n.title, body: n.body };
+  }
+
+  if (n.kind === 'subscription_activated') {
+    const title = 'Subscription activated successfully';
+    let body = n.body;
+    try {
+      const planMatch = n.body.match(/Gói\s+(\w+)/i);
+      const expiresMatch = n.body.match(/Hết hạn:\s*([\d/: ]+)/i);
+      const refMatch = n.body.match(/Mã tham chiếu:\s*(\w+)/i);
+      
+      if (planMatch && expiresMatch) {
+        const plan = planMatch[1];
+        const expires = expiresMatch[1];
+        const ref = refMatch ? refMatch[1] : null;
+        body = `Plan ${plan} has been activated. Expires: ${expires}${ref ? `. Reference code: ${ref}` : ''}`;
+      } else {
+        body = n.body
+          .replace('Gói', 'Plan')
+          .replace('đã được kích hoạt', 'has been activated')
+          .replace('Hết hạn', 'Expires')
+          .replace('Mã tham chiếu', 'Reference code');
+      }
+    } catch (e) {
+      body = n.body
+        .replace('Gói', 'Plan')
+        .replace('đã được kích hoạt', 'has been activated')
+        .replace('Hết hạn', 'Expires')
+        .replace('Mã tham chiếu', 'Reference code');
+    }
+    return { title, body };
+  }
+
+  if (n.kind === 'subscription_cancelled') {
+    const title = 'Subscription cancelled';
+    let body = n.body;
+    try {
+      const planMatch = n.body.match(/Bạn đã hủy gói\s+(\w+)/i);
+      if (planMatch) {
+        const plan = planMatch[1];
+        body = `You cancelled the ${plan} plan. Premium features will be restricted after the plan expires.`;
+      } else {
+        body = 'You cancelled the plan. Premium features will be restricted after the plan expires.';
+      }
+    } catch (e) {
+      body = 'You cancelled the plan. Premium features will be restricted after the plan expires.';
+    }
+    return { title, body };
+  }
+
+  return { title: n.title, body: n.body };
 }
 
 export default function DashboardLayout({
@@ -36,6 +95,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status, update } = useSession();
+  const { language, setLanguage, t } = useLanguage();
   const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
   const [realtimePlan, setRealtimePlan] = useState<string>('');
   const [expiryDate, setExpiryDate] = useState<string>('');
@@ -107,9 +167,9 @@ export default function DashboardLayout({
 
   useDashboardSocket(apiBase, (session?.user as any)?.accessToken || '', async (payload) => {
     if (payload?.status === 'canceled') {
-      setToastMessage('Bạn đã hủy gói cước thành công. ℹ️');
+      setToastMessage(language === 'vi' ? 'Bạn đã hủy gói cước thành công. ℹ\uFE0F' : 'You have successfully cancelled the subscription plan. ℹ\uFE0F');
     } else {
-      setToastMessage('Chúc mừng! Tài khoản của bạn đã được nâng cấp thành công. 🎉');
+      setToastMessage(language === 'vi' ? 'Chúc mừng! Tài khoản của bạn đã được nâng cấp thành công. 🎉' : 'Congratulations! Your account has been upgraded successfully. 🎉');
     }
     await update();
     fetchPlan();
@@ -240,14 +300,14 @@ export default function DashboardLayout({
 
             {/* Main links */}
             {[
-              { href: '/', icon: <Home size={18} />, label: 'Home' },
-              { href: '/profile', icon: <UserCircle size={18} />, label: 'Profile' },
-              { href: '/cameras', icon: <Video size={18} />, label: 'Cameras' },
-              { href: '/recommendations', icon: <Monitor size={18} />, label: 'Store' },
-              { href: '/analytics', icon: <Activity size={18} />, label: 'Analytics' },
-              { href: '/rppg', icon: <HeartPulse size={18} />, label: 'Heart Rate' },
-              { href: '/incidents', icon: <AlertTriangle size={18} />, label: 'Incidents' },
-              { href: '/docs', icon: <BookOpen size={18} />, label: 'Documents' },
+              { href: '/', icon: <Home size={18} />, label: t('sidebar.home') },
+              { href: '/profile', icon: <UserCircle size={18} />, label: t('sidebar.profile') },
+              { href: '/cameras', icon: <Video size={18} />, label: t('sidebar.cameras') },
+              { href: '/recommendations', icon: <Monitor size={18} />, label: t('sidebar.store') },
+              { href: '/analytics', icon: <Activity size={18} />, label: t('sidebar.analytics') },
+              { href: '/rppg', icon: <HeartPulse size={18} />, label: t('sidebar.heartRate') },
+              { href: '/incidents', icon: <AlertTriangle size={18} />, label: t('sidebar.incidents') },
+              { href: '/docs', icon: <BookOpen size={18} />, label: t('sidebar.documents') },
             ].map(({ href, icon, label }) => (
               <Link
                 key={href}
@@ -264,12 +324,12 @@ export default function DashboardLayout({
             ))}
 
             {/* Pinned section */}
-            <p className="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest px-3 pt-4 pb-1">Pinned</p>
+            <p className="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest px-3 pt-4 pb-1">{t('sidebar.pinned')}</p>
 
             {[
-              { href: '/ai-models', icon: <Cpu size={18} />, label: 'AI Models' },
-              { href: '/reports', icon: <FileText size={18} />, label: 'Reports' },
-              { href: '/settings', icon: <Settings size={18} />, label: 'Settings' },
+              { href: '/ai-models', icon: <Cpu size={18} />, label: t('sidebar.aiModels') },
+              { href: '/reports', icon: <FileText size={18} />, label: t('sidebar.reports') },
+              { href: '/settings', icon: <Settings size={18} />, label: t('sidebar.settings') },
             ].map(({ href, icon, label }) => (
               <Link
                 key={href}
@@ -294,18 +354,17 @@ export default function DashboardLayout({
               <div className="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center mb-3 shadow-sm">
                 <Send size={14} className="text-slate-500" />
               </div>
-              <p className="text-sm font-bold text-slate-800 mb-0.5">Invite team members</p>
-              <p className="text-xs text-slate-400 leading-relaxed">Bring your team in to collaborate.</p>
+              <p className="text-sm font-bold text-slate-800 mb-0.5">{t('sidebar.inviteTitle')}</p>
+              <p className="text-xs text-slate-400 leading-relaxed">{t('sidebar.inviteDesc')}</p>
             </div>
 
             {/* Upgrade button — Galaxy rotating border */}
             <div className="upgrade-border">
               <Link href="/subscription">
                 <Zap size={16} fill="currentColor" />
-                Upgrade
+                {t('sidebar.upgrade')}
               </Link>
             </div>
-
 
           </div>
         </aside>
@@ -315,21 +374,21 @@ export default function DashboardLayout({
             <div className="header-content-wrapper">
               <div className="header-left">
                 <div style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b', letterSpacing: '-0.5px' }}>
-                  Trung Tâm Điều Hành <span style={{ color: '#2563eb' }}>AI</span>
+                  {t('header.controlCenter')} <span style={{ color: '#2563eb' }}>AI</span>
                 </div>
                 {mounted && (
                   <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                    {time.toLocaleDateString('vi-VN', { day: '2-digit', month: 'short' })}, {time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                    {time.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: 'short' })}, {time.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 )}
               </div>
 
               <div className="header-center">
                 <nav className="header-tabs">
-                  <Link href="/" className={`tab ${pathname === '/' ? 'active' : ''}`}>Tổng Quan</Link>
-                  <a href="/#muc-y-te" className="tab">Mục Y Tế</a>
-                  <a href="/#huong-dan" className="tab">Hướng Dẫn</a>
-                  <a href="/#feedback-section" className="tab">Góp Ý</a>
+                  <Link href="/" className={`tab ${pathname === '/' ? 'active' : ''}`}>{t('header.overview')}</Link>
+                  <a href="/#muc-y-te" className="tab">{t('header.medical')}</a>
+                  <a href="/#huong-dan" className="tab">{t('header.guide')}</a>
+                  <a href="/#feedback-section" className="tab">{t('header.feedback')}</a>
                 </nav>
               </div>
 
@@ -362,7 +421,7 @@ export default function DashboardLayout({
                     <input 
                       id="global-search-input"
                       type="text" 
-                      placeholder="Search documentation..." 
+                      placeholder={t('header.searchPlaceholder')}
                       style={{
                         border: 'none',
                         background: 'transparent',
@@ -387,6 +446,31 @@ export default function DashboardLayout({
                   </span>
                 </div>
 
+                {/* Quick Language Toggle */}
+                <div 
+                  onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'white',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                    cursor: 'pointer',
+                    fontWeight: 800,
+                    fontSize: '0.75rem',
+                    color: '#64748b',
+                    transition: 'all 0.2s ease',
+                    userSelect: 'none'
+                  }}
+                  title={language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+                >
+                  {language.toUpperCase()}
+                </div>
+
                 <div
                   className="notification-bell"
                   onClick={() => setShowNotifications(!showNotifications)}
@@ -398,7 +482,7 @@ export default function DashboardLayout({
                   {showNotifications && (
                     <div className="notification-dropdown" onClick={(e) => e.stopPropagation()}>
                       <div className="notification-header">
-                        <h3>Thông báo</h3>
+                        <h3>{t('header.notifications')}</h3>
                         <span
                           className="mark-read"
                           role="button"
@@ -406,7 +490,7 @@ export default function DashboardLayout({
                           onClick={markAllNotificationsRead}
                           onKeyDown={(ev) => { if (ev.key === 'Enter') void markAllNotificationsRead(ev); }}
                         >
-                          Đánh dấu đã đọc
+                          {t('header.markRead')}
                         </span>
                       </div>
                       <div className="notification-list">
@@ -416,8 +500,8 @@ export default function DashboardLayout({
                               <Bell size={18} color="#64748b" />
                             </div>
                             <div className="notif-content">
-                              <div className="notif-title">Chưa có thông báo</div>
-                              <div className="notif-desc">Khi bạn đăng ký gói hoặc có thanh toán, tin nhắn sẽ xuất hiện tại đây.</div>
+                              <div className="notif-title">{t('header.noNotifications')}</div>
+                              <div className="notif-desc">{t('header.noNotificationsDesc')}</div>
                             </div>
                           </div>
                         ) : (
@@ -433,10 +517,10 @@ export default function DashboardLayout({
                                   : '📬'}
                               </div>
                               <div className="notif-content">
-                                <div className="notif-title">{n.title}</div>
-                                <div className="notif-desc">{n.body}</div>
+                                <div className="notif-title">{getLocalizedNotification(n, language).title}</div>
+                                <div className="notif-desc">{getLocalizedNotification(n, language).body}</div>
                                 {n.created_at ? (
-                                  <div className="notif-time">{formatRelativeVi(n.created_at)}</div>
+                                  <div className="notif-time">{formatRelative(n.created_at, t)}</div>
                                 ) : null}
                               </div>
                             </div>
@@ -444,7 +528,7 @@ export default function DashboardLayout({
                         )}
                       </div>
                       <Link href="/subscription" className="notification-footer" style={{ textDecoration: 'none', display: 'block' }}>
-                        Lịch sử thanh toán trong Gói đăng ký
+                        {t('header.paymentHistory')}
                       </Link>
                     </div>
                   )}
@@ -523,13 +607,13 @@ export default function DashboardLayout({
 
                     <div className="tooltip-links">
                       <Link href="/profile" className="tooltip-link">
-                        <UserCircle size={16} /> <span>Tài khoản của tôi</span>
+                        <UserCircle size={16} /> <span>{t('header.myAccount')}</span>
                       </Link>
                       <Link href="/subscription" className="tooltip-link">
-                        <Zap size={16} /> <span>Gói đăng ký</span>
+                        <Zap size={16} /> <span>{t('header.subscription')}</span>
                       </Link>
                       <div className="tooltip-link" style={{ color: '#ef4444' }} onClick={() => setShowLogoutModal(true)}>
-                        <LogOut size={16} /> <span>Đăng xuất</span>
+                        <LogOut size={16} /> <span>{t('header.logout')}</span>
                       </div>
                     </div>
                   </div>
@@ -601,9 +685,9 @@ export default function DashboardLayout({
               }}>
                 <LogOut size={24} />
               </div>
-              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e293b', marginBottom: '12px', letterSpacing: '-0.02em' }}>Xác nhận đăng xuất?</h3>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e293b', marginBottom: '12px', letterSpacing: '-0.02em' }}>{t('header.confirmLogout')}</h3>
               <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '32px', lineHeight: '1.6' }}>
-                Bạn có chắc chắn muốn rời khỏi hệ thống điều hành Casos? Các phiên giám sát vẫn sẽ tiếp tục chạy ngầm.
+                {t('header.logoutDesc')}
               </p>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
@@ -616,7 +700,7 @@ export default function DashboardLayout({
                   onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                 >
-                  Quay lại
+                  {t('header.goBack')}
                 </button>
                 <button
                   onClick={handleLogout}
@@ -629,7 +713,7 @@ export default function DashboardLayout({
                   onMouseEnter={(e) => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
-                  Đăng xuất
+                  {t('header.logout')}
                 </button>
               </div>
             </div>
@@ -645,9 +729,8 @@ export default function DashboardLayout({
 
         /* Logo spin + text reveal loop */
         @keyframes logoLoopSpin {
-          0%   { transform: rotate(0deg); }
-          20%  { transform: rotate(360deg); }
-          100% { transform: rotate(360deg); }
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
 
         @keyframes logoTextLoop {

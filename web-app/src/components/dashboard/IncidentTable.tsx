@@ -1,6 +1,7 @@
 import React from 'react';
 import { Database, Download, Cloud } from 'lucide-react';
 import Link from 'next/link';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 interface Incident {
   id: string;
@@ -29,17 +30,27 @@ const getFirstAidType = (typeStr: string): string => {
   return 'fall'; // default to CPR/fall
 };
 
+const getLocalizedType = (typeStr: string, t: any) => {
+  const lower = (typeStr || '').toLowerCase();
+  if (lower.includes('fall') || lower.includes('ngã')) return t('reports.incidentTypeFall');
+  if (lower.includes('heart') || lower.includes('bpm') || lower.includes('nhịp tim') || lower.includes('tachycardia') || lower.includes('bradycardia')) return t('reports.incidentTypeHeart');
+  if (lower.includes('apnea') || lower.includes('ngừng thở') || lower.includes('suy hô hấp') || lower.includes('resp')) return t('reports.incidentTypeApnea');
+  return typeStr || t('incidents.unknown');
+};
+
 const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) => {
+  const { t } = useLanguage();
+
   return (
     <section className="history-section">
       <div className="table-header-row">
         <div className="header-main">
           <Database size={20} />
-          <h2>Nhật ký vận hành</h2>
+          <h2>{t('incidents.operationalLog')}</h2>
         </div>
         <button onClick={onExport} className="btn-export">
           <Download size={18} />
-          <span>Xuất CSV</span>
+          <span>{t('incidents.exportCsv')}</span>
         </button>
       </div>
 
@@ -47,14 +58,14 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
         <table className="modern-table">
           <thead>
             <tr>
-              <th>Mã sự cố</th>
-              <th>Thiết bị</th>
-              <th>Loại hình</th>
-              <th>Độ tin cậy</th>
-              <th>Thời gian</th>
-              <th>Lưu trữ</th>
-              <th>Sơ cứu</th>
-              <th>Trạng thái</th>
+              <th>{t('incidents.id')}</th>
+              <th>{t('incidents.device')}</th>
+              <th>{t('incidents.type')}</th>
+              <th>{t('incidents.confidence')}</th>
+              <th>{t('incidents.time')}</th>
+              <th>{t('incidents.storage')}</th>
+              <th>{t('incidents.firstAid')}</th>
+              <th>{t('incidents.status')}</th>
             </tr>
           </thead>
           <tbody>
@@ -69,7 +80,7 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
                 </td>
                 <td>
                   <span className={`type-badge ${(incident.type || 'unknown').toLowerCase()}`}>
-                    {incident.type || 'Không rõ'}
+                    {getLocalizedType(incident.type, t)}
                   </span>
                 </td>
                 <td>
@@ -110,13 +121,13 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
                     onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'}
                   >
-                    📖 Sơ cứu
+                    📖 {t('incidents.firstAid')}
                   </Link>
                 </td>
                 <td>
                   <div className={`status-pill ${(incident.status || 'resolved').toLowerCase()}`}>
                     <div className="pulse-dot"></div>
-                    {incident.status === 'Active' ? 'Đang xử lý' : 'Đã hoàn thành'}
+                    {incident.status === 'Active' ? t('incidents.processing') : t('incidents.completed')}
                   </div>
                 </td>
               </tr>
@@ -124,7 +135,7 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
             {incidents.length === 0 && (
               <tr>
                 <td colSpan={8} style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
-                  Chưa có nhật ký sự cố nào được ghi nhận.
+                  {t('incidents.emptyLogs')}
                 </td>
               </tr>
             )}

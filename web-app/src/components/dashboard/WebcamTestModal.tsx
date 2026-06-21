@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Video, X, ShieldAlert, CheckCircle, Flame, AlertCircle, Activity, Loader2 } from 'lucide-react';
 import { useNotification } from '@/app/context/NotificationContext';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 interface Camera {
   id: string;
@@ -22,6 +23,7 @@ type AIState = 'normal' | 'fall' | 'hr_high' | 'hr_low' | 'apnea';
 
 const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, token }) => {
   const { showToast } = useNotification();
+  const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [activeState, setActiveState] = useState<AIState>('normal');
@@ -68,9 +70,9 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
     } catch (err) {
       console.error('Lỗi truy cập webcam:', err);
       setHasPermission(false);
-      showToast('Không thể truy cập WebCam. Vui lòng cấp quyền camera cho trình duyệt.', 'error');
+      showToast(t('incidents.toastWebcamAccessError'), 'error');
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   // Initialize camera stream
   useEffect(() => {
@@ -127,17 +129,17 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
 
       const data = await res.json();
       if (res.ok) {
-        showToast(`Đã gửi tín hiệu trạng thái [${activeState.toUpperCase()}] thành công!`, 'success');
+        showToast(t('incidents.toastSignalSuccess').replace('{state}', activeState.toUpperCase()), 'success');
         if (activeState !== 'normal') {
           setSystemAlertActive(true);
         } else {
           setSystemAlertActive(false);
         }
       } else {
-        showToast(data.error || 'Lỗi gửi tín hiệu giả lập.', 'error');
+        showToast(data.error || t('incidents.toastSignalFailed'), 'error');
       }
     } catch (err) {
-      showToast('Lỗi kết nối tới máy chủ.', 'error');
+      showToast(t('incidents.toastConnError'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -154,35 +156,35 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
   const stateConfig = {
     normal: {
       color: '#10b981',
-      text: 'Bình thường (Normal)',
+      text: t('incidents.webcamNormal'),
       borderClass: 'border-emerald',
       bgGlow: 'rgba(16, 185, 129, 0.1)',
       icon: <CheckCircle className="text-emerald-400" size={16} />
     },
     fall: {
       color: '#ef4444',
-      text: 'Té ngã (Fall Detected)',
+      text: t('incidents.webcamFall'),
       borderClass: 'border-red-flash',
       bgGlow: 'rgba(239, 68, 68, 0.25)',
       icon: <ShieldAlert className="text-red-400" size={16} />
     },
     hr_high: {
       color: '#ef4444',
-      text: 'Nhịp tim cao (Tachycardia)',
+      text: t('incidents.webcamHrHigh'),
       borderClass: 'border-red-flash',
       bgGlow: 'rgba(239, 68, 68, 0.25)',
       icon: <Activity className="text-red-400" size={16} />
     },
     hr_low: {
       color: '#ef4444',
-      text: 'Nhịp tim thấp (Bradycardia)',
+      text: t('incidents.webcamHrLow'),
       borderClass: 'border-red-flash',
       bgGlow: 'rgba(239, 68, 68, 0.25)',
       icon: <Activity className="text-red-400" size={16} />
     },
     apnea: {
       color: '#ef4444',
-      text: 'Ngưng thở (Apnea)',
+      text: t('incidents.webcamApnea'),
       borderClass: 'border-red-flash',
       bgGlow: 'rgba(239, 68, 68, 0.25)',
       icon: <Activity className="text-red-400" size={16} />
@@ -198,8 +200,8 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
           <div className="header-title-section">
             <Video size={22} className="text-blue-500 animate-pulse" />
             <div>
-              <h3>Kiểm Thử AI WebCam</h3>
-              <p>Camera: <strong>{camera.name}</strong> • Vị trí: {camera.location}</p>
+              <h3>{t('incidents.webcamTitle')}</h3>
+              <p>{t('incidents.webcamSubtitle').replace('{name}', camera.name).replace('{location}', camera.location)}</p>
             </div>
           </div>
           <button className="btn-close-modal" onClick={handleClose}>
@@ -216,14 +218,14 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
               {hasPermission === null && (
                 <div className="video-placeholder">
                   <Loader2 className="spin text-blue-500" size={36} />
-                  <p>Đang chuẩn bị camera...</p>
+                  <p>{t('incidents.webcamPreparing')}</p>
                 </div>
               )}
               {hasPermission === false && (
                 <div className="video-placeholder error">
                   <AlertCircle className="text-red-500" size={48} />
-                  <h4>Không tìm thấy webcam</h4>
-                  <p>Hãy chắc chắn bạn đã cấp quyền sử dụng camera và thiết bị có gắn webcam hoạt động.</p>
+                  <h4>{t('incidents.webcamNotFound')}</h4>
+                  <p>{t('incidents.webcamNotFoundDesc')}</p>
                 </div>
               )}
 
@@ -295,7 +297,7 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
             
             {devices.length > 0 && (
               <div className="control-section-card">
-                <h4>Chọn thiết bị Camera</h4>
+                <h4>{t('incidents.webcamSelectDevice')}</h4>
                 <div style={{ marginTop: '8px', position: 'relative' }}>
                   <select 
                     value={selectedDeviceId} 
@@ -324,7 +326,7 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
             )}
 
             <div className="control-section-card">
-              <h4>1. Chọn tư thế & chỉ số kiểm thử</h4>
+              <h4>{t('incidents.webcamStep1Title')}</h4>
               <div className="state-selection-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 {(['normal', 'fall', 'hr_high', 'hr_low', 'apnea'] as AIState[]).map((st) => (
                   <button
@@ -336,11 +338,11 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
                   >
                     <div className="selector-indicator"></div>
                     <span className="selector-text">
-                      {st === 'normal' && 'Bình thường'}
-                      {st === 'fall' && 'Té ngã'}
-                      {st === 'hr_high' && 'Tim nhanh'}
-                      {st === 'hr_low' && 'Tim chậm'}
-                      {st === 'apnea' && 'Ngưng thở'}
+                      {st === 'normal' && t('incidents.webcamNormal')}
+                      {st === 'fall' && t('incidents.webcamFall')}
+                      {st === 'hr_high' && t('incidents.webcamHrHigh')}
+                      {st === 'hr_low' && t('incidents.webcamHrLow')}
+                      {st === 'apnea' && t('incidents.webcamApnea')}
                     </span>
                   </button>
                 ))}
@@ -349,7 +351,7 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
 
             <div className="control-section-card">
               <div className="slider-header">
-                <h4>2. Độ tin cậy (Confidence)</h4>
+                <h4>{t('incidents.webcamStep2Title')}</h4>
                 <span className="slider-value">{confidence}%</span>
               </div>
               <input
@@ -361,8 +363,8 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
                 className="premium-slider"
               />
               <div className="slider-labels">
-                <span>Khá thấp (50%)</span>
-                <span>Tuyệt đối (100%)</span>
+                <span>{t('incidents.webcamConfidenceLow')}</span>
+                <span>{t('incidents.webcamConfidenceHigh')}</span>
               </div>
             </div>
 
@@ -376,12 +378,12 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
                 {isSubmitting ? (
                   <>
                     <Loader2 className="spin" size={18} />
-                    <span>Đang truyền dữ liệu...</span>
+                    <span>{t('incidents.webcamSending')}</span>
                   </>
                 ) : (
                   <>
                     <Flame size={18} />
-                    <span>Gửi tín hiệu AI giả lập</span>
+                    <span>{t('incidents.webcamSimulateBtn')}</span>
                   </>
                 )}
               </button>
@@ -390,13 +392,13 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
             <div className="testing-hint-box">
               <div className="hint-header">
                 <Activity size={16} className="text-blue-500" />
-                <h5>Hướng dẫn kiểm thử:</h5>
+                <h5>{t('incidents.webcamGuideTitle')}</h5>
               </div>
               <ul>
-                <li>Chọn <strong>Té ngã</strong> hoặc <strong>chỉ số sinh tồn bất thường</strong> và bấm <strong>Gửi tín hiệu</strong>.</li>
-                <li>Xem cảnh báo nguy hiểm nhấp nháy trực tiếp trên màn hình chính.</li>
-                <li>Cuộc gọi cảnh báo khẩn cấp và Telegram sẽ tự động kích hoạt nếu cấu hình hoàn tất.</li>
-                <li>Chọn lại <strong>Bình thường</strong> để hủy cảnh báo và hồi phục hệ thống.</li>
+                <li>{t('incidents.webcamGuideStep1')}</li>
+                <li>{t('incidents.webcamGuideStep2')}</li>
+                <li>{t('incidents.webcamGuideStep3')}</li>
+                <li>{t('incidents.webcamGuideStep4')}</li>
               </ul>
             </div>
 

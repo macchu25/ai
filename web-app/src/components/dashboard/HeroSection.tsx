@@ -1,5 +1,6 @@
 import React from 'react';
 import { Camera, Shield, Bell, Activity, Clock, AlertTriangle, Video, Wifi } from 'lucide-react';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 interface HeroSectionProps {
   onlineCams: number;
@@ -7,6 +8,8 @@ interface HeroSectionProps {
 }
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) => {
+  const { t } = useLanguage();
+
   return (
     <div className="hero-viewport" style={{ position: 'relative' }}>
       {/* Fading Veins Background */}
@@ -59,9 +62,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
       {/* UI HUD OVERLAY */}
       <div className="hero-hud-overlay">
         <div className="hero-title-wrap" style={{ padding: '20px 30px 10px', pointerEvents: 'auto' }}>
-          <h2 style={{ fontSize: '1.2rem', color: '#94a3b8', fontWeight: 600, marginBottom: '2px' }}>Tổng quan trực tiếp,</h2>
+          <h2 style={{ fontSize: '1.2rem', color: '#94a3b8', fontWeight: 600, marginBottom: '2px' }}>{t('hero.liveOverview')}</h2>
           <h1 className="hero-main-title" style={{ fontSize: 'clamp(2rem, 5vw, 3.4rem)', color: '#1e293b', fontWeight: 950, letterSpacing: '-1.8px', margin: 0, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            TRONG NGÀY! <span style={{ color: 'var(--accent)', fontSize: '2.2rem', display: 'inline-block', transform: 'translateY(-4px)' }}>📡</span>
+            {t('hero.today')} <span style={{ color: 'var(--accent)', fontSize: '2.2rem', display: 'inline-block', transform: 'translateY(-4px)' }}>📡</span>
           </h1>
         </div>
 
@@ -70,14 +73,14 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
           <div className="widget widget-stream" style={{ top: '8%', left: '3%', width: '25%', minWidth: '240px', maxWidth: '300px', flexDirection: 'column', alignItems: 'flex-start', pointerEvents: 'auto', animationDelay: '0s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <Video size={16} color="var(--accent)" />
-              <span className="metric-label">Tín hiệu Stream</span>
+              <span className="metric-label">{t('hero.streamSignal')}</span>
             </div>
             <div style={{ width: '100%', height: '60px' }}>
               <svg viewBox="0 0 100 40" width="100%" height="100%" preserveAspectRatio="none">
                 <path d="M0,20 C15,0 25,0 40,20 S65,40 80,20 S95,0 100,15" fill="none" stroke="var(--accent)" strokeWidth="3.5" strokeLinecap="round" />
               </svg>
             </div>
-            <div className="metric-value" style={{ fontSize: '0.9rem' }}>{onlineCams} Live</div>
+            <div className="metric-value" style={{ fontSize: '0.9rem' }}>{onlineCams} {t('hero.live')}</div>
           </div>
 
           <div className="widget widget-alerts" style={{ top: '32%', left: '3%', width: '25%', minWidth: '240px', maxWidth: '300px', padding: '24px', flexDirection: 'column', alignItems: 'stretch', pointerEvents: 'auto', animationDelay: '-1s' }}>
@@ -87,7 +90,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
                   <AlertTriangle size={18} color="var(--danger)" />
                 </div>
                 <div>
-                  <div className="metric-label" style={{ fontSize: '0.7rem' }}>Cảnh báo</div>
+                  <div className="metric-label" style={{ fontSize: '0.7rem' }}>{t('hero.alerts')}</div>
                 </div>
               </div>
               <div className="metric-value" style={{ fontSize: '2rem' }}>{activeAlerts}</div>
@@ -100,7 +103,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
             </div>
             <div>
               <div className="metric-value" style={{ fontSize: '1rem' }}>99.9%</div>
-              <div className="metric-label" style={{ fontSize: '0.65rem' }}>Uptime</div>
+              <div className="metric-label" style={{ fontSize: '0.65rem' }}>{t('hero.uptime')}</div>
             </div>
           </div>
 
@@ -110,8 +113,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
               <Shield size={14} color="var(--success)" />
             </div>
             <div>
-              <div className="metric-label" style={{ fontSize: '0.6rem' }}>AI Status</div>
-              <div className="metric-value" style={{ fontSize: '0.85rem' }}>Active</div>
+              <div className="metric-label" style={{ fontSize: '0.6rem' }}>{t('hero.aiStatus')}</div>
+              <div className="metric-value" style={{ fontSize: '0.85rem' }}>{t('hero.active')}</div>
             </div>
           </div>
 
@@ -122,7 +125,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div className="metric-value" style={{ fontSize: '1rem' }}>60 FPS</div>
-                <div className="metric-label" style={{ fontSize: '0.65rem' }}>Processing</div>
+                <div className="metric-label" style={{ fontSize: '0.65rem' }}>{t('hero.processing')}</div>
               </div>
             </div>
           </div>
@@ -134,7 +137,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onlineCams, activeAlerts }) =
               </div>
               <div>
                 <div className="metric-value" style={{ fontSize: '1.2rem' }}>92ms</div>
-                <div className="metric-label" style={{ fontSize: '0.7rem' }}>Latency</div>
+                <div className="metric-label" style={{ fontSize: '0.7rem' }}>{t('hero.latency')}</div>
               </div>
             </div>
             <div style={{ width: '100%', height: '60px' }}>

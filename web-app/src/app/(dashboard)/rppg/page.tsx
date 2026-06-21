@@ -5,6 +5,7 @@ import { HeartPulse, Activity, AlertCircle, Shield, Info, CheckCircle, RefreshCw
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useNotification } from '@/app/context/NotificationContext';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 interface LightingStats {
   mean_brightness: number;
@@ -23,6 +24,7 @@ interface LightingStats {
 export default function RPPGPage() {
   const { data: session, status } = useSession();
   const { showToast } = useNotification();
+  const { t } = useLanguage();
   const router = useRouter();
   
   const [mounted, setMounted] = useState(false);
@@ -167,13 +169,27 @@ export default function RPPGPage() {
 
   if (!mounted) return null;
 
+  // Helpers to split colon strings (e.g. security points, guides) to prevent dangerouslySetInnerHTML
+  const renderColonSplit = (text: string) => {
+    const colonIndex = text.indexOf(':');
+    if (colonIndex === -1) return <span>{text}</span>;
+    const label = text.slice(0, colonIndex);
+    const desc = text.slice(colonIndex + 1);
+    return (
+      <span>
+        <strong>{label}:</strong>
+        {desc}
+      </span>
+    );
+  };
+
   // Renders a custom premium SVG line chart for vital signs history in medical monitor style
   const renderMiniChart = (history: number[], isHeart: boolean) => {
     if (history.length < 2) {
       return (
         <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
           <Activity size={18} className="animate-pulse" style={{ marginRight: '8px' }} />
-          Đang tích lũy chuỗi dữ liệu... (Cần tối thiểu 2 kết quả)
+          {t('rppg.chartAccumulating')}
         </div>
       );
     }
@@ -261,22 +277,22 @@ export default function RPPGPage() {
   const painPercent = Math.min(100, Math.max(0, (painScore / 6) * 100));
 
   let painColor = 'var(--text-muted)';
-  let painStatusText = 'Không hoạt động';
-  let painDesc = 'Vui lòng bật mô hình AI nhận diện đau đớn để phân tích.';
+  let painStatusText = t('rppg.painDescInactive');
+  let painDesc = t('rppg.painDescOff');
 
   if (isConnected && lightingStats && painEnabled) {
     if (painScore < 1.5) {
       painColor = '#10b981'; // Green
-      painStatusText = 'Bình thường';
-      painDesc = 'Không phát hiện biểu cảm đau đớn trên khuôn mặt.';
+      painStatusText = t('rppg.painStatusNormal');
+      painDesc = t('rppg.painDescNormal');
     } else if (painScore < 3.5) {
       painColor = '#f59e0b'; // Amber
-      painStatusText = 'Đau nhẹ / Khó chịu';
-      painDesc = 'Phát hiện biểu cảm nhíu mày hoặc căng thẳng nhẹ.';
+      painStatusText = t('rppg.painStatusMild');
+      painDesc = t('rppg.painDescMild');
     } else {
       painColor = '#ef4444'; // Red
-      painStatusText = 'Đau dữ dội';
-      painDesc = 'CẢNH BÁO: Phát hiện biểu cảm đau đớn rõ rệt. Đã gửi cảnh báo về hệ thống.';
+      painStatusText = t('rppg.painStatusSevere');
+      painDesc = t('rppg.painDescSevere');
     }
   }
 
@@ -289,13 +305,13 @@ export default function RPPGPage() {
   if (lightingStats) {
     if (mean < 55) {
       brightnessColor = '#f59e0b'; // Amber
-      brightnessStatusText = 'Quá tối';
+      brightnessStatusText = t('rppg.faceBrightnessTooDark');
     } else if (mean > 220) {
       brightnessColor = '#ef4444'; // Red
-      brightnessStatusText = 'Quá chói';
+      brightnessStatusText = t('rppg.faceBrightnessTooBright');
     } else {
       brightnessColor = '#10b981'; // Green
-      brightnessStatusText = 'Tối ưu';
+      brightnessStatusText = t('rppg.faceBrightnessOptimal');
     }
   }
 
@@ -307,17 +323,17 @@ export default function RPPGPage() {
   if (lightingStats) {
     if (std > 55) {
       contrastColor = '#f59e0b'; // Amber
-      contrastStatusText = 'Lệch sáng';
+      contrastStatusText = t('rppg.faceContrastUneven');
     } else {
       contrastColor = '#10b981'; // Green
-      contrastStatusText = 'Đều sáng';
+      contrastStatusText = t('rppg.faceContrastOptimal');
     }
   }
 
   let statusBannerBg = 'rgba(255,255,255,0.03)';
   let statusBannerBorder = 'rgba(255,255,255,0.08)';
-  let statusTitle = 'Đang chờ kết nối';
-  let statusDesc = 'Vui lòng khởi chạy script rppg_inference.py trên máy tính giám sát của bạn để đồng bộ dữ liệu.';
+  let statusTitle = t('rppg.statusWaiting');
+  let statusDesc = t('rppg.statusWaitingDesc');
   let StatusIcon = Activity;
   let statusColor = 'var(--text-muted)';
 
@@ -325,8 +341,8 @@ export default function RPPGPage() {
     if (!lightingStats) {
       statusBannerBg = 'rgba(59, 130, 246, 0.08)';
       statusBannerBorder = 'rgba(59, 130, 246, 0.2)';
-      statusTitle = 'Đang kết nối API...';
-      statusDesc = 'Đang đồng bộ luồng thông số phân tích ánh sáng.';
+      statusTitle = t('rppg.statusConnecting');
+      statusDesc = t('rppg.statusConnectingDesc');
       StatusIcon = RefreshCw;
       statusColor = 'var(--accent)';
     } else {
@@ -334,48 +350,48 @@ export default function RPPGPage() {
         case 'warming_up':
           statusBannerBg = 'rgba(245, 158, 11, 0.08)';
           statusBannerBorder = 'rgba(245, 158, 11, 0.2)';
-          statusTitle = 'Đang Khởi Động Cảm Biến';
-          statusDesc = 'Camera đang tự động điều chỉnh phơi sáng và cân bằng trắng (khoảng 2 giây).';
+          statusTitle = t('rppg.statusWarmingUp');
+          statusDesc = t('rppg.statusWarmingUpDesc');
           StatusIcon = RefreshCw;
           statusColor = '#f59e0b';
           break;
         case 'no_face':
           statusBannerBg = 'rgba(239, 68, 68, 0.08)';
           statusBannerBorder = 'rgba(239, 68, 68, 0.2)';
-          statusTitle = 'Không Tìm Thấy Mặt';
-          statusDesc = 'Vui lòng di chuyển khuôn mặt vào giữa khung hình camera và ngồi thẳng.';
+          statusTitle = t('rppg.statusNoFace');
+          statusDesc = t('rppg.statusNoFaceDesc');
           StatusIcon = AlertCircle;
           statusColor = '#ef4444';
           break;
         case 'low_light':
           statusBannerBg = 'rgba(245, 158, 11, 0.08)';
           statusBannerBorder = 'rgba(245, 158, 11, 0.2)';
-          statusTitle = 'Ánh Sáng Quá Tối';
-          statusDesc = 'Độ sáng mặt quá thấp (< 55). Hãy bật thêm đèn phòng hoặc hướng mặt về nguồn sáng chính.';
+          statusTitle = t('rppg.statusTooDark');
+          statusDesc = t('rppg.statusTooDarkDesc');
           StatusIcon = Moon;
           statusColor = '#f59e0b';
           break;
         case 'too_bright':
           statusBannerBg = 'rgba(239, 68, 68, 0.08)';
           statusBannerBorder = 'rgba(239, 68, 68, 0.2)';
-          statusTitle = 'Ánh Sáng Quá Chói';
-          statusDesc = 'Mặt bị lóa sáng (> 220). Hãy giảm độ sáng đèn hoặc khép rèm cửa nếu bị ngược nắng.';
+          statusTitle = t('rppg.statusTooBright');
+          statusDesc = t('rppg.statusTooBrightDesc');
           StatusIcon = Sun;
           statusColor = '#ef4444';
           break;
         case 'uneven_light':
           statusBannerBg = 'rgba(245, 158, 11, 0.08)';
           statusBannerBorder = 'rgba(245, 158, 11, 0.2)';
-          statusTitle = 'Ánh Sáng Không Đều';
-          statusDesc = 'Mặt bị đổ bóng hoặc bị đèn chiếu lệch một bên. Hãy điều chỉnh nguồn sáng trực diện khuôn mặt.';
+          statusTitle = t('rppg.statusUneven');
+          statusDesc = t('rppg.statusUnevenDesc');
           StatusIcon = Sliders;
           statusColor = '#f59e0b';
           break;
         case 'excellent':
           statusBannerBg = 'rgba(16, 185, 129, 0.08)';
           statusBannerBorder = 'rgba(16, 185, 129, 0.2)';
-          statusTitle = 'Ánh Sáng Hoàn Hảo';
-          statusDesc = 'Độ sáng và tương phản đạt chuẩn tối ưu. Kết quả nhịp tim sẽ chính xác nhất.';
+          statusTitle = t('rppg.statusExcellent');
+          statusDesc = t('rppg.statusExcellentDesc');
           StatusIcon = CheckCircle;
           statusColor = '#10b981';
           break;
@@ -387,10 +403,10 @@ export default function RPPGPage() {
     <div style={{ padding: '20px 30px 40px 30px', minHeight: 'calc(100vh - 80px)', boxSizing: 'border-box' }}>
       <header style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--text-main)', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <HeartPulse size={36} className="heart-icon animate-pulse-custom" /> Đo Nhịp Tim Không Tiếp Xúc (rPPG)
+          <HeartPulse size={36} className="heart-icon animate-pulse-custom" /> {t('rppg.title')}
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1rem', margin: 0 }}>
-          Theo dõi nhịp tim và hoạt động tim mạch thông qua phân tích biến đổi tuần hoàn máu trên khuôn mặt bằng camera.
+          {t('rppg.subtitle')}
         </p>
       </header>
 
@@ -403,7 +419,7 @@ export default function RPPGPage() {
           <div className="overview-card" style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Activity size={20} color="var(--accent)" /> Live Stream Phân Tích
+                <Activity size={20} color="var(--accent)" /> {t('rppg.liveFeed')}
               </h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span className={`status-badge ${isConnected ? 'active' : 'inactive'}`}>
@@ -424,7 +440,7 @@ export default function RPPGPage() {
                     gap: '6px'
                   }}
                 >
-                  <RefreshCw size={12} className={checking ? 'animate-spin' : ''} /> Kiểm tra lại
+                  <RefreshCw size={12} className={checking ? 'animate-spin' : ''} /> {t('rppg.recheckBtn')}
                 </button>
               </div>
             </div>
@@ -452,9 +468,9 @@ export default function RPPGPage() {
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                   <AlertCircle size={48} style={{ color: 'var(--warning)', marginBottom: '16px', opacity: 0.8 }} />
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>Chưa kết nối với dịch vụ rPPG</h3>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>{t('rppg.notConnected')}</h3>
                   <p style={{ fontSize: '0.9rem', maxWidth: '400px', margin: '0 auto 20px auto', lineHeight: '1.5' }}>
-                    Vui lòng khởi chạy script <code>rppg_inference.py</code> trên thiết bị giám sát của bạn để bắt đầu phân tích nhịp tim.
+                    {t('rppg.runScriptHint').replace('{script}', 'rppg_inference.py')}
                   </p>
                   <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px 16px', borderRadius: '12px', fontFamily: 'monospace', fontSize: '0.8rem', display: 'inline-block', border: '1px solid rgba(255,255,255,0.05)' }}>
                     python rppg_inference.py --source 0
@@ -464,23 +480,23 @@ export default function RPPGPage() {
             </div>
           </div>
 
-          {/* Historical BPM Event Log */}
+          {/* Security details */}
           <div className="overview-card" style={{ padding: '24px' }}>
             <h3 style={{ margin: '0 0 20px 0', fontSize: '1.15rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Shield size={18} color="var(--accent)" /> Lưu ý bảo mật & quy trình đo
+              <Shield size={18} color="var(--accent)" /> {t('rppg.securityTitle')}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '0.92rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                 <CheckCircle size={18} color="var(--success)" style={{ flexShrink: 0, marginTop: '3px' }} />
-                <span><strong>Không tiếp xúc cơ thể:</strong> Thuật toán sử dụng camera thu nhận biến đổi hấp thụ quang học (RGB) trên mao mạch dưới da, hoàn toàn bảo vệ làn da của người dùng.</span>
+                {renderColonSplit(t('rppg.securityPoint1'))}
               </div>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                 <CheckCircle size={18} color="var(--success)" style={{ flexShrink: 0, marginTop: '3px' }} />
-                <span><strong>Xử lý cục bộ bảo mật:</strong> Dữ liệu video camera được phân tích trực tiếp trên hệ thống AI của bạn và không tải lên máy chủ cloud công cộng để bảo vệ hình ảnh riêng tư.</span>
+                {renderColonSplit(t('rppg.securityPoint2'))}
               </div>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                 <CheckCircle size={18} color="var(--success)" style={{ flexShrink: 0, marginTop: '3px' }} />
-                <span><strong>Chu kỳ 10 giây:</strong> Hệ thống cần tối thiểu 10 giây ghi nhận nhịp đập liên tục ổn định để tính toán chính xác tần số xung nhịp tim.</span>
+                {renderColonSplit(t('rppg.securityPoint3'))}
               </div>
             </div>
           </div>
@@ -504,7 +520,7 @@ export default function RPPGPage() {
             }}
           >
             <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '16px' }}>
-              NHỊP TIM HIỆN TẠI (AVG)
+              {t('rppg.currentPulse')}
               {isConnected && lightingStats && rppgEnabled && <ExternalLink size={12} style={{ opacity: 0.6 }} />}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
@@ -523,8 +539,8 @@ export default function RPPGPage() {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.06)', padding: '6px 16px', borderRadius: '100px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               <HeartPulse size={14} className={isConnected && lightingStats && !rppgEnabled ? '' : (currentBpm ? 'animate-heartbeat' : '')} style={{ color: isConnected && lightingStats && !rppgEnabled ? 'var(--text-muted)' : 'var(--danger)' }} />
               {isConnected && lightingStats && !rppgEnabled 
-                ? 'Mô hình đo nhịp tim đang tắt' 
-                : (currentBpm ? 'Tín hiệu tim mạch tốt' : 'Đang chờ luồng dữ liệu...')}
+                ? t('rppg.heartOff') 
+                : (currentBpm ? t('rppg.heartVitalsGood') : t('rppg.heartWaiting'))}
             </div>
           </div>
 
@@ -542,7 +558,7 @@ export default function RPPGPage() {
             }}
           >
             <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '16px' }}>
-              NHỊP THỞ HIỆN TẠI (RESP)
+              {t('rppg.respirationRate')}
               {isConnected && lightingStats && rppgEnabled && <ExternalLink size={12} style={{ opacity: 0.6 }} />}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
@@ -563,10 +579,10 @@ export default function RPPGPage() {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.06)', padding: '6px 16px', borderRadius: '100px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               <Wind size={14} className={isConnected && lightingStats && !rppgEnabled ? '' : (respirationRate ? 'animate-pulse' : '')} style={{ color: isConnected && lightingStats && !rppgEnabled ? 'var(--text-muted)' : 'var(--accent)' }} />
               {isConnected && lightingStats && !rppgEnabled 
-                ? 'Mô hình đo nhịp tim đang tắt' 
+                ? t('rppg.respOff') 
                 : (respirationRate !== null && respirationRate !== undefined 
-                    ? (respirationRate === 0 ? 'Đang nín thở / Đứng yên' : 'Tín hiệu hô hấp tốt')
-                    : 'Đang phân tích chuyển động ngực...')}
+                    ? (respirationRate === 0 ? t('rppg.respBreathHeld') : t('rppg.respVitalsGood'))
+                    : t('rppg.respWaiting'))}
             </div>
           </div>
 
@@ -582,7 +598,7 @@ export default function RPPGPage() {
             transition: 'all 0.3s ease'
           }}>
             <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, color: painColor, display: 'block', marginBottom: '12px' }}>
-              NHẬN DIỆN BIỂU CẢM ĐAU (PAIN)
+              {t('rppg.painExpression')}
             </span>
             
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -625,7 +641,7 @@ export default function RPPGPage() {
           {/* Lighting Calibration Widget */}
           <div className="overview-card" style={{ padding: '24px' }}>
             <h3 style={{ margin: '0 0 20px 0', fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Sliders size={18} color="var(--accent)" /> Cân chỉnh ánh sáng
+              <Sliders size={18} color="var(--accent)" /> {t('rppg.lightingTitle')}
             </h3>
 
             {/* Status Alert Banner */}
@@ -653,7 +669,7 @@ export default function RPPGPage() {
             {/* Brightness Gauge */}
             <div style={{ marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '8px' }}>
-                <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>Độ sáng khuôn mặt</span>
+                <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{t('rppg.faceBrightness')}</span>
                 <span style={{ color: brightnessColor, fontWeight: 700 }}>
                   {lightingStats ? `${mean.toFixed(1)} / 255 (${brightnessStatusText})` : '--'}
                 </span>
@@ -681,16 +697,16 @@ export default function RPPGPage() {
                 }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                <span>0 (Tối)</span>
-                <span style={{ color: 'rgba(16, 185, 129, 0.7)' }}>Ngưỡng: 55 - 220</span>
-                <span>255 (Chói)</span>
+                <span>0 (Dark)</span>
+                <span style={{ color: 'rgba(16, 185, 129, 0.7)' }}>{t('rppg.brightnessRange')}</span>
+                <span>255 (Bright)</span>
               </div>
             </div>
 
             {/* Contrast/Uniformity Gauge */}
             <div style={{ marginBottom: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '8px' }}>
-                <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>Độ lệch sáng (Bóng mặt)</span>
+                <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{t('rppg.faceContrast')}</span>
                 <span style={{ color: contrastColor, fontWeight: 700 }}>
                   {lightingStats ? `${std.toFixed(1)} (${contrastStatusText})` : '--'}
                 </span>
@@ -708,16 +724,16 @@ export default function RPPGPage() {
                 }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                <span>Đều sáng</span>
-                <span style={{ color: 'rgba(16, 185, 129, 0.7)' }}>Yêu cầu: &lt; 55</span>
-                <span>Bóng mặt lớn</span>
+                <span>{t('rppg.faceContrastOptimal')}</span>
+                <span style={{ color: 'rgba(16, 185, 129, 0.7)' }}>{t('rppg.contrastReq')}</span>
+                <span>{t('rppg.contrastHigh')}</span>
               </div>
             </div>
 
             {lightingStats && (
               <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
-                <span>Tốc độ: <strong>{lightingStats.fps} FPS</strong></span>
-                <span>Trạng thái: <strong>{lightingStats.has_face ? 'Đã nhận diện mặt' : 'Chưa nhận diện'}</strong></span>
+                <span>{renderColonSplit(t('rppg.speed').replace('{fps}', lightingStats.fps.toString()))}</span>
+                <span>{renderColonSplit(t('rppg.faceDetected').replace('{status}', lightingStats.has_face ? t('rppg.faceDetectedYes') : t('rppg.faceDetectedNo')))}</span>
               </div>
             )}
           </div>
@@ -725,31 +741,31 @@ export default function RPPGPage() {
           {/* Setup Instructions */}
           <div className="overview-card" style={{ padding: '24px' }}>
             <h3 style={{ margin: '0 0 20px 0', fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Info size={18} color="var(--accent)" /> Hướng dẫn lấy dữ liệu
+              <Info size={18} color="var(--accent)" /> {t('rppg.guideTitle')}
             </h3>
             <ol style={{ paddingLeft: '20px', margin: 0, color: 'var(--text-muted)', fontSize: '0.88rem', display: 'flex', flexDirection: 'column', gap: '12px', lineHeight: '1.5' }}>
               <li>
-                <strong>Căn chỉnh khuôn mặt:</strong> Giữ mặt ở trung tâm của khung hình camera. Đảm bảo hộp màu xanh lá cây định vị bao quanh khuôn mặt của bạn.
+                {renderColonSplit(t('rppg.guide1'))}
               </li>
               <li>
-                <strong>Điều kiện ánh sáng:</strong> Tránh các luồng ánh sáng ngược quá mạnh hoặc bóng tối loang lổ trên mặt. Ánh sáng đều sẽ tối ưu hóa độ nhạy màu da.
+                {renderColonSplit(t('rppg.guide2'))}
               </li>
               <li>
-                <strong>Ngăn chặn rung động:</strong> Ngồi thẳng và giữ đầu tương đối yên lặng trong vòng 10 giây đầu tiên để bộ đệm tích lũy đầy đủ dữ liệu.
+                {renderColonSplit(t('rppg.guide3'))}
               </li>
               <li>
-                <strong>Chế độ nền:</strong> Script <code>rppg_inference.py</code> sẽ tự động cập nhật nhịp tim định kỳ lên dashboard mỗi 2 giây.
+                {renderColonSplit(t('rppg.guide4'))}
               </li>
             </ol>
           </div>
 
-          {/* Developer Quick-Start */}
+          {/* Edge Node Operations */}
           <div className="overview-card" style={{ padding: '24px', background: '#0c0f17', border: 'none' }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <AlertTriangle size={16} color="#eab308" /> Vận hành Edge Node
+              <AlertTriangle size={16} color="#eab308" /> {t('rppg.edgeNodeTitle')}
             </h3>
             <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: '1.5', margin: '0 0 16px 0' }}>
-              Chạy lệnh này từ máy tính có camera liên kết để truyền kết quả nhịp tim trực tiếp lên màn hình:
+              {t('rppg.edgeNodeDesc')}
             </p>
             <div style={{
               background: '#1e293b',
@@ -838,8 +854,8 @@ export default function RPPGPage() {
                     <HeartPulse size={24} style={{ color: '#10b981' }} className="animate-heartbeat" />
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)' }}>Biểu đồ Nhịp tim Chi tiết</h3>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Thời gian thực (40 điểm đo gần nhất)</p>
+                    <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)' }}>{t('rppg.modalHeartTitle')}</h3>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('rppg.modalHeartDesc')}</p>
                   </div>
                 </>
               ) : (
@@ -848,8 +864,8 @@ export default function RPPGPage() {
                     <Wind size={24} style={{ color: '#3b82f6' }} className="animate-pulse" />
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)' }}>Biểu đồ Nhịp thở Chi tiết</h3>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Thời gian thực (40 điểm đo gần nhất)</p>
+                    <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)' }}>{t('rppg.modalRespTitle')}</h3>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('rppg.modalRespDesc')}</p>
                   </div>
                 </>
               )}
@@ -858,7 +874,7 @@ export default function RPPGPage() {
             {/* Stats Cards */}
             <div className="responsive-grid-3col" style={{ marginBottom: '32px' }}>
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '16px', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Trung bình</span>
+                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>{t('rppg.modalStatAvg')}</span>
                 <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>
                   {activeModal === 'heart' 
                     ? (heartRateHistory.length > 0 ? (heartRateHistory.reduce((a, b) => a + b, 0) / heartRateHistory.length).toFixed(1) : '--')
@@ -870,7 +886,7 @@ export default function RPPGPage() {
                 </span>
               </div>
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '16px', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Cao nhất</span>
+                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>{t('rppg.modalStatMax')}</span>
                 <span style={{ fontSize: '1.5rem', fontWeight: 800, color: activeModal === 'heart' ? '#10b981' : '#3b82f6' }}>
                   {activeModal === 'heart' 
                     ? (heartRateHistory.length > 0 ? Math.max(...heartRateHistory).toFixed(1) : '--')
@@ -882,7 +898,7 @@ export default function RPPGPage() {
                 </span>
               </div>
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '16px', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Thấp nhất</span>
+                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>{t('rppg.modalStatMin')}</span>
                 <span style={{ fontSize: '1.5rem', fontWeight: 800, color: activeModal === 'heart' ? '#10b981' : '#3b82f6' }}>
                   {activeModal === 'heart' 
                     ? (heartRateHistory.length > 0 ? Math.min(...heartRateHistory).toFixed(1) : '--')
@@ -923,16 +939,12 @@ export default function RPPGPage() {
               {activeModal === 'heart' ? (
                 <>
                   <Activity size={18} style={{ color: '#10b981', flexShrink: 0 }} />
-                  <span>
-                    <strong>Nhận xét:</strong> Nhịp tim được đo liên tục bằng công nghệ rPPG. Nếu nồng độ dao động quá mạnh, vui lòng điều chỉnh tư thế ngồi yên và kiểm tra lại ánh sáng.
-                  </span>
+                  {renderColonSplit(t('rppg.modalFootnoteHeart'))}
                 </>
               ) : (
                 <>
                   <Wind size={18} style={{ color: '#3b82f6', flexShrink: 0 }} />
-                  <span>
-                    <strong>Nhận xét:</strong> Nhịp thở dựa trên biến thiên biên độ chuyển động của ngực. Nếu nín thở hoặc không có cử động thở, thông số sẽ tự động trả về <strong>0.0 RPM</strong>.
-                  </span>
+                  {renderColonSplit(t('rppg.modalFootnoteResp'))}
                 </>
               )}
             </div>
@@ -950,10 +962,10 @@ export default function RPPGPage() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontWeight: 700, fontSize: '0.95rem' }}>
                 <AlertCircle size={18} color="var(--danger)" />
-                Hướng dẫn sơ cứu khẩn cấp chuyên khoa
+                {t('rppg.modalFirstAidTitle')}
               </div>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                Khi gặp sự cố nhịp sinh tồn vượt ngưỡng hoặc có biểu hiện suy hô hấp, co giật, hãy kích hoạt ngay chế độ hướng dẫn giọng nói để hỗ trợ sơ cứu kịp thời.
+                {t('rppg.modalFirstAidDesc')}
               </p>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
                 {activeModal === 'heart' ? (
@@ -978,7 +990,7 @@ export default function RPPGPage() {
                         transition: 'all 0.2s'
                       }}
                     >
-                      Nhịp Tim Nhanh (Tachycardia) 🩺
+                      {t('rppg.modalBtnHeartHigh')}
                     </button>
                     <button 
                       onClick={() => {
@@ -1000,7 +1012,7 @@ export default function RPPGPage() {
                         transition: 'all 0.2s'
                       }}
                     >
-                      Nhịp Tim Chậm (Bradycardia) 🩺
+                      {t('rppg.modalBtnHeartLow')}
                     </button>
                   </>
                 ) : (
@@ -1024,7 +1036,7 @@ export default function RPPGPage() {
                       transition: 'all 0.2s'
                     }}
                   >
-                    Ngừng Thở / Suy Hô Hấp (Apnea) 🩺
+                    {t('rppg.modalBtnApnea')}
                   </button>
                 )}
               </div>

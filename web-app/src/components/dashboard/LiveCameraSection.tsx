@@ -33,13 +33,14 @@ const LiveCameraSection: React.FC<LiveCameraSectionProps> = ({ cameras, token })
       <div className="cameras-preview-grid">
         {displayCams.length > 0 ? (
           displayCams.map(cam => {
-            // Kiểm tra xem đây có phải luồng từ AI (MJPEG) không
-            const isMJPEG = cam.rtspUrl && (cam.rtspUrl.startsWith('http') || cam.rtspUrl.includes(':5000'));
+            // Check if this is an MJPEG/HTTP stream (rtsp_url from DB or rtspUrl from API response)
+            const rawUrl = cam.rtsp_url || cam.rtspUrl || '';
+            const isMJPEG = rawUrl && (rawUrl.startsWith('http') || rawUrl.includes(':5000'));
             
-            // Nếu là MJPEG, dùng URL trực tiếp. Nếu không, qua Proxy HLS của Backend
+            // Path-based token: HLS.js propagates token to all .ts segment requests automatically
             const streamUrl = isMJPEG 
-              ? (cam.rtspUrl.startsWith('http') ? cam.rtspUrl : `http://${cam.rtspUrl}`)
-              : `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8?token=${token}&t=${Date.now()}`;
+              ? (rawUrl.startsWith('http') ? rawUrl : `http://${rawUrl}`)
+              : `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/token/${token}/${cam.id}/stream.m3u8`;
             
             return (
               <div key={cam.id} className="camera-card-wrapper">

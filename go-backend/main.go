@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -213,13 +214,30 @@ func main() {
 
 	r.GET("/api/v1/user/check-payment", userHandler.CheckPayment)
 
-	// 8. Static Streams (Phục vụ luồng video HLS (Cấu hình không cho phép Cache để tránh lỗi nhảy hình))
-	r.GET("/streams/*filepath", func(c *gin.Context) {
+	// 8. Secure HLS Stream Routes (JWT-protected — prevents unauthorized camera viewing)
+	// Supports two token patterns on the same wildcard route:
+	//   Path-based (preferred): /streams/token/<jwt>/<camID>/stream.m3u8
+	//   Query-based (fallback): /streams/<camID>/stream.m3u8?token=<jwt>
+	serveHLS := func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
 		c.Header("Pragma", "no-cache")
 		c.Header("Expires", "0")
-		c.File(filepath.Join(hlsServer.OutputDir, c.Param("filepath")))
-	})
+		filePath := c.Param("filepath")
+		// Strip /token/<jwt>/ prefix when using path-based token pattern
+		if strings.HasPrefix(filePath, "/token/") {
+			// filePath format: /token/<jwt>/<camID>/stream.m3u8
+			rest := strings.TrimPrefix(filePath, "/token/")
+			parts := strings.SplitN(rest, "/", 2) // [<jwt>, <camID>/stream.m3u8]
+			if len(parts) == 2 {
+				filePath = "/" + parts[1]
+			}
+		}
+		c.File(filepath.Join(hlsServer.OutputDir, filePath))
+	}
+
+	streamsGroup := r.Group("/streams")
+	streamsGroup.Use(auth.StreamAuthMiddleware(db))
+	streamsGroup.GET("/*filepath", serveHLS)
 
 	// 9. Start Server
 	logger.Log.Info("🚀 Cardiac Alert Server hiện đang chạy tại cổng :8080")

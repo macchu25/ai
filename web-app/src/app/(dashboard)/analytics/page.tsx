@@ -8,6 +8,7 @@ import {
 import Link from 'next/link';
 import { useSession } from "next-auth/react";
 import { useDashboardSocket } from '@/hooks/useDashboardSocket';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 interface IncidentCategory {
   label: string;
@@ -33,6 +34,7 @@ interface TimelineItem {
 
 export default function AnalyticsPage() {
   const { data: session } = useSession();
+  const { t } = useLanguage();
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +77,6 @@ export default function AnalyticsPage() {
   const safeTimeline = timeline;
   const maxCount = Math.max(...safeTimeline.map(t => t.count), 5);
 
-  // Mảng màu cho Pie Chart
   const colors = ['var(--accent)', 'var(--danger)', 'var(--success)', '#f59e0b', '#8b5cf6'];
 
   return (
@@ -86,26 +87,26 @@ export default function AnalyticsPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div className="page-header-premium" style={{ marginBottom: '0' }}>
             <div>
-              <h1 className="page-title-premium">CENTRAL INTELLIGENCE</h1>
-              <p className="page-subtitle-premium" style={{ fontSize: '0.85rem' }}>Dữ liệu vận hành Casos thời gian thực.</p>
+              <h1 className="page-title-premium">{t('analytics.title')}</h1>
+              <p className="page-subtitle-premium" style={{ fontSize: '0.85rem' }}>{t('analytics.subtitle')}</p>
             </div>
           </div>
         </div>
 
         <button style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 800, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 8px 15px rgba(59, 130, 246, 0.2)' }}>
-          <Download size={18} /> XUẤT BÁO CÁO
+          <Download size={18} /> {t('analytics.exportBtn')}
         </button>
       </div>
 
       {/* METRICS ROW: COMPACT */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', marginBottom: '20px' }}>
         {[
-          { label: 'TỔNG SỰ CỐ', value: summary?.total_incidents || 0, icon: AlertCircle, color: 'var(--danger)' },
-          { label: 'TRONG NGÀY', value: summary?.today_incidents ?? summary?.recent_24h ?? 0, icon: Clock, color: '#f59e0b' },
-          { label: 'TRONG TUẦN', value: summary?.week_incidents ?? 0, icon: TrendingUp, color: 'var(--accent)' },
-          { label: 'TRONG THÁNG', value: summary?.month_incidents ?? 0, icon: Calendar, color: '#8b5cf6' },
-          { label: 'SENSORS ACTIVE', value: summary?.active_cameras || 0, icon: Zap, color: 'var(--accent)' },
-          { label: 'AI STATUS', value: 'OPTIMIZED', icon: Shield, color: 'var(--success)' },
+          { label: t('analytics.totalIncidents'), value: summary?.total_incidents || 0, icon: AlertCircle, color: 'var(--danger)' },
+          { label: t('analytics.today'), value: summary?.today_incidents ?? summary?.recent_24h ?? 0, icon: Clock, color: '#f59e0b' },
+          { label: t('analytics.week'), value: summary?.week_incidents ?? 0, icon: TrendingUp, color: 'var(--accent)' },
+          { label: t('analytics.month'), value: summary?.month_incidents ?? 0, icon: Calendar, color: '#8b5cf6' },
+          { label: t('analytics.sensorsActive'), value: summary?.active_cameras || 0, icon: Zap, color: 'var(--accent)' },
+          { label: t('analytics.aiStatus'), value: t('analytics.optimized'), icon: Shield, color: 'var(--success)' },
         ].map((stat, i) => (
           <div key={i} style={{ background: '#fff', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 5px 15px rgba(0,0,0,0.01)', border: '1px solid #f1f5f9' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -118,20 +119,20 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      {/* CHARTS GRID: FITS VIEWPORT */}
+      {/* CHARTS GRID */}
       <div className="responsive-grid-analytics" style={{ flex: 1, minHeight: 0 }}>
         
         {/* LINE CHART: TRENDS */}
         <div style={{ background: '#fff', padding: '25px', borderRadius: '28px', boxShadow: '0 5px 20px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 900, color: '#1e293b', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <TrendingUp size={18} color="var(--accent)" /> XU HƯỚNG 7 NGÀY
+            <TrendingUp size={18} color="var(--accent)" /> {t('analytics.trendsTitle')}
           </h3>
           
           <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'flex-end', padding: '20px 0 10px' }}>
             {(() => {
               const points = safeTimeline.map((item, i) => {
                 const x = safeTimeline.length > 1 ? (i * (500 / (safeTimeline.length - 1))) : 250;
-                const y = 200 - (item.count / maxCount * 130) - 30; // y scales from 40 to 170
+                const y = 200 - (item.count / maxCount * 130) - 30;
                 return { x, y, count: item.count, date: item._id };
               });
 
@@ -180,11 +181,8 @@ export default function AnalyticsPage() {
                         {/* Data Points and Tooltips */}
                         {points.map((pt, i) => (
                           <g key={i} className="chart-dot-group" style={{ cursor: 'pointer' }}>
-                            {/* Outer Glow */}
                             <circle cx={pt.x} cy={pt.y} r="8" fill="var(--accent)" opacity="0.15" />
-                            {/* Inner Circle */}
                             <circle cx={pt.x} cy={pt.y} r="4.5" fill="var(--accent)" stroke="#fff" strokeWidth="1.5" />
-                            {/* Value Tooltip Label */}
                             <text x={pt.x} y={pt.y - 12} textAnchor="middle" style={{ fill: 'var(--accent)', fontSize: '0.7rem', fontWeight: 950 }}>
                               {pt.count}
                             </text>
@@ -207,10 +205,10 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* PIE CHART: REAL CATEGORIES */}
+        {/* PIE CHART */}
         <div style={{ background: '#1e293b', padding: '25px', borderRadius: '28px', color: '#fff', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <PieChart size={18} color="var(--success)" /> PHÂN LOẠI THỰC TẾ
+            <PieChart size={18} color="var(--success)" /> {t('analytics.pieTitle')}
           </h3>
           
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -219,7 +217,7 @@ export default function AnalyticsPage() {
               if (categories.length === 0) {
                 return (
                   <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '15px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b' }}>NO DATA</div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b' }}>{t('analytics.noData')}</div>
                   </div>
                 );
               }
@@ -232,9 +230,7 @@ export default function AnalyticsPage() {
               return (
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '25px' }}>
                   <svg width="120" height="120" viewBox="0 0 100 100" style={{ overflow: 'visible' }}>
-                    {/* Background track circle */}
                     <circle cx="50" cy="50" r={radius} fill="transparent" stroke="#334155" strokeWidth={strokeWidth} />
-                    {/* Segment loops */}
                     {categories.map((item, i) => {
                       const strokeDasharray = `${(item.percent / 100) * circumference} ${circumference}`;
                       const strokeDashoffset = `${-(accumulatedPercent / 100) * circumference}`;
@@ -274,7 +270,7 @@ export default function AnalyticsPage() {
                   <span style={{ fontWeight: 800, fontSize: '0.8rem' }}>{Math.round(item.percent)}%</span>
                 </div>
               )) : (
-                <div style={{ textAlign: 'center', color: '#64748b', fontSize: '0.8rem' }}>Chưa có dữ liệu phân loại...</div>
+                <div style={{ textAlign: 'center', color: '#64748b', fontSize: '0.8rem' }}>{t('analytics.noCategories')}</div>
               )}
             </div>
           </div>

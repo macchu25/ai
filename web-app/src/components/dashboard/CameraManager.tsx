@@ -1,6 +1,7 @@
 import React from 'react';
 import { LayoutGrid, Video, MapPin, Crosshair, Loader2, Link as LinkIcon, X, Power, Pencil, Trash2 } from 'lucide-react';
 import { useNotification } from '@/app/context/NotificationContext';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 interface Camera {
   id: string;
@@ -38,6 +39,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
   onOpenWebcamTest, token, onRefreshData
 }) => {
   const { showToast } = useNotification();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = React.useState<'manual' | 'imou'>('manual');
   const [imouAppId, setImouAppId] = React.useState('');
   const [imouAppSecret, setImouAppSecret] = React.useState('');
@@ -49,7 +51,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
   const handleConnectImou = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!imouAppId || !imouAppSecret) {
-      showToast("Vui lòng điền đầy đủ App ID và App Secret.", "error");
+      showToast(t('incidents.toastImouFillFields'), "error");
       return;
     }
     
@@ -73,12 +75,12 @@ const CameraManager: React.FC<CameraManagerProps> = ({
       const data = await res.json();
       if (res.ok && data.success) {
         setImouDevices(data.devices || []);
-        showToast(`Tìm thấy ${data.devices?.length || 0} thiết bị camera IMOU.`, "success");
+        showToast(t('incidents.toastImouFoundCount').replace('{count}', (data.devices?.length || 0).toString()), "success");
       } else {
-        showToast(data.error || "Không thể lấy danh sách camera IMOU.", "error");
+        showToast(data.error || t('incidents.toastImouFetchFailed'), "error");
       }
     } catch (err) {
-      showToast("Lỗi kết nối tới Go Backend.", "error");
+      showToast(t('incidents.toastConnBackendFailed'), "error");
     } finally {
       setIsConnecting(false);
     }
@@ -87,7 +89,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
   const handleImportDevice = async (device: any) => {
     if (!device.stream_url) {
       showToast(
-        device.stream_error || "Không có link live stream. Kiểm tra quyền Live Stream trên IMOU Open Platform hoặc camera offline.",
+        device.stream_error || "No live stream link. Verify Live Stream permissions on IMOU Open Platform, or camera is offline.",
         "error"
       );
       return;
@@ -105,7 +107,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
       const profileData = await profileRes.json();
       
       if (!profileData.contacts || profileData.contacts.length === 0) {
-        showToast("Bạn cần thêm ít nhất 1 liên hệ người thân trong mục Hồ Sơ Y Tế trước.", "error");
+        showToast(t('incidents.toastProfileAddContactFirst'), "error");
         setImportingId(null);
         return;
       }
@@ -126,13 +128,13 @@ const CameraManager: React.FC<CameraManagerProps> = ({
       
       const data = await res.json();
       if (res.ok) {
-        showToast(`Đã import thành công camera "${device.name}"!`, "success");
+        showToast(t('incidents.toastImouImportSuccess').replace('{name}', device.name), "success");
         if (onRefreshData) onRefreshData();
       } else {
-        showToast(data.message || data.error || "Lỗi khi import camera.", "error");
+        showToast(data.message || data.error || t('incidents.toastImouImportFailed'), "error");
       }
     } catch (err) {
-      showToast("Lỗi kết nối khi import camera.", "error");
+      showToast(t('incidents.toastImouImportConnError'), "error");
     } finally {
       setImportingId(null);
     }
@@ -144,7 +146,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
         <div className="card-header-row">
           <div className="header-main">
             <LayoutGrid size={20} color="var(--accent)" />
-            <h3>{editingCamId ? 'Cập nhật Camera' : 'Thiết lập Camera Mới'}</h3>
+            <h3>{editingCamId ? t('incidents.editTitle') : t('incidents.newTitle')}</h3>
           </div>
           {editingCamId && (
             <button className="btn-cancel-edit" onClick={() => {
@@ -153,7 +155,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
               setCamLocation('');
               setRtspUrl('');
             }}>
-              <X size={16} /> Hủy chỉnh sửa
+              <X size={16} /> {t('incidents.cancelEdit')}
             </button>
           )}
         </div>
@@ -175,7 +177,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
               transition: 'all 0.2s ease'
             }}
           >
-            Thêm Thủ Công (RTSP/Webcam)
+            {t('incidents.addManual')}
           </button>
           <button 
             type="button" 
@@ -192,7 +194,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
               transition: 'all 0.2s ease'
             }}
           >
-            Nhập từ IMOU Cloud (API)
+            {t('incidents.importImou')}
           </button>
         </div>
 
@@ -201,21 +203,21 @@ const CameraManager: React.FC<CameraManagerProps> = ({
             <div className="input-field">
               <Video size={18} className="field-icon" />
               <input 
-                placeholder="Tên Camera" 
+                placeholder={t('incidents.placeholderCamName')} 
                 value={camName} onChange={e => setCamName(e.target.value)}
               />
             </div>
             <div className="input-field">
               <MapPin size={18} className="field-icon" />
               <input 
-                placeholder="Vị trí lắp đặt" 
+                placeholder={t('incidents.placeholderLocation')} 
                 value={camLocation} onChange={e => setCamLocation(e.target.value)}
               />
               <button 
                 type="button" 
                 onClick={handleGetLocation} 
                 className="btn-locate"
-                title="Tự động lấy vị trí hiện tại"
+                title={t('incidents.titleGetLocation')}
               >
                 {isLocating ? <Loader2 size={16} className="spin" /> : <Crosshair size={16} />}
               </button>
@@ -223,15 +225,15 @@ const CameraManager: React.FC<CameraManagerProps> = ({
             <div className="input-field wide" style={{ marginBottom: '8px' }}>
               <LinkIcon size={18} className="field-icon" />
               <input 
-                placeholder="RTSP Stream URL hoặc API Stream URL (Rỗng nếu dùng WebCam)" 
+                placeholder={t('incidents.placeholderRtsp')} 
                 value={rtspUrl} onChange={e => setRtspUrl(e.target.value)}
               />
             </div>
             <div className="field-help-text" style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '-12px', marginBottom: '16px', gridColumn: 'span 2', paddingLeft: '8px' }}>
-              💡 Hỗ trợ cả luồng <strong>RTSP</strong> (ví dụ: <code>rtsp://192.168.1.100:554/stream1</code>) và luồng <strong>API/MJPEG</strong> (ví dụ: <code>http://localhost:5000/video_feed</code>).
+              {t('incidents.streamHelpText')}
             </div>
             <button type="submit" className={`btn-save-config ${editingCamId ? 'editing' : ''}`} disabled={isTesting}>
-              {isTesting ? 'Đang xử lý...' : (editingCamId ? 'Cập nhật ngay' : 'Thêm Camera Mới')}
+              {isTesting ? t('incidents.btnProcessing') : (editingCamId ? t('incidents.updateNow') : t('incidents.addNow'))}
             </button>
           </form>
         ) : (
@@ -240,7 +242,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
               <div className="input-field" style={{ minWidth: '200px' }}>
                 <LayoutGrid size={18} className="field-icon" />
                 <input 
-                  placeholder="IMOU App ID" 
+                  placeholder={t('incidents.imouPlaceholderAppId')} 
                   value={imouAppId} onChange={e => setImouAppId(e.target.value)}
                 />
               </div>
@@ -248,22 +250,22 @@ const CameraManager: React.FC<CameraManagerProps> = ({
                 <LinkIcon size={18} className="field-icon" />
                 <input 
                   type="password"
-                  placeholder="IMOU App Secret" 
+                  placeholder={t('incidents.imouPlaceholderAppSecret')} 
                   value={imouAppSecret} onChange={e => setImouAppSecret(e.target.value)}
                 />
               </div>
               <button type="submit" className="btn-save-config" disabled={isConnecting} style={{ height: '50px' }}>
-                {isConnecting ? 'Đang kết nối...' : 'Kết nối & Lấy thiết bị'}
+                {isConnecting ? t('incidents.imouConnecting') : t('incidents.imouConnectBtn')}
               </button>
             </form>
             <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '24px', paddingLeft: '4px' }}>
-              Dùng nền tảng <strong>Bản Quốc tế (easy4ip)</strong> — camera IMOU tại Việt Nam không dùng bản Nội địa Trung Quốc.
+              {t('incidents.imouRegionHint')}
             </div>
             
             {imouDevices.length > 0 && (
               <div style={{ marginTop: '24px', background: 'rgba(255, 255, 255, 0.2)', padding: '20px', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.04)' }}>
                 <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '16px', color: '#1e293b' }}>
-                  Danh sách thiết bị quét được:
+                  {t('incidents.imouListTitle')}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {imouDevices.map(device => (
@@ -280,7 +282,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
                           <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>{device.name}</div>
                           <div style={{ fontSize: '0.7rem', color: '#64748b' }}>ID: {device.id}</div>
                           {device.stream_url ? (
-                            <div style={{ fontSize: '0.65rem', color: '#10b981', marginTop: '2px' }}>✓ Đã có link live stream</div>
+                            <div style={{ fontSize: '0.65rem', color: '#10b981', marginTop: '2px' }}>{t('incidents.imouHasStream')}</div>
                           ) : device.stream_error ? (
                             <div style={{ fontSize: '0.65rem', color: '#ef4444', marginTop: '4px', maxWidth: '280px' }}>{device.stream_error}</div>
                           ) : null}
@@ -292,7 +294,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
                           <div className="input-field" style={{ padding: '0 10px', height: '36px', width: '150px' }}>
                             <MapPin size={14} className="field-icon" style={{ marginRight: '6px' }} />
                             <input 
-                              placeholder="Vị trí lắp đặt" 
+                              placeholder={t('incidents.placeholderLocation')} 
                               value={imouLocations[device.id] || ''} 
                               onChange={e => setImouLocations({
                                 ...imouLocations,
@@ -308,11 +310,11 @@ const CameraManager: React.FC<CameraManagerProps> = ({
                             style={{ padding: '0 16px', height: '36px', fontSize: '0.8rem', borderRadius: '10px', opacity: device.stream_url ? 1 : 0.5 }}
                             disabled={importingId === device.id || !device.stream_url}
                           >
-                            {importingId === device.id ? 'Đang nhập...' : 'Import'}
+                            {importingId === device.id ? t('incidents.imouImporting') : t('incidents.imouImport')}
                           </button>
                         </div>
                       ) : (
-                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic' }}>Thiết bị đang Offline</span>
+                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic' }}>{t('incidents.imouDeviceOffline')}</span>
                       )}
                     </div>
                   ))}
@@ -323,7 +325,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
         )}
 
         <div className="active-devices-list">
-          <div className="list-title">Danh sách Device đang online:</div>
+          <div className="list-title">{t('incidents.activeDevicesTitle')}</div>
           <div className="device-chips">
             {cameras.map((cam) => (
               <div key={cam.id} className={`device-chip ${cam.status}`}>
@@ -337,14 +339,14 @@ const CameraManager: React.FC<CameraManagerProps> = ({
                     <button 
                       onClick={() => onOpenWebcamTest(cam)} 
                       className="action-btn webcam-test" 
-                      title="Mở WebCam Test AI"
+                      title={t('incidents.titleOpenWebcam')} 
                       style={{ color: '#10b981', background: '#ecfdf5' }}
                       type="button"
                     >
                       <Video size={14} />
                     </button>
                   )}
-                  <button onClick={() => toggleCamStatus(cam)} className={`action-btn power ${cam.status}`} title="Bật/Tắt Camera">
+                  <button onClick={() => toggleCamStatus(cam)} className={`action-btn power ${cam.status}`} title={t('incidents.titlePower')}>
                     <Power size={14} />
                   </button>
                   <button onClick={() => {
@@ -353,7 +355,7 @@ const CameraManager: React.FC<CameraManagerProps> = ({
                       setCamLocation(cam.location);
                       setRtspUrl(cam.rtsp_url);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }} className="action-btn edit" title="Sửa tên/địa chỉ">
+                  }} className="action-btn edit" title={t('incidents.titleEdit')}>
                     <Pencil size={14} />
                   </button>
                   <button 

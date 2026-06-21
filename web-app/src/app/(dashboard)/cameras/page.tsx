@@ -5,10 +5,12 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { LayoutGrid, Grid3X3, Monitor, Settings, RefreshCw, AlertTriangle, ShieldCheck, Search } from 'lucide-react';
 import VideoPlayer from '@/components/dashboard/VideoPlayer';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 export default function CamerasGridPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [cameras, setCameras] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid2' | 'grid3'>('grid2');
@@ -68,14 +70,14 @@ export default function CamerasGridPage() {
 
       fetchCams();
     }
-  }, [status, session, router]);
+  }, [status, session, router, token]);
 
   return (
     <div className="cameras-grid-page">
       <header className="page-header-premium">
         <div>
-          <h1 className="page-title-premium">Phòng Điều Phối Cam</h1>
-          <p className="page-subtitle-premium">Hệ thống giám sát đa luồng thời gian thực</p>
+          <h1 className="page-title-premium">{t('cameras.title')}</h1>
+          <p className="page-subtitle-premium">{t('cameras.subtitle')}</p>
         </div>
 
         <div className="header-actions">
@@ -85,28 +87,28 @@ export default function CamerasGridPage() {
             disabled={isScanning}
           >
             <Search size={18} className={isScanning ? 'animate-pulse' : ''} />
-            <span>{isScanning ? 'Đang quét...' : 'Quét Camera'}</span>
+            <span>{isScanning ? t('cameras.scanning') : t('cameras.scanBtn')}</span>
           </button>
           
           <div className="view-toggle">
             <button
               className={viewMode === 'grid2' ? 'active' : ''}
               onClick={() => setViewMode('grid2')}
-              title="Bố cục 2 cột"
+              title={t('cameras.viewGrid2')}
             >
               <LayoutGrid size={18} />
             </button>
             <button
               className={viewMode === 'grid3' ? 'active' : ''}
               onClick={() => setViewMode('grid3')}
-              title="Bố cục 3 cột"
+              title={t('cameras.viewGrid3')}
             >
               <Grid3X3 size={18} />
             </button>
           </div>
           <button onClick={() => window.location.reload()} className="btn-refresh">
             <RefreshCw size={18} />
-            <span>Làm mới</span>
+            <span>{t('cameras.refresh')}</span>
           </button>
         </div>
       </header>
@@ -125,10 +127,10 @@ export default function CamerasGridPage() {
             
             <span>
               {isScanning 
-                ? 'Đang dò tìm thiết bị trong mạng Wifi của bạn...' 
+                ? t('cameras.scanningHint') 
                 : (discoveredIps?.length || 0) > 0 
-                  ? `Đã tìm thấy ${discoveredIps.length} Camera RTSP mới!` 
-                  : 'Không tìm thấy Camera nào đang mở cổng RTSP (554).'}
+                  ? t('cameras.scanFoundText').replace('{count}', String(discoveredIps.length))
+                  : t('cameras.scanNotFoundText')}
             </span>
             <button onClick={() => { setHasScanned(false); setDiscoveredIps([]); }} className="close-discovery">×</button>
           </div>
@@ -141,11 +143,11 @@ export default function CamerasGridPage() {
                   <button 
                     onClick={() => {
                       navigator.clipboard.writeText(`rtsp://${ip}:554/stream1`);
-                      alert("Đã sao chép link RTSP!");
+                      alert(t('cameras.copySuccess'));
                     }}
                     className="btn-add-fast"
                   >
-                    Sao chép URL
+                    {t('cameras.copyUrl')}
                   </button>
                 </div>
               ))}
@@ -154,26 +156,26 @@ export default function CamerasGridPage() {
           
           {hasScanned && (discoveredIps?.length || 0) === 0 && (
             <p className="discovery-hint" style={{ marginTop: '10px', color: '#64748b', fontSize: '0.85rem' }}>
-              Hãy đảm bảo Camera X-IoT đã bật nguồn và kết nối cùng mạng Wifi với máy tính.
+              {t('cameras.deviceWifiHint')}
             </p>
           )}
         </div>
       )}
       {/* Bộ chọn chế độ Stream */}
       <div className="stream-mode-selector-container">
-        <span className="selector-label">Chế độ hiển thị luồng:</span>
+        <span className="selector-label">{t('cameras.streamModeLabel')}</span>
         <div className="stream-mode-tabs">
           <button 
             className={`btn-mode-tab ${streamMode === 'rtsp' ? 'active' : ''}`} 
             onClick={() => setStreamMode('rtsp')}
           >
-            <span>Luồng RTSP (HLS Cloud)</span>
+            <span>{t('cameras.streamRtsp')}</span>
           </button>
           <button 
             className={`btn-mode-tab ${streamMode === 'api' ? 'active' : ''}`} 
             onClick={() => setStreamMode('api')}
           >
-            <span>Luồng API (MJPEG Local)</span>
+            <span>{t('cameras.streamApi')}</span>
           </button>
         </div>
       </div>
@@ -181,16 +183,13 @@ export default function CamerasGridPage() {
       {isLoading ? (
         <div className="loading-grid">
           <div className="spinner"></div>
-          <p>Đang khởi tạo các luồng stream...</p>
+          <p>{t('cameras.loadingStreams')}</p>
         </div>
       ) : (
         <div className={`cameras-layout ${viewMode}`}>
           {cameras.length > 0 ? (
             cameras.map((cam: any) => {
-              // HLS Stream Url (RTSP)
-              const rtspStreamUrl = `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/${cam.id}/stream.m3u8?token=${token}&t=${Date.now()}`;
-              
-              // API Stream Url (MJPEG)
+              const rtspStreamUrl = `${process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8080/streams'}/token/${token}/${cam.id}/stream.m3u8`;
               const actualRtspUrl = cam.rtsp_url || cam.rtspUrl || '';
               const apiStreamUrl = actualRtspUrl && (actualRtspUrl.startsWith('http') || actualRtspUrl.includes(':5000'))
                 ? (actualRtspUrl.startsWith('http') ? actualRtspUrl : `http://${actualRtspUrl}`)
@@ -198,7 +197,6 @@ export default function CamerasGridPage() {
 
               const streamUrl = streamMode === 'rtsp' ? rtspStreamUrl : apiStreamUrl;
               const isMJPEG = streamMode === 'api';
-
               const isOnline = cam.status === 'online';
 
               return (
@@ -226,7 +224,7 @@ export default function CamerasGridPage() {
                       }}>
                         <AlertTriangle size={36} color="#ef4444" />
                         <span style={{ fontWeight: 700, color: '#1e293b' }}>
-                          Camera Ngoại Tuyến (Offline)
+                          {t('cameras.cameraOffline')}
                         </span>
                         <span style={{ fontSize: '0.85rem' }}>{cam.name}</span>
                       </div>
@@ -238,10 +236,10 @@ export default function CamerasGridPage() {
           ) : (
             <div className="empty-state">
               <AlertTriangle size={48} color="#94a3b8" />
-              <h2>Chưa có Camera nào được cấu hình</h2>
-              <p>Vui lòng vào phần Quản Trị để thiết lập thiết bị mới.</p>
+              <h2>{t('cameras.noCamsTitle')}</h2>
+              <p>{t('cameras.noCamsDesc')}</p>
               <button onClick={() => router.push('/incidents')} className="goto-config">
-                Đi tới Cấu hình <Settings size={16} />
+                {t('cameras.goToConfig')} <Settings size={16} />
               </button>
             </div>
           )}
@@ -251,7 +249,7 @@ export default function CamerasGridPage() {
       <div className="security-footer">
         <div className="security-badge">
           <ShieldCheck size={16} />
-          <span>Mã hóa AES-256 nội bộ • Zero Latency Engine</span>
+          <span>{t('cameras.aesEncryption')}</span>
         </div>
       </div>
 

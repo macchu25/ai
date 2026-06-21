@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ShoppingCart, Star, ShieldCheck, Video, Zap, ExternalLink, Info, CheckCircle2, Cctv, Moon } from 'lucide-react';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 const recommendedCameras = [
   {
@@ -86,24 +87,57 @@ const recommendedCameras = [
 
 export default function CameraRecommendationsPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'indoor' | 'outdoor'>('all');
+  const { t } = useLanguage();
+
+  const getBestForTranslation = (bestFor: string) => {
+    if (bestFor.includes('cân bằng')) return t('recommendations.bestForBalanced');
+    if (bestFor.includes('Dễ dàng')) return t('recommendations.bestForStable');
+    if (bestFor.includes('cảnh báo')) return t('recommendations.bestForAlert');
+    if (bestFor.includes('hình ảnh')) return t('recommendations.bestForQuality');
+    if (bestFor.includes('ban đêm')) return t('recommendations.bestForOutdoor');
+    return bestFor;
+  };
+
+  const getFeatureTranslation = (feature: string) => {
+    const f = feature.toLowerCase();
+    if (f.includes('rtsp stream') || f.includes('luồng rtsp')) return t('recommendations.featureRtsp');
+    if (f.includes('xoay 360')) return t('recommendations.featureRotate');
+    if (f.includes('hồng ngoại')) return t('recommendations.featureNight');
+    if (f.includes('đàm thoại')) return t('recommendations.featureAudio');
+    if (f.includes('onvif/rtsp') || f.includes('onvif')) return t('recommendations.featureOnvif');
+    if (f.includes('bám theo')) return t('recommendations.featureTrack');
+    if (f.includes('privacy')) return t('recommendations.featurePrivacy');
+    if (f.includes('ổn định')) return t('recommendations.featureStable');
+    if (f.includes('còi hú')) return t('recommendations.featureCoi');
+    if (f.includes('con người')) return t('recommendations.featurePerson');
+    if (f.includes('ngược sáng')) return t('recommendations.featureWdr');
+    if (f.includes('hack rtsp')) return t('recommendations.featureXiaomiRtsp');
+    if (f.includes('hình ảnh xuất sắc')) return t('recommendations.featureQualityImage');
+    if (f.includes('khẩu độ')) return t('recommendations.featureAperture');
+    if (f.includes('màu sắc')) return t('recommendations.featureColorNight');
+    if (f.includes('nhìn đêm siêu rõ')) return t('recommendations.featureOutdoorNight');
+    if (f.includes('chống nước')) return t('recommendations.featureWaterproof');
+    if (f.includes('báo động thông minh')) return t('recommendations.featureOutdoorAlert');
+    return feature;
+  };
 
   return (
     <div className="recommendations-page">
       <header className="page-header-premium">
         <div>
-          <h1 className="page-title-premium">Gợi Ý Thiết Bị Camera</h1>
+          <h1 className="page-title-premium">{t('recommendations.title')}</h1>
           <p className="page-subtitle-premium">
-            Danh sách các dòng camera IP hỗ trợ chuẩn ONVIF/RTSP tương thích tốt nhất với hệ thống AI của Casos.
+            {t('recommendations.subtitle')}
           </p>
         </div>
         <div className="header-badges">
           <div className="badge-info">
             <ShieldCheck size={18} className="icon-blue" />
-            <span>Đã kiểm tra tương thích</span>
+            <span>{t('recommendations.testedCompatible')}</span>
           </div>
           <div className="badge-info">
             <Zap size={18} className="icon-yellow" />
-            <span>Kết nối độ trễ thấp</span>
+            <span>{t('recommendations.lowLatency')}</span>
           </div>
         </div>
       </header>
@@ -113,9 +147,9 @@ export default function CameraRecommendationsPage() {
           <Info size={24} />
         </div>
         <div className="req-content">
-          <h3>Yêu cầu kỹ thuật bắt buộc</h3>
+          <h3>{t('recommendations.techRequirementsTitle')}</h3>
           <p>
-            Để hệ thống AI phân tích và cảnh báo té ngã hoạt động chính xác, camera cần hỗ trợ giao thức <strong>RTSP</strong> hoặc <strong>ONVIF</strong> để có thể kéo luồng trực tiếp. Độ phân giải khuyến nghị từ <strong>1080p (2MP)</strong> trở lên.
+            {t('recommendations.techRequirementsDesc')}
           </p>
         </div>
       </div>
@@ -125,19 +159,19 @@ export default function CameraRecommendationsPage() {
           className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
           onClick={() => setActiveTab('all')}
         >
-          Tất cả
+          {t('recommendations.filterAll')}
         </button>
         <button 
           className={`tab-btn ${activeTab === 'indoor' ? 'active' : ''}`}
           onClick={() => setActiveTab('indoor')}
         >
-          Camera Trong nhà
+          {t('recommendations.filterIndoor')}
         </button>
         <button 
           className={`tab-btn ${activeTab === 'outdoor' ? 'active' : ''}`}
           onClick={() => setActiveTab('outdoor')}
         >
-          Camera Ngoài trời
+          {t('recommendations.filterOutdoor')}
         </button>
       </div>
 
@@ -149,7 +183,7 @@ export default function CameraRecommendationsPage() {
             {cam.isTopPick && (
               <div className="top-pick-badge">
                 <Star fill="white" size={14} />
-                Lựa chọn hàng đầu
+                {t('recommendations.topPick')}
               </div>
             )}
             
@@ -181,10 +215,10 @@ export default function CameraRecommendationsPage() {
             <div className="card-content">
               <div className="card-header">
                 <h3 className="cam-model">{cam.model}</h3>
-                <div className="cam-price">{cam.price}</div>
+                <div className="cam-price">{cam.price.replace('Khoảng', t('recommendations.priceApprox'))}</div>
               </div>
               
-              <div className="cam-best-for">{cam.bestFor}</div>
+              <div className="cam-best-for">{getBestForTranslation(cam.bestFor)}</div>
               
               <div className="cam-specs">
                 <div className="spec-item">
@@ -193,7 +227,7 @@ export default function CameraRecommendationsPage() {
                 </div>
                 <div className="spec-item rating">
                   <Star fill="#f59e0b" color="#f59e0b" size={16} />
-                  <span>{cam.rating} ({cam.reviews.toLocaleString()} đánh giá)</span>
+                  <span>{cam.rating} ({cam.reviews.toLocaleString()} {t('recommendations.reviewsCount')})</span>
                 </div>
               </div>
               
@@ -201,7 +235,7 @@ export default function CameraRecommendationsPage() {
                 {cam.features.map((feat, idx) => (
                   <li key={idx}>
                     <CheckCircle2 size={16} className="check-icon" />
-                    {feat}
+                    {getFeatureTranslation(feat)}
                   </li>
                 ))}
               </ul>
@@ -213,7 +247,7 @@ export default function CameraRecommendationsPage() {
                 className="btn-shopee"
               >
                 <ShoppingCart size={18} />
-                <span>Mua trên Shopee</span>
+                <span>{t('recommendations.buyShopee')}</span>
                 <ExternalLink size={16} className="ext-icon" />
               </a>
             </div>

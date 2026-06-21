@@ -1,13 +1,15 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { Settings, Bell, Shield, Sliders, Save, ChevronRight, Activity, Cpu, X } from 'lucide-react';
+import { Settings, Bell, Shield, Sliders, Save, ChevronRight, Activity, Cpu, X, Globe } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import { useNotification } from '@/app/context/NotificationContext';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
   const { showToast } = useNotification();
+  const { language, setLanguage, t } = useLanguage();
   
   const [thrLow, setThrLow] = useState(0.015);
   const [thrHigh, setThrHigh] = useState(0.040);
@@ -62,18 +64,18 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
-        showToast("Đã lưu cấu hình thành công!", "success");
+        showToast(t('settings.savedSuccess'), "success");
       } else {
-        showToast("Không thể lưu cấu hình.", "error");
+        showToast(t('settings.savedFailed'), "error");
       }
     } catch (err) {
-      showToast("Lỗi kết nối server.", "error");
+      showToast(t('settings.connectionError'), "error");
     }
   };
 
   const handleSaveTele = async () => {
     if (!teleId) {
-      showToast("Vui lòng nhập Chat ID.", "error");
+      showToast(t('settings.enterChatId'), "error");
       return;
     }
 
@@ -91,13 +93,13 @@ export default function SettingsPage() {
       });
       
       if (res.ok) {
-        showToast("Đã liên kết Telegram thành công!", "success");
+        showToast(t('settings.linkedTelegramSuccess'), "success");
         setShowTeleModal(false);
       } else {
-        showToast("Lỗi khi lưu Telegram ID.", "error");
+        showToast(t('settings.linkedTelegramFailed'), "error");
       }
     } catch (err) {
-      showToast("Không thể kết nối tới Backend.", "error");
+      showToast(t('settings.connectionError'), "error");
     }
   };
 
@@ -105,9 +107,9 @@ export default function SettingsPage() {
     <div className="dashboard-section" style={{ minHeight: '100vh' }}>
       <header className="page-header-premium">
         <div>
-          <h1 className="page-title-premium">Cấu Hình Toàn Hệ Thống</h1>
+          <h1 className="page-title-premium">{t('settings.title')}</h1>
           <p className="page-subtitle-premium">
-            Tùy chỉnh các tham số AI và phương thức nhận cảnh báo.
+            {t('settings.subtitle')}
           </p>
         </div>
       </header>
@@ -115,7 +117,93 @@ export default function SettingsPage() {
       <div className="settings-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
+          {/* Language Selection Card */}
+          <section className="overview-card">
+            <h2 style={{ margin: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '16px', fontSize: '1.35rem', color: 'var(--text-main)' }}>
+              <div className="icon-badge accent" style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Globe size={22} color="var(--accent)" />
+              </div>
+              {t('settings.languageTitle')}
+            </h2>
 
+            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 500, marginBottom: '24px' }}>
+              {t('settings.languageDesc')}
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              {/* Vietnamese Option */}
+              <div 
+                onClick={() => setLanguage('vi')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '20px',
+                  borderRadius: '16px',
+                  border: language === 'vi' ? '2px solid var(--accent)' : '1px solid var(--border)',
+                  background: language === 'vi' ? 'rgba(37, 99, 235, 0.04)' : 'var(--bg-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: language === 'vi' ? '0 8px 24px rgba(37, 99, 235, 0.08)' : 'none'
+                }}
+              >
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: language === 'vi' ? 'var(--accent)' : 'var(--border)',
+                  color: language === 'vi' ? 'white' : 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '0.9rem'
+                }}>
+                  VI
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '1.05rem' }}>{t('settings.vietnamese')}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Tiếng Việt</div>
+                </div>
+              </div>
+
+              {/* English Option */}
+              <div 
+                onClick={() => setLanguage('en')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '20px',
+                  borderRadius: '16px',
+                  border: language === 'en' ? '2px solid var(--accent)' : '1px solid var(--border)',
+                  background: language === 'en' ? 'rgba(37, 99, 235, 0.04)' : 'var(--bg-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: language === 'en' ? '0 8px 24px rgba(37, 99, 235, 0.08)' : 'none'
+                }}
+              >
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: language === 'en' ? 'var(--accent)' : 'var(--border)',
+                  color: language === 'en' ? 'white' : 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '0.9rem'
+                }}>
+                  EN
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '1.05rem' }}>{t('settings.english')}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>English</div>
+                </div>
+              </div>
+            </div>
+          </section>
 
           {/* Notifications Section */}
           <section className="overview-card">
@@ -123,14 +211,14 @@ export default function SettingsPage() {
               <div className="icon-badge warning" style={{ width: '44px', height: '44px', borderRadius: '12px' }}>
                 <Bell size={22} color="var(--warning)" />
               </div>
-              Thông báo & Cảnh báo
+              {t('settings.notificationsTitle')}
             </h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '24px', borderBottom: '1px solid var(--border)' }}>
                 <div>
-                  <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1.05rem', marginBottom: '6px' }}>Cảnh báo âm thanh tại Dashboard</div>
-                  <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 500 }}>Phát âm thanh còi hú khi phát hiện ngã.</div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1.05rem', marginBottom: '6px' }}>{t('settings.audioAlert')}</div>
+                  <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 500 }}>{t('settings.audioAlertDesc')}</div>
                 </div>
                 
                 {/* Custom Toggle Switch */}
@@ -154,8 +242,8 @@ export default function SettingsPage() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '24px' }}>
                 <div>
-                  <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1.05rem', marginBottom: '6px' }}>Gửi Telegram / SMS</div>
-                  <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 500 }}>Gửi tin nhắn tức thời cho người thân.</div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1.05rem', marginBottom: '6px' }}>{t('settings.telegramAlert')}</div>
+                  <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 500 }}>{t('settings.telegramAlertDesc')}</div>
                 </div>
                 <button 
                   onClick={() => setShowTeleModal(true)}
@@ -172,7 +260,7 @@ export default function SettingsPage() {
                     boxShadow: teleId ? '0 4px 12px rgba(16, 185, 129, 0.2)' : '0 4px 12px rgba(37, 99, 235, 0.2)'
                   }}
                 >
-                  {teleId ? `ID: ${teleId}` : 'Cấu hình ngay'}
+                  {teleId ? `ID: ${teleId}` : t('settings.configNow')}
                 </button>
               </div>
             </div>
@@ -189,10 +277,10 @@ export default function SettingsPage() {
             border: '1px solid rgba(59, 130, 246, 0.2)', boxShadow: '0 10px 30px rgba(59, 130, 246, 0.05)' 
           }}>
             <h3 style={{ margin: '0 0 16px 0', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.2rem' }}>
-              <Sliders size={22} /> Mẹo cấu hình
+              <Sliders size={22} /> {t('settings.tipsTitle')}
             </h3>
             <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: '1.6', fontWeight: 500, marginBottom: '24px' }}>
-              Sử dụng <strong>Webcam Local</strong> để calibrate ngưỡng Variance trước khi áp dụng cho camera giám sát treo tường để đảm bảo tính chính xác tuyệt đối.
+              {t('settings.tipsDesc')}
             </p>
             <button 
               onClick={handleSaveSettings}
@@ -203,20 +291,20 @@ export default function SettingsPage() {
                 cursor: 'pointer', transition: 'transform 0.2s var(--ease-out-quint), box-shadow 0.2s var(--ease-out-quint)'
               }}
             >
-              <Save size={20} /> LƯU CẤU HÌNH
+              <Save size={20} /> {t('settings.saveButton')}
             </button>
           </div>
 
           {/* Status Card */}
           <div className="overview-card" style={{ padding: '32px' }}>
             <h3 style={{ margin: '0 0 24px 0', fontSize: '1.15rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-               <Cpu size={20} color="var(--text-muted)" /> Thiết bị liên kết
+               <Cpu size={20} color="var(--text-muted)" /> {t('settings.linkedDevices')}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {[
-                { name: 'AI Service (Py)', status: 'Kết nối tốt', color: 'var(--success)', bg: 'var(--success-light)' },
-                { name: 'Core Backend (Go)', status: 'Kết nối tốt', color: 'var(--success)', bg: 'var(--success-light)' },
-                { name: 'Database (Cloud)', status: 'Kết nối tốt', color: 'var(--success)', bg: 'var(--success-light)' }
+                { name: 'AI Service (Py)', status: t('settings.connectionGood'), color: 'var(--success)', bg: 'var(--success-light)' },
+                { name: 'Core Backend (Go)', status: t('settings.connectionGood'), color: 'var(--success)', bg: 'var(--success-light)' },
+                { name: 'Database (Cloud)', status: t('settings.connectionGood'), color: 'var(--success)', bg: 'var(--success-light)' }
               ].map((item, idx) => (
                 <div key={idx} style={{ 
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -293,10 +381,10 @@ export default function SettingsPage() {
             {/* Header */}
             <div style={{ marginBottom: '20px' }}>
               <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em' }}>
-                Cấu hình nhận tin cảnh báo Telegram
+                {t('settings.telegramModalTitle')}
               </h3>
               <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-                Tự động nhận thông báo hình ảnh sự cố và trạng thái trực tiếp qua tài khoản cá nhân.
+                {t('settings.telegramModalDesc')}
               </p>
             </div>
             
@@ -314,17 +402,17 @@ export default function SettingsPage() {
               flexDirection: 'column',
               gap: '6px'
             }}>
-              <strong style={{ color: '#1e293b', fontSize: '0.92rem' }}>Hướng dẫn lấy Chat ID:</strong>
-              <div>1. Tìm kiếm và nhắn tin cho Bot <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>@userinfobot</a></div>
-              <div>2. Nó sẽ phản hồi tức thì với một dãy số (chính là <strong>ID</strong> của bạn).</div>
-              <div>3. Nhập ID đó xuống ô bên dưới để liên kết với hệ thống <strong>@Casos_autoBot</strong>.</div>
+              <strong style={{ color: '#1e293b', fontSize: '0.92rem' }}>{t('settings.telegramInstructionsTitle')}</strong>
+              <div>{t('settings.telegramStep1')}</div>
+              <div>{t('settings.telegramStep2')}</div>
+              <div>{t('settings.telegramStep3')}</div>
             </div>
 
             <div style={{ marginBottom: '28px' }}>
               <label style={{ display: 'block', fontSize: '0.88rem', color: '#475569', marginBottom: '6px', fontWeight: 600 }}>Telegram Chat ID</label>
               <input 
                 type="text" 
-                placeholder="Ví dụ: 123456789"
+                placeholder={t('settings.telegramPlaceholder')}
                 value={teleId}
                 onChange={(e) => setTeleId(e.target.value)}
                 style={{ 
@@ -362,7 +450,7 @@ export default function SettingsPage() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
               >
-                Hủy bỏ
+                {t('settings.cancel')}
               </button>
               <button 
                 onClick={handleSaveTele} 
@@ -381,7 +469,7 @@ export default function SettingsPage() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.transform = 'translateY(0)'; }}
               >
-                Lưu cấu hình
+                {t('settings.save')}
               </button>
             </div>
           </div>
@@ -397,4 +485,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

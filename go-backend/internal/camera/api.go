@@ -80,12 +80,34 @@ func (a *API) GetCameras(c *gin.Context) {
 		return
 	}
 
-	var cams []model.Camera = []model.Camera{}
+	var rawCams []model.Camera
 	cursor, err := a.db.Collection("cameras").Find(context.Background(), filter)
 	if err == nil {
-		cursor.All(context.Background(), &cams)
+		cursor.All(context.Background(), &rawCams)
 	}
-	c.JSON(http.StatusOK, cams)
+	// Decrypt and mask RTSP URL before returning to client
+	type CameraResponse struct {
+		ID       primitive.ObjectID `json:"id"`
+		Name     string             `json:"name"`
+		RTSPURL  string             `json:"rtsp_url"`
+		Location string             `json:"location"`
+		Status   string             `json:"status"`
+		UserID   primitive.ObjectID `json:"user_id"`
+	}
+	result := make([]CameraResponse, 0, len(rawCams))
+	for _, cam := range rawCams {
+		decrypted, _ := auth.Decrypt(cam.RTSPURL)
+		masked := auth.MaskRTSPURL(decrypted)
+		result = append(result, CameraResponse{
+			ID:       cam.ID,
+			Name:     cam.Name,
+			RTSPURL:  masked,
+			Location: cam.Location,
+			Status:   cam.Status,
+			UserID:   cam.UserID,
+		})
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 // Xử lý POST (Thêm mới 1 camera hoặc cập nhật nếu trùng ID)
@@ -171,14 +193,35 @@ func (a *API) AddCamera(c *gin.Context) {
 	}
 
 	opts := options.Update().SetUpsert(true)
+
+	// Resolve real RTSP URL: if user re-submitted a masked URL (with ******), restore original
+	if !isNewCamera {
+		existingDecrypted, _ := auth.Decrypt(existingCam.RTSPURL)
+		cam.RTSPURL = auth.MergeRTSPURL(cam.RTSPURL, existingDecrypted)
+	}
+
+	// Encrypt RTSP URL before storing in database
+	if cam.RTSPURL != "" {
+		encrypted, encErr := auth.Encrypt(cam.RTSPURL)
+		if encErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể mã hóa RTSP URL"})
+			return
+		}
+		cam.RTSPURL = encrypted
+	}
+
 	_, err = a.db.Collection("cameras").UpdateOne(context.Background(), filter, bson.M{"$set": cam}, opts)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	a.manager.StartStream(cam)
-	
+
+	// Return response with masked RTSP URL (never expose credentials to client)
+	decryptedForResponse, _ := auth.Decrypt(cam.RTSPURL)
+	maskedResponse := auth.MaskRTSPURL(decryptedForResponse)
+	cam.RTSPURL = maskedResponse
 	c.JSON(http.StatusOK, cam)
 }
 

@@ -4,7 +4,7 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 # Các IP quét được trong mạng của bạn
-IPS = ["192.168.1.113"]
+IPS = ["192.168.1.64", "192.168.1.116"]
 
 # Các mã an toàn (Safety Code) của camera
 SAFETY_CODES = ["L23228B9"]

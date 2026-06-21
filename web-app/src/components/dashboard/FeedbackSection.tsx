@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Mail, MessageSquare, Send } from 'lucide-react';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 const FeedbackSection: React.FC = () => {
+  const { t } = useLanguage();
   const [message, setMessage] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const subject = encodeURIComponent('Góp ý cho hệ thống Cardiac Alert');
+    const subject = encodeURIComponent(`${t('feedback.title')} - Cardiac Alert`);
     const body = encodeURIComponent(message);
     window.location.href = `mailto:daylahuu@gmail.com?subject=${subject}&body=${body}`;
   };
@@ -14,10 +16,10 @@ const FeedbackSection: React.FC = () => {
   return (
     <div className="dashboard-section feedback-section-container" id="feedback-section" style={{ paddingBottom: '100px', backgroundColor: '#f8fafc', position: 'relative' }}>
       <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '10px', color: '#1e293b' }}>
-        Góp Ý & Phản Hồi
+        {t('feedback.title')}
       </h2>
       <p style={{ color: '#64748b', marginBottom: '40px' }}>
-        Ý kiến của bạn giúp chúng tôi hoàn thiện hệ thống bảo vệ sức khỏe tốt hơn.
+        {t('feedback.subtitle')}
       </p>
 
       <div className="feedback-glass-card" style={{ position: 'relative', zIndex: 10 }}>
@@ -27,7 +29,7 @@ const FeedbackSection: React.FC = () => {
                 <Mail size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input 
                   type="email" 
-                  placeholder="Email của bạn (không bắt buộc)" 
+                  placeholder={t('feedback.emailPlaceholder')} 
                   className="feedback-input" 
                 />
              </div>
@@ -35,7 +37,7 @@ const FeedbackSection: React.FC = () => {
                 <MessageSquare size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input 
                   type="text" 
-                  placeholder="Chủ đề góp ý" 
+                  placeholder={t('feedback.subjectPlaceholder')} 
                   className="feedback-input" 
                 />
              </div>
@@ -44,7 +46,7 @@ const FeedbackSection: React.FC = () => {
           <div style={{ position: 'relative' }}>
             <textarea 
               rows={4} 
-              placeholder="Nhập ý kiến của bạn tại đây..." 
+              placeholder={t('feedback.messagePlaceholder')} 
               className="feedback-input textarea"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -54,7 +56,7 @@ const FeedbackSection: React.FC = () => {
 
           <button type="submit" className="feedback-submit-btn">
             <Send size={18} />
-            Gửi Góp Ý
+            {t('feedback.submit')}
           </button>
         </form>
       </div>

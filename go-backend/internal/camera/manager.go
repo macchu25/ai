@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"go-backend/internal/auth"
 	"go-backend/internal/model"
 	"go-backend/internal/stream"
 	"go.mongodb.org/mongo-driver/bson"
@@ -57,10 +58,24 @@ func (m *Manager) StartStream(cam model.Camera) {
 	ctx, cancel := context.WithCancel(context.Background())
 	m.cameras[cam.ID] = cancel
 
+	// Decrypt RTSP URL before starting HLS (URL is stored encrypted in DB)
+	decryptedURL, err := auth.Decrypt(cam.RTSPURL)
+	if err != nil {
+		log.Printf("[Manager] WARN: Không thể giải mã RTSP URL cho camera %s: %v\n", cam.Name, err)
+		decryptedURL = cam.RTSPURL // fallback to raw value
+	}
+
 	// Kích hoạt tiến trình HLS FFmpeg ngầm cho camera chạy song song cùng luồng đọc AI
-	m.hlsServer.StartHLS(ctx, cam.ID.Hex(), cam.RTSPURL)
+	m.hlsServer.StartHLS(ctx, cam.ID.Hex(), decryptedURL)
 
 	go func(ctx context.Context, c model.Camera) {
+		// Decrypt URL for the goroutine's use
+		decRTSP, err := auth.Decrypt(c.RTSPURL)
+		if err != nil {
+			log.Printf("[Manager] WARN: Không thể giải mã RTSP URL trong goroutine cho camera %s: %v\n", c.Name, err)
+			decRTSP = c.RTSPURL
+		}
+		c.RTSPURL = decRTSP
 		log.Printf("[AI/RTSP] Bắt đầu luồng kiểm tra cho camera: %s (%s)\n", c.Name, c.ID.Hex())
 		backoff := 1 * time.Second
 

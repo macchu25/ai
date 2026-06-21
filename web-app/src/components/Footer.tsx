@@ -1,6 +1,9 @@
 import React from 'react';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 const Footer: React.FC = () => {
+  const { t } = useLanguage();
+
   return (
     <footer style={{
       position: 'relative',
@@ -52,41 +55,41 @@ const Footer: React.FC = () => {
             <div className="footer-left-group">
               {/* Column 1 */}
               <div>
-                <h4 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 5px rgba(0,0,0,0.8)' }}>Quick Links</h4>
+                <h4 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 5px rgba(0,0,0,0.8)' }}>{t('footer.quickLinks')}</h4>
                 <div className="footer-underline" style={{ width: '220px', height: '4px', background: '#ffffff', marginBottom: '25px', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '2px' }}></div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>Contact us</a></li>
-                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>Support Forum</a></li>
-                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>Free Trial</a></li>
+                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>{t('footer.contactUs')}</a></li>
+                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>{t('footer.supportForum')}</a></li>
+                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>{t('footer.freeTrial')}</a></li>
                 </ul>
               </div>
 
               {/* Column 2 */}
               <div>
-                <h4 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 5px rgba(0,0,0,0.8)' }}>Resources</h4>
+                <h4 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 5px rgba(0,0,0,0.8)' }}>{t('footer.resources')}</h4>
                 <div className="footer-underline" style={{ width: '220px', height: '4px', background: '#ffffff', marginBottom: '25px', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '2px' }}></div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>Medical Blog</a></li>
-                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>AI Research</a></li>
-                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>API Documentation</a></li>
+                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>{t('footer.medicalBlog')}</a></li>
+                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>{t('footer.aiResearch')}</a></li>
+                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>{t('footer.apiDocs')}</a></li>
                 </ul>
               </div>
 
               {/* Column 3 */}
               <div>
-                <h4 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 5px rgba(0,0,0,0.8)' }}>Legal Info</h4>
+                <h4 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 5px rgba(0,0,0,0.8)' }}>{t('footer.legalInfo')}</h4>
                 <div className="footer-underline" style={{ width: '220px', height: '4px', background: '#ffffff', marginBottom: '25px', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '2px' }}></div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>Privacy Policy</a></li>
-                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>Terms of Service</a></li>
-                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>Security Compliance</a></li>
+                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>{t('footer.privacyPolicy')}</a></li>
+                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>{t('footer.termsOfService')}</a></li>
+                  <li style={{ marginBottom: '12px' }}><a href="#" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 800, textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>{t('footer.securityCompliance')}</a></li>
                 </ul>
               </div>
             </div>
 
             {/* Center - Social Media Icons */}
             <div style={{ flex: 1.5, minWidth: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
-              <h4 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 900, marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '1px', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 5px rgba(0,0,0,0.8)' }}>Follow Us</h4>
+              <h4 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 900, marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '1px', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 5px rgba(0,0,0,0.8)' }}>{t('footer.followUs')}</h4>
               <div className="footer-underline" style={{ width: '200px', height: '4px', background: '#ffffff', marginBottom: '10px', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '2px' }}></div>
               <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
                 <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="social-link-icon">
@@ -129,8 +132,8 @@ const Footer: React.FC = () => {
           CASOS<span style={{ color: 'var(--accent)' }}>BOT</span>
         </div>
         <div style={{ display: 'flex', gap: '20px' }}>
-          <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</a>
-          <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Terms of Service</a>
+          <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>{t('footer.privacyPolicy')}</a>
+          <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>{t('footer.termsOfService')}</a>
         </div>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center', opacity: 0.8 }}>
           {/* Mastercard Inline SVG */}
@@ -146,7 +149,7 @@ const Footer: React.FC = () => {
           </svg>
         </div>
         <div>
-          Coded and designed by Macchu. All rights reserved.
+          {t('footer.codedBy')}
         </div>
       </div>
     </footer>

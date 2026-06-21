@@ -11,6 +11,7 @@ import {
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 interface PlanProps {
   name: string;
@@ -27,6 +28,7 @@ interface PlanProps {
 
 const PlanCard = ({ name, id, price, period, description, features, buttonText, isPopular, isCurrent, onUpgrade }: PlanProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const { t, language } = useLanguage();
 
   return (
     <div
@@ -61,7 +63,7 @@ const PlanCard = ({ name, id, price, period, description, features, buttonText, 
           whiteSpace: 'nowrap',
           zIndex: 20
         }}>
-          ✨ PHỔ BIẾN NHẤT
+          {t('subscription.popularBadge')}
         </div>
       )}
 
@@ -85,11 +87,13 @@ const PlanCard = ({ name, id, price, period, description, features, buttonText, 
         fontSize: '0.9rem',
         fontFamily: '"Inter", sans-serif'
       }}>
-        {isCurrent ? 'Gói hiện tại' : buttonText}
+        {isCurrent ? t('subscription.currentPlan') : buttonText}
       </button>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '1px' }}>Tính năng</p>
+        <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          {language === 'vi' ? 'TÍNH NĂNG' : 'FEATURES'}
+        </p>
         {features.map((f, i) => (
           <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <Check size={14} strokeWidth={3} color={isPopular ? '#3b82f6' : '#1e293b'} />
@@ -110,21 +114,22 @@ type PaymentRow = {
   source: string;
 };
 
-function billingSourceLabelVi(s: string): string {
+function getBillingSourceLabel(s: string, t: any): string {
   switch (s) {
     case 'sepay_webhook':
-      return 'Chuyển khoản / SePay';
+      return t('subscription.sourceSepay');
     case 'simulate_payment':
-      return 'Mô phỏng thanh toán';
+      return t('subscription.sourceSimulate');
     case 'manual_upgrade':
-      return 'Xác nhận trong ứng dụng';
+      return t('subscription.sourceManual');
     default:
-      return s || 'Khác';
+      return s || t('subscription.sourceOther');
   }
 }
 
 export default function SubscriptionPage() {
   const { data: session, update } = useSession();
+  const { t, language } = useLanguage();
   const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'bank' | 'momo'>('bank');
@@ -305,10 +310,10 @@ export default function SubscriptionPage() {
         setIsOTPSent(true);
       } else {
         const data = await res.json();
-        setCancelStatus({ type: 'error', message: data.error || 'Có lỗi xảy ra khi yêu cầu mã xác nhận' });
+        setCancelStatus({ type: 'error', message: data.error || (language === 'vi' ? 'Có lỗi xảy ra khi yêu cầu mã xác nhận' : 'An error occurred while requesting confirmation code') });
       }
     } catch (err) {
-      setCancelStatus({ type: 'error', message: 'Không thể kết nối tới máy chủ' });
+      setCancelStatus({ type: 'error', message: t('settings.connectionError') });
     } finally {
       setIsProcessing(false);
     }
@@ -331,15 +336,15 @@ export default function SubscriptionPage() {
         setShowCancelModal(false);
         setCancelOTP('');
         setIsOTPSent(false);
-        setCancelStatus({ type: 'success', message: 'Đã hủy gói cước thành công. Trạng thái của bạn đã chuyển sang "Canceled".' });
+        setCancelStatus({ type: 'success', message: t('subscription.cancelSuccessDesc') });
         await update();
         await fetchCurrentPlan();
       } else {
         const data = await res.json();
-        setCancelStatus({ type: 'error', message: data.error || 'Mã xác nhận không chính xác hoặc đã hết hạn' });
+        setCancelStatus({ type: 'error', message: data.error || (language === 'vi' ? 'Mã xác nhận không chính xác hoặc đã hết hạn' : 'Confirmation code is incorrect or expired') });
       }
     } catch (err) {
-      setCancelStatus({ type: 'error', message: 'Không thể kết nối tới máy chủ' });
+      setCancelStatus({ type: 'error', message: t('settings.connectionError') });
     } finally {
       setIsProcessing(false);
     }
@@ -380,9 +385,15 @@ export default function SubscriptionPage() {
             }}>
               <PartyPopper size={28} color="#10b981" />
             </div>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1e293b', marginBottom: '8px', letterSpacing: '-0.02em' }}>Tuyệt vời!</h2>
-            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', margin: '0 0 4px 0' }}>Hệ thống đã xác nhận thanh toán tự động thành công.</p>
-            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', margin: '0 0 24px 0' }}>Gói <span style={{ color: '#3b82f6', fontWeight: 700, textTransform: 'capitalize' }}>{celebratePlan || 'mới'}</span> của bạn đã sẵn sàng hoạt động.</p>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1e293b', marginBottom: '8px', letterSpacing: '-0.02em' }}>
+              {t('subscription.successTitle')}
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', margin: '0 0 4px 0' }}>
+              {t('subscription.successDesc1')}
+            </p>
+            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', margin: '0 0 24px 0' }}>
+              {t('subscription.successDesc2').replace('{plan}', celebratePlan || (language === 'vi' ? 'mới' : 'new'))}
+            </p>
             <button
               onClick={() => setShowSuccess(false)}
               style={{
@@ -401,7 +412,7 @@ export default function SubscriptionPage() {
               onMouseEnter={(e) => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-              Bắt đầu trải nghiệm ngay
+              {t('subscription.successBtn')}
             </button>
           </div>
         </div>
@@ -451,9 +462,11 @@ export default function SubscriptionPage() {
               }}>
                 <ShieldCheck size={26} />
               </div>
-              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>Xác nhận hủy gói</h3>
+              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>
+                {t('subscription.confirmCancelTitle')}
+              </h3>
               <p style={{ fontSize: '0.92rem', color: '#64748b', margin: 0, lineHeight: 1.6 }}>
-                Chúng tôi đã gửi mã xác nhận 6 số đến email của bạn. Vui lòng nhập mã để hoàn tất việc hủy gói.
+                {t('subscription.confirmCancelDesc')}
               </p>
             </div>
 
@@ -501,7 +514,7 @@ export default function SubscriptionPage() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
               >
-                Bỏ qua
+                {t('subscription.cancelGoBackBtn')}
               </button>
               <button 
                 onClick={confirmCancelPlan}
@@ -526,13 +539,13 @@ export default function SubscriptionPage() {
                 onMouseEnter={(e) => { if (cancelOTP.length === 6) { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
                 onMouseLeave={(e) => { if (cancelOTP.length === 6) { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.transform = 'translateY(0)'; } }}
               >
-                {isProcessing ? <Loader2 className="animate-spin" size={14} /> : 'Xác nhận hủy'}
+                {isProcessing ? <Loader2 className="animate-spin" size={14} /> : t('subscription.cancelConfirmBtn')}
               </button>
             </div>
             
             {!isOTPSent && isProcessing && (
               <div style={{ marginTop: '14px', fontSize: '0.8rem', color: '#3b82f6', textAlign: 'center', fontWeight: 600 }}>
-                Đang gửi mã xác nhận...
+                {t('subscription.cancelSendingOTP')}
               </div>
             )}
           </div>
@@ -576,7 +589,7 @@ export default function SubscriptionPage() {
               </div>
               
               <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>
-                {cancelStatus.type === 'success' ? 'Đã hủy thành công!' : 'Có lỗi xảy ra'}
+                {cancelStatus.type === 'success' ? t('subscription.cancelSuccessTitle') : (language === 'vi' ? 'Có lỗi xảy ra' : 'An error occurred')}
               </h3>
               <p style={{ fontSize: '0.92rem', color: '#64748b', margin: '0 0 28px 0', lineHeight: 1.6 }}>
                 {cancelStatus.message}
@@ -605,7 +618,7 @@ export default function SubscriptionPage() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = cancelStatus.type === 'success' ? '#059669' : '#dc2626'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = cancelStatus.type === 'success' ? '#10b981' : '#ef4444'; e.currentTarget.style.transform = 'translateY(0)'; }}
               >
-                Đã hiểu
+                {t('subscription.understoodBtn')}
               </button>
             </div>
           </div>
@@ -658,8 +671,12 @@ export default function SubscriptionPage() {
 
             <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '24px' }}>
               <div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e293b', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>Xác nhận thanh toán</h3>
-                <p style={{ fontSize: '0.88rem', color: '#64748b', margin: 0 }}>Hệ thống đang tự động kiểm tra giao dịch của bạn...</p>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e293b', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>
+                  {t('subscription.paymentModalTitle')}
+                </h3>
+                <p style={{ fontSize: '0.88rem', color: '#64748b', margin: 0 }}>
+                  {t('subscription.paymentModalDesc')}
+                </p>
               </div>
               <div style={{
                 display: 'flex', 
@@ -671,7 +688,9 @@ export default function SubscriptionPage() {
                 border: '1px solid rgba(59, 130, 246, 0.1)'
               }}>
                 <div className="pulse-dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6' }}></div>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#3b82f6' }}>Đang chờ thanh toán</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#3b82f6' }}>
+                  {t('subscription.waitingPayment')}
+                </span>
               </div>
             </div>
 
@@ -691,7 +710,7 @@ export default function SubscriptionPage() {
                       transition: 'all 0.2s'
                     }}
                   >
-                    <Building2 size={15} /> Ngân hàng
+                    <Building2 size={15} /> {t('subscription.bankTab')}
                   </button>
                   <button
                     onClick={() => setPaymentMethod('momo')}
@@ -705,7 +724,7 @@ export default function SubscriptionPage() {
                       transition: 'all 0.2s'
                     }}
                   >
-                    <Smartphone size={15} /> Ví MoMo
+                    <Smartphone size={15} /> {t('subscription.momoTab')}
                   </button>
                 </div>
 
@@ -727,7 +746,9 @@ export default function SubscriptionPage() {
                         alt="MoMo QR"
                         style={{ width: '100%', borderRadius: '12px', display: 'block', border: '2px solid #a50064' }}
                       />
-                      <p style={{ marginTop: '12px', color: '#a50064', fontWeight: 700, fontSize: '0.8rem', textAlign: 'center', margin: 0 }}>Quét bằng ứng dụng MoMo</p>
+                      <p style={{ marginTop: '12px', color: '#a50064', fontWeight: 700, fontSize: '0.8rem', textAlign: 'center', margin: 0 }}>
+                        {t('subscription.momoHint')}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -736,7 +757,9 @@ export default function SubscriptionPage() {
               <div style={{ flex: '1.2', display: 'flex', flexDirection: 'column', gap: '20px', height: '100%', justifyContent: 'space-between' }}>
                 <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
                   <div style={{ marginBottom: '20px' }}>
-                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Số tiền cần thanh toán</p>
+                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                      {t('subscription.amountLabel')}
+                    </p>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
                       <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1e293b' }}>{getVNDPrice(selectedPlan).toLocaleString()}</span>
                       <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#64748b' }}>VND</span>
@@ -744,7 +767,9 @@ export default function SubscriptionPage() {
                   </div>
 
                   <div>
-                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Nội dung chuyển khoản</p>
+                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                      {t('subscription.contentLabel')}
+                    </p>
                     <div style={{
                       background: '#ffffff', padding: '12px 16px', borderRadius: '12px',
                       border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
@@ -760,7 +785,7 @@ export default function SubscriptionPage() {
                         onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
                       >
                         <Copy size={12} color={copied ? '#10b981' : '#475569'} />
-                        <span>{copied ? 'Đã chép' : 'Sao chép'}</span>
+                        <span>{copied ? t('subscription.copiedBtn') : t('subscription.copyBtn')}</span>
                       </button>
                     </div>
                   </div>
@@ -779,9 +804,11 @@ export default function SubscriptionPage() {
                     <Search size={16} color="white" className="ping-animate" />
                   </div>
                   <div>
-                    <p style={{ fontSize: '0.9rem', color: '#1e293b', fontWeight: 700, margin: '0 0 2px 0' }}>Hệ thống đang tự động dò tìm...</p>
+                    <p style={{ fontSize: '0.9rem', color: '#1e293b', fontWeight: 700, margin: '0 0 2px 0' }}>
+                      {t('subscription.pollingTitle')}
+                    </p>
                     <p style={{ fontSize: '0.82rem', color: '#64748b', margin: 0, lineHeight: 1.4 }}>
-                      Màn hình này sẽ tự động đóng ngay khi chúng tôi nhận được chuyển khoản của bạn. Vui lòng giữ nguyên màn hình.
+                      {t('subscription.pollingDesc')}
                     </p>
                   </div>
                 </div>
@@ -803,10 +830,10 @@ export default function SubscriptionPage() {
                     onMouseEnter={(e) => { if (!isProcessing) { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
                     onMouseLeave={(e) => { if (!isProcessing) { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.transform = 'translateY(0)'; } }}
                   >
-                    {isProcessing ? <Loader2 size={16} className="animate-spin" /> : 'Xác nhận đã chuyển khoản'}
+                    {isProcessing ? <Loader2 size={16} className="animate-spin" /> : t('subscription.confirmTransferBtn')}
                   </button>
                   <p style={{ textAlign: 'center', fontSize: '12px', color: 'rgba(0,0,0,0.45)', margin: 0 }}>
-                    Không muốn chờ? Bạn có thể nhấn nút xác nhận thủ công.
+                    {t('subscription.pollingHint')}
                   </p>
                 </div>
               </div>
@@ -827,10 +854,12 @@ export default function SubscriptionPage() {
           <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', letterSpacing: '1px' }}>PRICING PLANS</span>
         </div>
         <h1 style={{ fontSize: '3rem', fontWeight: 800, color: '#1e293b', marginBottom: '8px', letterSpacing: '-2px', lineHeight: 1.1 }}>
-          Đầu tư cho sự <span style={{ color: '#3b82f6' }}>an tâm</span>
+          {t('subscription.pageTitle').split('{peaceOfMind}')[0]}
+          <span style={{ color: '#3b82f6' }}>{t('subscription.peaceOfMind')}</span>
+          {t('subscription.pageTitle').split('{peaceOfMind}')[1]}
         </h1>
         <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 600 }}>
-          Bảo vệ người thân 24/7 với công nghệ AI tiên tiến.
+          {t('subscription.pageSubtitle')}
         </p>
       </div>
 
@@ -840,29 +869,29 @@ export default function SubscriptionPage() {
         zIndex: 1, transform: 'scale(0.9)', transformOrigin: 'center center'
       }}>
         <PlanCard
-          id="free" name="Free" price="$0" period="mo" description="Giám sát cơ bản tại 1 khu vực."
-          buttonText="Gói hiện tại" isCurrent onUpgrade={() => { }}
-          features={['1 Camera AI', 'Cảnh báo Telegram', 'Lưu trữ 24h']}
+          id="free" name={t('subscription.planFreeName')} price="$0" period="mo" description={t('subscription.planFreeDesc')}
+          buttonText={t('subscription.currentPlan')} isCurrent onUpgrade={() => { }}
+          features={t('subscription.planFreeFeatures').split(',')}
         />
         <PlanCard
-          id="starter" name="Starter" price="$6" period="mo" description="Dành cho gia đình nhỏ."
-          buttonText="Nâng cấp" onUpgrade={(id) => setSelectedPlan(id)}
-          features={['3 Cameras AI', 'Nhận diện té ngã', 'Cảnh báo cuộc gọi']}
+          id="starter" name={t('subscription.planStarterName')} price="$6" period="mo" description={t('subscription.planStarterDesc')}
+          buttonText={t('subscription.planUpgrade')} onUpgrade={(id) => setSelectedPlan(id)}
+          features={t('subscription.planStarterFeatures').split(',')}
         />
         <PlanCard
-          id="creator" name="Creator" price="$11" period="mo" description="Bảo vệ toàn diện ngôi nhà."
-          buttonText="Nâng cấp ngay" isPopular onUpgrade={(id) => setSelectedPlan(id)}
-          features={['10 Cameras AI', 'Phân tích hành vi', 'Gọi khẩn cấp 5 số']}
+          id="creator" name={t('subscription.planCreatorName')} price="$11" period="mo" description={t('subscription.planCreatorDesc')}
+          buttonText={t('subscription.planUpgradeNow')} isPopular onUpgrade={(id) => setSelectedPlan(id)}
+          features={t('subscription.planCreatorFeatures').split(',')}
         />
         <PlanCard
-          id="pro" name="Pro" price="$99" period="mo" description="Dành cho các cơ sở chăm sóc."
-          buttonText="Nâng cấp" onUpgrade={(id) => setSelectedPlan(id)}
-          features={['25 Cameras AI', 'API tích hợp', 'Hỗ trợ ưu tiên']}
+          id="pro" name={t('subscription.planProName')} price="$99" period="mo" description={t('subscription.planProDesc')}
+          buttonText={t('subscription.planUpgrade')} onUpgrade={(id) => setSelectedPlan(id)}
+          features={t('subscription.planProFeatures').split(',')}
         />
         <PlanCard
-          id="scale" name="Scale" price="$299" period="mo" description="Doanh nghiệp quy mô lớn."
-          buttonText="Liên hệ Sales" onUpgrade={(id) => setSelectedPlan(id)}
-          features={['Không giới hạn Camera', 'Hệ thống AI riêng', 'Bảo mật Enterprise']}
+          id="scale" name={t('subscription.planScaleName')} price="$299" period="mo" description={t('subscription.planScaleDesc')}
+          buttonText={t('subscription.planContactSales')} onUpgrade={(id) => setSelectedPlan(id)}
+          features={t('subscription.planScaleFeatures').split(',')}
         />
       </div>
 
@@ -879,11 +908,11 @@ export default function SubscriptionPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
           <CreditCard size={22} color="#3b82f6" strokeWidth={2.5} />
           <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', letterSpacing: '-0.5px' }}>
-            Lịch sử thanh toán &amp; đăng ký
+            {t('subscription.historyTitle')}
           </h2>
         </div>
         <p style={{ margin: '0 0 20px', fontSize: '0.82rem', color: '#64748b', fontWeight: 600, lineHeight: 1.5 }}>
-          Lưu ý: Khi huỷ gói đăng ký Casos không thể hoàn tiền lại cho bạn, mọi thắc mắc liên hệ vào hotline.
+          {t('subscription.historyNotice')}
         </p>
 
         {currentPlanInfo && (
@@ -900,11 +929,11 @@ export default function SubscriptionPage() {
           }}>
             <div>
               <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0369a1', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>
-                Gói hiện tại của bạn
+                {t('subscription.currentPlanLabel')}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '2px' }}>
                 <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', margin: 0, textTransform: 'capitalize', lineHeight: 1, fontFamily: '"Inter", sans-serif' }}>
-                  {currentPlanInfo.plan === 'free' ? 'Cơ Bản (Free)' : currentPlanInfo.plan}
+                  {currentPlanInfo.plan === 'free' ? t('subscription.planFree') : currentPlanInfo.plan}
                 </h3>
                 {currentPlanInfo.plan !== 'free' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -927,7 +956,7 @@ export default function SubscriptionPage() {
                         boxShadow: currentPlanInfo.status === 'canceled' ? 'none' : '0 0 8px #22c55e',
                         animation: currentPlanInfo.status === 'canceled' ? 'none' : 'pulse 2s infinite'
                       }}></div>
-                      {currentPlanInfo.status === 'canceled' ? 'ĐÃ HỦY' : 'ĐANG HOẠT ĐỘNG'}
+                      {currentPlanInfo.status === 'canceled' ? t('subscription.statusCanceled') : t('subscription.statusActive')}
                     </div>
                     {currentPlanInfo.status === 'active' && (
                       <button
@@ -964,7 +993,7 @@ export default function SubscriptionPage() {
                         }}
                       >
                         <X size={12} strokeWidth={3} />
-                        Hủy gói
+                        {t('subscription.cancelPlanBtn')}
                       </button>
                     )}
                   </div>
@@ -973,10 +1002,18 @@ export default function SubscriptionPage() {
             </div>
             <div style={{ textAlign: 'right' }}>
               <p style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600, margin: '0 0 6px 0' }}>
-                Đăng ký lúc: <span style={{ color: '#0f172a', fontWeight: 800 }}>{currentPlanInfo.paidAt ? new Date(currentPlanInfo.paidAt).toLocaleString('vi-VN') : '—'}</span>
+                {t('subscription.paidAtLabel').split('{time}')[0]}
+                <span style={{ color: '#0f172a', fontWeight: 800 }}>
+                  {currentPlanInfo.paidAt ? new Date(currentPlanInfo.paidAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') : '—'}
+                </span>
+                {t('subscription.paidAtLabel').split('{time}')[1]}
               </p>
               <p style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600, margin: 0 }}>
-                Hết hạn: <span style={{ color: '#0f172a', fontWeight: 800 }}>{currentPlanInfo.expiresAt ? new Date(currentPlanInfo.expiresAt).toLocaleString('vi-VN') : 'Vô thời hạn'}</span>
+                {t('subscription.expiresAtLabel').split('{time}')[0]}
+                <span style={{ color: '#0f172a', fontWeight: 800 }}>
+                  {currentPlanInfo.expiresAt ? new Date(currentPlanInfo.expiresAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') : t('subscription.unlimited')}
+                </span>
+                {t('subscription.expiresAtLabel').split('{time}')[1]}
               </p>
             </div>
           </div>
@@ -993,34 +1030,41 @@ export default function SubscriptionPage() {
             fontWeight: 600,
             fontSize: '0.9rem'
           }}>
-            Chưa có giao dịch nào được lưu. Sau thanh toán hoặc nâng cấp trong ứng dụng, bảng này sẽ được cập nhật.
+            {t('subscription.noTransactions')}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #f1f5f9', textAlign: 'left', color: '#94a3b8', fontWeight: 800 }}>
-                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>Gói</th>
-                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>Thanh toán</th>
-                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>Hết hạn</th>
-                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>Mã GD</th>
-                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>Nguồn</th>
+                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>{t('subscription.tablePlan')}</th>
+                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>{t('subscription.tablePaidAt')}</th>
+                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>{t('subscription.tableExpiresAt')}</th>
+                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>{t('subscription.tableRefCode')}</th>
+                  <th style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}>{t('subscription.tableSource')}</th>
                 </tr>
               </thead>
               <tbody>
                 {paymentHistory.map((row) => (
                   <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9', color: '#334155', fontWeight: 600 }}>
-                    <td style={{ padding: '12px 8px', textTransform: 'capitalize', fontWeight: 800 }}>{row.plan}</td>
-                    <td style={{ padding: '12px 8px' }}>
-                      {row.paid_at ? new Date(row.paid_at).toLocaleString('vi-VN') : '—'}
+                    <td style={{ padding: '12px 8px', textTransform: 'capitalize', fontWeight: 800 }}>
+                      {row.plan === 'free' ? t('subscription.planFreeName') :
+                       row.plan === 'starter' ? t('subscription.planStarterName') :
+                       row.plan === 'creator' ? t('subscription.planCreatorName') :
+                       row.plan === 'pro' ? t('subscription.planProName') :
+                       row.plan === 'scale' ? t('subscription.planScaleName') :
+                       row.plan}
                     </td>
                     <td style={{ padding: '12px 8px' }}>
-                      {row.plan_expires_at ? new Date(row.plan_expires_at).toLocaleString('vi-VN') : '—'}
+                      {row.paid_at ? new Date(row.paid_at).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') : '—'}
+                    </td>
+                    <td style={{ padding: '12px 8px' }}>
+                      {row.plan_expires_at ? new Date(row.plan_expires_at).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') : '—'}
                     </td>
                     <td style={{ padding: '12px 8px', fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all', fontSize: '0.8rem' }}>
                       {row.reference_code || '—'}
                     </td>
-                    <td style={{ padding: '12px 8px' }}>{billingSourceLabelVi(row.source)}</td>
+                    <td style={{ padding: '12px 8px' }}>{getBillingSourceLabel(row.source, t)}</td>
                   </tr>
                 ))}
               </tbody>
