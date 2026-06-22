@@ -714,10 +714,15 @@ func (e *Engine) triggerTelegramAlertOnly(camID primitive.ObjectID, label string
 
 	// ─── LƯU INCIDENT VÀO VECTOR DB ───
 	go func() {
+		eventID := primitive.NewObjectID()
 		incidentText := fmt.Sprintf("Phát hiện sự cố %s tại %s của bệnh nhân %s vào lúc %s.", label, camName, patientName, time.Now().Format("15:04:05 02/01/2006"))
 		
-		// 1. Lưu vào MongoDB collection 'events'
+		// 1. Lưu trữ HLS video cục bộ
+		e.hlsServer.ArchiveIncident(camID.Hex(), eventID.Hex())
+
+		// 3. Lưu vào MongoDB collection 'events'
 		event := bson.M{
+			"_id":              eventID,
 			"user_id":          cameraDoc.UserID,
 			"camera_id":        camID,
 			"camera_name":      camName,
@@ -725,12 +730,15 @@ func (e *Engine) triggerTelegramAlertOnly(camID primitive.ObjectID, label string
 			"confidence_score": conf,
 			"status":           "active",
 			"description":      incidentText,
+			"video_url":        fmt.Sprintf("/archives/%s/stream.m3u8", eventID.Hex()),
+			"cloud_video_url":  "", // Tạm ẩn để nghiên cứu sau
 			"detected_at":      time.Now(),
 			"created_at":       time.Now(),
 		}
 		e.db.Collection("events").InsertOne(context.Background(), event)
 
-		// 2. Lưu vào AI Vector DB
+
+		// 4. Lưu vào AI Vector DB
 		payload := map[string]interface{}{
 			"id":       primitive.NewObjectID().Hex(),
 			"text":     incidentText,

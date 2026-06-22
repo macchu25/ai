@@ -169,6 +169,7 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	r.Static("/audio", "./audio")
+	r.Static("/archives", "./storage/archives")
 	r.GET("/ws", auth.JWTMiddleware(), func(c *gin.Context) { ws.ServeWs(hub, c) })
 
 	// Handlers

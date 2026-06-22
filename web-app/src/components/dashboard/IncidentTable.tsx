@@ -1,6 +1,7 @@
-import React from 'react';
-import { Database, Download, Cloud } from 'lucide-react';
+import React, { useState } from 'react';
+import { Database, Download, Cloud, Play, X } from 'lucide-react';
 import Link from 'next/link';
+import Hls from 'hls.js';
 import { useLanguage } from '@/app/context/LanguageContext';
 
 interface Incident {
@@ -10,6 +11,8 @@ interface Incident {
   conf: number;
   createdAt: string;
   status: string;
+  videoUrl?: string;
+  cloudVideoUrl?: string;
 }
 
 interface IncidentTableProps {
@@ -39,7 +42,8 @@ const getLocalizedType = (typeStr: string, t: any) => {
 };
 
 const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [activeVideo, setActiveVideo] = useState<{ url: string; title: string } | null>(null);
 
   return (
     <section className="history-section">
@@ -93,9 +97,45 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
                 </td>
                 <td className="time-cell">{incident.createdAt}</td>
                 <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 700 }}>
-                    <Cloud size={14} /> Synced
-                  </div>
+                  {incident.videoUrl || incident.cloudVideoUrl ? (
+                    <button
+                      onClick={() => {
+                        const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+                        const backendBase = base.replace('/api/v1', '');
+                        const fullUrl = incident.cloudVideoUrl ? incident.cloudVideoUrl : `${backendBase}${incident.videoUrl}`;
+                        const watchTitle = language === 'vi' 
+                          ? `Video bằng chứng - Sự cố #${incident.id?.substring(0, 8)} (${incident.camera})` 
+                          : `Evidence Video - Incident #${incident.id?.substring(0, 8)} (${incident.camera})`;
+                        
+                        setActiveVideo({
+                          url: fullUrl,
+                          title: watchTitle
+                        });
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        color: 'var(--accent)',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        border: 'none',
+                        background: 'rgba(16, 185, 129, 0.08)',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.15)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)'}
+                    >
+                      <Play size={14} fill="currentColor" /> {language === 'vi' ? 'Xem video' : 'Watch Video'}
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted, #94a3b8)', fontSize: '0.75rem', fontWeight: 600 }}>
+                      <Cloud size={14} /> Synced
+                    </div>
+                  )}
                 </td>
                 <td>
                   <Link 
@@ -142,7 +182,132 @@ const IncidentTable: React.FC<IncidentTableProps> = ({ incidents, onExport }) =>
           </tbody>
         </table>
       </div>
+      {activeVideo && (
+        <VideoPlayerModal 
+          videoUrl={activeVideo.url} 
+          title={activeVideo.title} 
+          onClose={() => setActiveVideo(null)} 
+        />
+      )}
     </section>
+  );
+};
+
+interface VideoPlayerModalProps {
+  videoUrl: string;
+  title: string;
+  onClose: () => void;
+}
+
+const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ videoUrl, title, onClose }) => {
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  React.useEffect(() => {
+    let hls: any = null;
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (Hls.isSupported()) {
+      hls = new Hls({
+        maxMaxBufferLength: 10,
+        enableWorker: true,
+        lowLatencyMode: true,
+      });
+      hls.loadSource(videoUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch((e) => console.log("Auto-play blocked:", e));
+      });
+      hls.on(Hls.Events.ERROR, (event: any, data: any) => {
+        console.error("HLS error:", data);
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Native support in Safari
+      video.src = videoUrl;
+      video.addEventListener('loadedmetadata', () => {
+        video.play().catch((e) => console.log("Auto-play blocked:", e));
+      });
+    }
+
+    return () => {
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, [videoUrl]);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      zIndex: 9999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(8px)',
+      padding: '16px',
+    }}>
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        maxWidth: '800px',
+        borderRadius: '16px',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        background: 'var(--bg-primary, #0c0f17)',
+        padding: '24px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+      }}>
+        <button 
+          onClick={onClose} 
+          style={{
+            position: 'absolute',
+            right: '16px',
+            top: '16px',
+            border: 'none',
+            background: 'rgba(255, 255, 255, 0.05)',
+            color: 'var(--text-muted, #94a3b8)',
+            padding: '8px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.color = '#fff'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.color = 'var(--text-muted, #94a3b8)'; }}
+        >
+          <X size={20} />
+        </button>
+        <h3 style={{
+          margin: '0 0 16px 0',
+          fontSize: '1.25rem',
+          fontWeight: 700,
+          color: '#fff',
+          paddingRight: '40px',
+        }}>{title}</h3>
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          aspectRatio: '16/9',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          background: '#000',
+        }}>
+          <video 
+            ref={videoRef} 
+            controls 
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+            }}
+            playsInline
+          />
+        </div>
+      </div>
+    </div>
   );
 };
 
