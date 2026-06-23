@@ -11,8 +11,9 @@ import (
 
 	"go-backend/internal/auth"
 
-	"github.com/gin-gonic/gin"
 	"go-backend/internal/model"
+
+	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -127,7 +128,7 @@ func (a *API) AddCamera(c *gin.Context) {
 	if cam.ID.IsZero() {
 		cam.ID = primitive.NewObjectID()
 	}
-	
+
 	// Gán camera cho người dùng hiện tại
 	userIDStr, ok := userID.(string)
 	if !ok {
@@ -174,13 +175,13 @@ func (a *API) AddCamera(c *gin.Context) {
 	filter := bson.M{"_id": cam.ID}
 	var existingCam model.Camera
 	err = a.db.Collection("cameras").FindOne(context.Background(), filter).Decode(&existingCam)
-	
+
 	isNewCamera := err != nil // Nếu không tìm thấy thì là camera mới
 
 	// 4. Kiểm tra giới hạn nếu là camera mới
 	if isNewCamera && count >= limit {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Giới hạn gói cước",
+			"error":   "Giới hạn gói cước",
 			"message": fmt.Sprintf("Bạn đã đạt giới hạn tối đa của gói %s (%d camera). Vui lòng nâng cấp để thêm mới.", user.SubscriptionPlan, limit),
 		})
 		return
@@ -239,7 +240,7 @@ func (a *API) DeleteCamera(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ID Camera không hợp lệ"})
 		return
 	}
-	
+
 	// 2. Chuyển đổi ID Người dùng từ Token
 	userIDStr, _ := userID.(string)
 	userObjID, err := primitive.ObjectIDFromHex(userIDStr)
@@ -259,7 +260,7 @@ func (a *API) DeleteCamera(c *gin.Context) {
 
 	var cam model.Camera
 	err = a.db.Collection("cameras").FindOne(context.Background(), filter).Decode(&cam)
-	
+
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			// Thử tìm camera mà không lọc theo user_id để biết lỗi chính xác
@@ -311,10 +312,10 @@ func (a *API) RegisterBridge(c *gin.Context) {
 	filter := bson.M{"user_id": objID, "name": "Cardiac Sync Camera"}
 	update := bson.M{
 		"$set": bson.M{
-			"rtsp_url":    streamURL,
-			"type":        "bridge",
-			"status":      "online",
-			"bridge_url":  payload.URL,
+			"rtsp_url":   streamURL,
+			"type":       "bridge",
+			"status":     "online",
+			"bridge_url": payload.URL,
 		},
 		"$setOnInsert": bson.M{
 			"_id":     primitive.NewObjectID(),
