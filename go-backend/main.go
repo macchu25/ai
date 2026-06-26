@@ -188,6 +188,30 @@ func main() {
 	// Kết quả inference (Python): xác thực bằng X-API-Key trong handler
 	r.POST("/api/v1/ai-result", alertAPI.AIResult)
 
+	r.POST("/api/v1/feedback", func(c *gin.Context) {
+		var req struct {
+			Email   string `json:"email"`
+			Subject string `json:"subject"`
+			Message string `json:"message"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Dữ liệu gửi lên không hợp lệ"})
+			return
+		}
+		if req.Message == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Nội dung phản hồi không được để trống"})
+			return
+		}
+		
+		err := mailService.SendFeedbackEmail(req.Email, req.Subject, req.Message)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể gửi phản hồi. Vui lòng thử lại sau."})
+			return
+		}
+		
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "Gửi phản hồi thành công!"})
+	})
+
 	// 7. Register Private Routes (Yêu cầu JWT)
 	private := r.Group("/api/v1")
 	private.Use(auth.JWTMiddleware())

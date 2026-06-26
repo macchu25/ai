@@ -1,16 +1,43 @@
 import React, { useState } from 'react';
-import { Mail, MessageSquare, Send } from 'lucide-react';
+import { Mail, MessageSquare, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useLanguage } from '@/app/context/LanguageContext';
 
 const FeedbackSection: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [email, setEmail] = useState('');
+  const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const subject = encodeURIComponent(`${t('feedback.title')} - Cardiac Alert`);
-    const body = encodeURIComponent(message);
-    window.location.href = `mailto:daylahuu@gmail.com?subject=${subject}&body=${body}`;
+    setStatus('loading');
+
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+
+    try {
+      const response = await fetch(`${apiBase}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, subject, message }),
+      });
+
+      if (response.ok) {
+        setStatus('success');
+        setEmail('');
+        setSubject('');
+        setMessage('');
+        setTimeout(() => setStatus('idle'), 5000);
+      } else {
+        setStatus('error');
+        setTimeout(() => setStatus('idle'), 5000);
+      }
+    } catch (error) {
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 5000);
+    }
   };
 
   return (
@@ -31,6 +58,9 @@ const FeedbackSection: React.FC = () => {
                   type="email" 
                   placeholder={t('feedback.emailPlaceholder')} 
                   className="feedback-input" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={status === 'loading'}
                 />
              </div>
              <div style={{ position: 'relative' }}>
@@ -39,6 +69,10 @@ const FeedbackSection: React.FC = () => {
                   type="text" 
                   placeholder={t('feedback.subjectPlaceholder')} 
                   className="feedback-input" 
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  required
+                  disabled={status === 'loading'}
                 />
              </div>
           </div>
@@ -51,13 +85,30 @@ const FeedbackSection: React.FC = () => {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               required
+              disabled={status === 'loading'}
             ></textarea>
           </div>
 
-          <button type="submit" className="feedback-submit-btn">
-            <Send size={18} />
-            {t('feedback.submit')}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+            <button type="submit" className="feedback-submit-btn" disabled={status === 'loading'}>
+              <Send size={18} />
+              {status === 'loading' ? (language === 'vi' ? 'Đang gửi...' : 'Sending...') : t('feedback.submit')}
+            </button>
+
+            {status === 'success' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 600 }}>
+                <CheckCircle2 size={20} />
+                <span>{language === 'vi' ? 'Gửi góp ý thành công! Cảm ơn bạn.' : 'Feedback sent successfully! Thank you.'}</span>
+              </div>
+            )}
+
+            {status === 'error' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', fontWeight: 600 }}>
+                <AlertCircle size={20} />
+                <span>{language === 'vi' ? 'Gửi góp ý thất bại. Vui lòng thử lại sau.' : 'Failed to send feedback. Please try again later.'}</span>
+              </div>
+            )}
+          </div>
         </form>
       </div>
 

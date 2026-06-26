@@ -119,3 +119,38 @@ Trân trọng,
 	logger.Log.Info("📧 [OTP EMAIL SENT] To: " + toEmail)
 	return nil
 }
+
+func (s *Service) SendFeedbackEmail(senderEmail, subject, content string) error {
+	if s.email == "" || s.password == "" {
+		logger.Log.Warn("Lưu ý: Không thể gửi email phản hồi do thiếu SMTP_EMAIL hoặc SMTP_PASSWORD")
+		return nil
+	}
+
+	targetEmail := "daylahuu@gmail.com"
+	emailSubject := fmt.Sprintf("[Cardiac Alert - Phản Hồi]: %s", subject)
+	
+	fromLine := senderEmail
+	if fromLine == "" {
+		fromLine = "Khách ẩn danh"
+	}
+
+	body := fmt.Sprintf("Người gửi: %s\nChủ đề: %s\nNội dung:\n%s", fromLine, subject, content)
+
+	msg := []byte(fmt.Sprintf("To: %s\r\n"+
+		"Subject: %s\r\n"+
+		"Content-Type: text/plain; charset=UTF-8\r\n"+
+		"\r\n"+
+		"%s\r\n", targetEmail, emailSubject, body))
+
+	auth := smtp.PlainAuth("", s.email, s.password, s.host)
+	addr := fmt.Sprintf("%s:%s", s.host, s.port)
+	err := smtp.SendMail(addr, auth, s.email, []string{targetEmail}, msg)
+
+	if err != nil {
+		logger.Log.Error("Lỗi gửi email phản hồi: ", err)
+		return err
+	}
+
+	logger.Log.Info("📧 [FEEDBACK EMAIL SENT] From: " + fromLine)
+	return nil
+}

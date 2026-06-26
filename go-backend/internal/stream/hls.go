@@ -3,12 +3,12 @@ package stream
 import (
 	"bytes"
 	"context"
+	"go-backend/internal/logger"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
-	"go-backend/internal/logger"
 )
 
 type HLSServer struct {
@@ -19,7 +19,7 @@ type HLSServer struct {
 func NewHLSServer() (*HLSServer, error) {
 	dir := filepath.Join(".", "tmp", "streams")
 	archiveDir := filepath.Join(".", "storage", "archives")
-	
+
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, err
@@ -28,7 +28,7 @@ func NewHLSServer() (*HLSServer, error) {
 	if err := os.MkdirAll(archiveDir, 0755); err != nil {
 		return nil, err
 	}
-	
+
 	logger.Log.Infof("[HLS] Init Server. Stream: %s | Archive: %s", dir, archiveDir)
 	s := &HLSServer{
 		OutputDir:  dir,
@@ -44,7 +44,9 @@ func (s *HLSServer) StartCleanupWorker() {
 	for range ticker.C {
 		now := time.Now()
 		err := filepath.Walk(s.OutputDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			// Skip directories and recently modified files (last 1 hour)
 			if !info.IsDir() && now.Sub(info.ModTime()) > 1*time.Hour {
 				if filepath.Ext(path) == ".ts" || filepath.Ext(path) == ".m3u8" {
@@ -103,7 +105,7 @@ func (s *HLSServer) StartHLS(ctx context.Context, camID string, rtspURL string) 
 			}
 
 			playlistPath := filepath.Join(camDir, "stream.m3u8")
-			
+
 			var args []string
 			if len(rtspURL) >= 4 && rtspURL[:4] == "http" {
 				if strings.Contains(rtspURL, "m3u8") || strings.Contains(rtspURL, "lechange") || strings.Contains(rtspURL, "easy4ip") {
@@ -160,13 +162,15 @@ func (s *HLSServer) StartHLS(ctx context.Context, camID string, rtspURL string) 
 				ffmpegPath = "./ffmpeg.exe"
 			}
 			cmd := exec.CommandContext(ctx, ffmpegPath, args...)
-			
+
 			var stderr bytes.Buffer
 			cmd.Stderr = &stderr
-			
+
 			err := cmd.Run()
-			
-			if ctx.Err() != nil { return }
+
+			if ctx.Err() != nil {
+				return
+			}
 			if err != nil {
 				logger.Log.Errorf("[HLS] FFMPEG %s lỗi: %v. Stderr: %s. Restart in 5s...", camID, err, stderr.String())
 				time.Sleep(5 * time.Second)

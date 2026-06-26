@@ -715,18 +715,17 @@ if __name__ == "__main__":
             time.sleep(0.03)
             continue
 
+        try:
+            frame = cv2.resize(frame, (1280, 720))
+        except:
+            continue
+
         frame_count += 1
         
         # ── TỐI ƯU HÓA: Chỉ chạy AI mỗi 3 frame để Video chạy mượt 30 FPS ──
         if frame_count % 3 == 0:
-            try:
-                small_frame = cv2.resize(frame, (1280, 720))
-            except Exception as e:
-                print(f"[WARN] Failed to resize frame: {e}")
-                continue
-            
             t_loop_start = time.perf_counter()
-            results = detector.update(small_frame)
+            results = detector.update(frame)
             t_loop_end = time.perf_counter()
 
             loop_time_ms = (t_loop_end - t_loop_start) * 1000
@@ -741,10 +740,10 @@ if __name__ == "__main__":
                 
                 if is_alert and label != "waiting":
                     any_alert_this_frame = True
-                    frame_copy = small_frame.copy() if small_frame is not None else None
+                    frame_copy = frame.copy()
                     alert_label = f"Person {pid} Fall"
                     
-                    skeleton_frame = small_frame.copy() if small_frame is not None else None
+                    skeleton_frame = frame.copy()
                     if skeleton_frame is not None and landmarks is not None:
                         draw_landmarks(skeleton_frame, landmarks)
                         h, w, _ = skeleton_frame.shape
@@ -823,11 +822,8 @@ if __name__ == "__main__":
 
 
 
-        # Lưu bản sao hình ảnh hiện tại cho Web xem
-        try:
-            # Thu nhỏ ảnh xuống 1280x720 để giảm tải CPU khi mã hóa JPEG truyền về Web
-            global_frame = cv2.resize(frame, (1280, 720))
-        except: pass
+        # frame đã được chuẩn hóa ở kích thước 1280x720 từ đầu vòng lặp nên không cần resize lại
+        global_frame = frame
 
         if not args.headless:
             cv2.imshow("Fall Detection - Hybrid", frame)

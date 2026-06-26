@@ -96,13 +96,19 @@ func (a *API) GetCameras(c *gin.Context) {
 		UserID   primitive.ObjectID `json:"user_id"`
 	}
 	result := make([]CameraResponse, 0, len(rawCams))
+	isAIRequest := expectedKey != "" && apiKey == expectedKey
 	for _, cam := range rawCams {
 		decrypted, _ := auth.Decrypt(cam.RTSPURL)
-		masked := auth.MaskRTSPURL(decrypted)
+		var finalURL string
+		if isAIRequest {
+			finalURL = decrypted
+		} else {
+			finalURL = auth.MaskRTSPURL(decrypted)
+		}
 		result = append(result, CameraResponse{
 			ID:       cam.ID,
 			Name:     cam.Name,
-			RTSPURL:  masked,
+			RTSPURL:  finalURL,
 			Location: cam.Location,
 			Status:   cam.Status,
 			UserID:   cam.UserID,

@@ -97,3 +97,17 @@ class DeepPhys(nn.Module):
         out = self.fc(out_pooled)
         return out
 
+class PainDetectionModel(nn.Module):
+    def __init__(self, input_size=6, num_classes=1):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_size, 32),
+            nn.ReLU(),
+            nn.Linear(32, 16),
+            nn.ReLU(),
+            nn.Linear(16, num_classes),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        return self.net(x)

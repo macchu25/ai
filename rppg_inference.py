@@ -365,7 +365,8 @@ class RPPGDetector:
 
 
 class PainDetector:
-    def __init__(self):
+    def __init__(self, model):
+        self.model = model
         self.pain_score = 0.0
         self.pain_history = deque(maxlen=30)
         self.face_mesh = None
@@ -376,90 +377,87 @@ class PainDetector:
             self.mp_face_mesh = mp.solutions.face_mesh
             self.face_mesh = self.mp_face_mesh.FaceMesh(
                 max_num_faces=1,
-                refine_landmarks=False,
+                refine_landmarks=True, # Enable 478 landmarks
                 min_detection_confidence=0.5,
                 min_tracking_confidence=0.5
             )
-            print("-> Mediapipe Face Mesh successfully initialized for Pain Detection.")
+            print("-> Mediapipe Face Mesh (478 pts) successfully initialized for AI Pain Detection.")
         except Exception as e:
             self.init_failed = True
             print(f"! Failed to initialize Mediapipe Face Mesh: {e}. Falling back to motion-based pain scoring.")
             self.prev_gray = None
+
+    def _calculate_aus(self, landmarks):
+        """
+        Trích xuất 6 đặc trưng tương ứng với AU4, AU6, AU7, AU9, AU10, AU43 từ 478 landmarks.
+        Trả về: list [au4, au6, au7, au9, au10, au43] đã chuẩn hóa.
+        """
+        def get_pt(idx):
+            pt = landmarks[idx]
+            return np.array([pt.x, pt.y, pt.z])
+
+        # Tỉ lệ khuôn mặt làm chuẩn (khoảng cách 2 mắt)
+        face_scale = np.linalg.norm(get_pt(33) - get_pt(263))
+        if face_scale < 1e-6: face_scale = 1.0
+
+        # AU4: Brow Lowerer (Khoảng cách giữa 2 đầu lông mày chân thực) -> landmark 55 và 285
+        au4 = 1.0 - (np.linalg.norm(get_pt(55) - get_pt(285)) / (0.25 * face_scale))
+
+        # AU6: Cheek Raiser (Khoảng cách mi dưới và gò má) -> landmark 145 và 123
+        au6 = 1.0 - (np.linalg.norm(get_pt(145) - get_pt(123)) / (0.15 * face_scale))
+
+        # AU7: Lid Tightener (Độ mở mắt hẹp - squinting) -> 159-145
+        au7 = 1.0 - (np.linalg.norm(get_pt(159) - get_pt(145)) / (0.10 * face_scale))
+
+        # AU9: Nose Wrinkler (Độ co cánh mũi) -> 196-5
+        au9 = 1.0 - (np.linalg.norm(get_pt(196) - get_pt(5)) / (0.05 * face_scale))
+
+        # AU10: Upper Lip Raiser (Độ nhô môi trên) -> 164-0
+        au10 = 1.0 - (np.linalg.norm(get_pt(164) - get_pt(0)) / (0.05 * face_scale))
+
+        # AU43: Eyes Closed (EAR - Eye Aspect Ratio)
+        def eye_aspect_ratio(p1, p2, p3, p4, p5, p6):
+            vert1 = np.linalg.norm(get_pt(p2) - get_pt(p6))
+            vert2 = np.linalg.norm(get_pt(p3) - get_pt(p5))
+            horiz = np.linalg.norm(get_pt(p1) - get_pt(p4))
+            return (vert1 + vert2) / (2.0 * horiz)
+        
+        left_ear = eye_aspect_ratio(33, 160, 158, 133, 153, 144)
+        right_ear = eye_aspect_ratio(362, 385, 387, 263, 373, 380)
+        ear = (left_ear + right_ear) / 2.0
+        au43 = 1.0 - (ear / 0.35) # Nếu ear nhỏ (mắt nhắm), au43 sẽ lớn
+
+        # Kẹp giá trị trong khoảng [0, 1]
+        aus = [max(0, min(1, v)) for v in [au4, au6, au7, au9, au10, au43]]
+        return aus
         
     def update(self, crop):
         if crop is None:
             return 0.0
         
-        # If Mediapipe initialized successfully, use landmark analysis
-        if self.face_mesh is not None and not self.init_failed:
+        # 1. AI Logic: Sử dụng mô hình Deep Learning trên AU features
+        if self.face_mesh is not None and self.model is not None:
             try:
-                # process face landmarks (crop is already RGB)
                 results = self.face_mesh.process(crop)
                 if results.multi_face_landmarks:
                     landmarks = results.multi_face_landmarks[0].landmark
                     
-                    # Helper to get 3D coords as numpy array
-                    def get_pt(idx):
-                        pt = landmarks[idx]
-                        return np.array([pt.x, pt.y, pt.z])
+                    # Bước A: Trích xuất 6 Action Units (AUs)
+                    aus = self._calculate_aus(landmarks)
                     
-                    # Reference scale: distance between outer eye corners (33 and 263)
-                    p33 = get_pt(33)
-                    p263 = get_pt(263)
-                    face_scale = np.linalg.norm(p33 - p263)
-                    if face_scale < 1e-5:
-                        face_scale = 1.0
-                        
-                    # 1. Brow Furrowing / Squeezing (distance between inner eyebrows: 55 and 285)
-                    p55 = get_pt(55)
-                    p285 = get_pt(285)
-                    brow_dist = np.linalg.norm(p55 - p285) / face_scale
+                    # Bước B: Inference bằng mô hình PyTorch
+                    input_tensor = torch.tensor([aus], dtype=torch.float32)
+                    with torch.no_grad():
+                        pred = self.model(input_tensor).item() # Giá trị 0-1
                     
-                    # Furrowing score increases as eyebrows get closer than baseline (~0.23)
-                    brow_score = max(0.0, (0.23 - brow_dist) / 0.07)
-                    
-                    # 2. Eye Squinting (Lid tightening)
-                    # Left EAR: height (159 to 145) / width (33 to 133)
-                    p159 = get_pt(159)
-                    p145 = get_pt(145)
-                    p133 = get_pt(133)
-                    left_ear = np.linalg.norm(p159 - p145) / max(1e-5, np.linalg.norm(p33 - p133))
-                    
-                    # Right EAR: height (386 to 374) / width (362 to 263)
-                    p386 = get_pt(386)
-                    p374 = get_pt(374)
-                    p362 = get_pt(362)
-                    right_ear = np.linalg.norm(p386 - p374) / max(1e-5, np.linalg.norm(p362 - p263))
-                    
-                    avg_ear = (left_ear + right_ear) / 2.0
-                    # Squint score increases as eyes close/tighten below baseline (~0.28)
-                    squint_score = max(0.0, (0.28 - avg_ear) / 0.16)
-                    
-                    # 3. Mouth Grimacing (opening / stretching: height 13 to 14 / width 78 to 308)
-                    p13 = get_pt(13)
-                    p14 = get_pt(14)
-                    p78 = get_pt(78)
-                    p308 = get_pt(308)
-                    mar = np.linalg.norm(p13 - p14) / max(1e-5, np.linalg.norm(p78 - p308))
-                    
-                    # Mouth score increases as mouth stretches open/tense
-                    mouth_score = max(0.0, (mar - 0.08) / 0.28)
-                    
-                    # Combine metrics: 50% Brow Furrow, 30% Eye Squint, 20% Mouth grimace
-                    pain_metric = 0.5 * brow_score + 0.3 * squint_score + 0.2 * mouth_score
-                    
-                    # Convert to 0.0 - 10.0 range
-                    raw_score = pain_metric * 10.0
-                    
-                    # Add tiny baseline fluctuation for natural look (0.1 - 0.3) when resting
-                    raw_score += np.random.uniform(-0.1, 0.1)
-                    raw_score = max(0.0, min(10.0, raw_score))
+                    # Quy đổi ra thang điểm 10 (theo yêu cầu hệ thống cũ)
+                    raw_score = pred * 10.0
                     
                     self.pain_history.append(raw_score)
                     self.pain_score = round(float(np.median(list(self.pain_history))), 1)
                     return self.pain_score
-            except Exception:
-                # Landmark extraction failed, fall back to motion proxy
+            except Exception as e:
+                print(f"[PainAI] Inference error: {e}")
                 pass
 
         # Fallback to Motion-Based Grimace Proxy if Mediapipe fails/not loaded
@@ -613,18 +611,25 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"! Failed to automatically resolve Camera ID: {e}")
 
-    # Load Model
-    print("-> Loading rPPG Model architecture...")
-    from models.model_def import DeepPhys
-    model = DeepPhys()
+    # Load Pain Model
+    print("-> Loading Pain Model architecture...")
+    from models.model_def import DeepPhys, PainDetectionModel
+    rppg_model = DeepPhys()
+    pain_model = PainDetectionModel(input_size=6)
     
     print("-> Loading weights from best_model_rppg.pth...")
-    model.load_state_dict(torch.load("best_model_rppg.pth", map_location="cpu"))
-    model.eval()
-    print("-> Model ready.")
+    rppg_model.load_state_dict(torch.load("best_model_rppg.pth", map_location="cpu"))
+    rppg_model.eval()
+
+    print("-> Loading weights from best_model_pain.pth...")
+    pain_model.load_state_dict(torch.load("best_model_pain.pth", map_location="cpu"))
+    pain_model.eval()
+    
+    print("-> All Models ready.")
 
     # Create Detector
-    detector = RPPGDetector(model)
+    detector = RPPGDetector(rppg_model)
+    pain_detector = PainDetector(pain_model)
 
     # Threaded Stream Reader
     class VideoStream:
