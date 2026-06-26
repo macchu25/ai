@@ -97,17 +97,62 @@ class DeepPhys(nn.Module):
         out = self.fc(out_pooled)
         return out
 
+class GCNConvMock(nn.Module):
+    def __init__(self, in_features, out_features):
+        super().__init__()
+        self.lin = nn.Linear(in_features, out_features, bias=False)
+        self.bias = nn.Parameter(torch.zeros(out_features))
+
+    def forward(self, x):
+        return self.lin(x) + self.bias
+
 class PainDetectionModel(nn.Module):
     def __init__(self, input_size=6, num_classes=1):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_size, 32),
+        self.conv1 = GCNConvMock(1, 64)
+        self.bn1 = nn.BatchNorm1d(64)
+        self.conv2 = GCNConvMock(64, 64)
+        self.bn2 = nn.BatchNorm1d(64)
+        self.conv3 = GCNConvMock(64, 64)
+        self.bn3 = nn.BatchNorm1d(64)
+        
+        self.reg_head = nn.Sequential(
+            nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(32, 16),
+            nn.Linear(32, 1),
+            nn.Sigmoid()
+        )
+        
+        self.cls_head = nn.Sequential(
+            nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(16, num_classes),
+            nn.Linear(32, 1),
             nn.Sigmoid()
         )
 
     def forward(self, x):
-        return self.net(x)
+        if x.dim() == 2:
+            x = x.unsqueeze(-1) # [batch, 6, 1]
+        
+        x = self.conv1(x) # [batch, 6, 64]
+        x = x.transpose(1, 2) # [batch, 64, 6]
+        x = self.bn1(x)
+        x = x.transpose(1, 2) # [batch, 6, 64]
+        x = torch.relu(x)
+        
+        x = self.conv2(x)
+        x = x.transpose(1, 2)
+        x = self.bn2(x)
+        x = x.transpose(1, 2)
+        x = torch.relu(x)
+        
+        x = self.conv3(x)
+        x = x.transpose(1, 2)
+        x = self.bn3(x)
+        x = x.transpose(1, 2)
+        x = torch.relu(x)
+        
+        x = x.mean(dim=1) # [batch, 64]
+        
+        reg_out = self.reg_head(x)
+        return reg_out

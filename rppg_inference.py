@@ -249,7 +249,7 @@ class RPPGDetector:
             if len(self.bvp_buffer) >= self.fps * 8:  # At least 8 seconds of data
                 self.calculate_heart_rate()
                 
-        if not rppg_active:
+        if not rppg_active or self.last_bbox is None:
             self.heart_rate = 0.0
             self.respiration_rate = 0.0
             self.bvp_buffer.clear()
@@ -450,8 +450,8 @@ class PainDetector:
                     with torch.no_grad():
                         pred = self.model(input_tensor).item() # Giá trị 0-1
                     
-                    # Quy đổi ra thang điểm 10 (theo yêu cầu hệ thống cũ)
-                    raw_score = pred * 10.0
+                    # Quy đổi ra thang điểm 6 chuẩn y tế (Faces Pain Scale)
+                    raw_score = pred * 6.0
                     
                     self.pain_history.append(raw_score)
                     self.pain_score = round(float(np.median(list(self.pain_history))), 1)
@@ -468,9 +468,10 @@ class PainDetector:
             diff_val = np.mean(diff)
         self.prev_gray = gray.copy()
         
-        raw_score = 0.4 + min(diff_val * 0.4, 8.0)
-        raw_score += np.random.uniform(-0.2, 0.2)
-        raw_score = max(0.0, min(10.0, raw_score))
+        # Motion fallback scaled to 6
+        raw_score = 0.24 + min(diff_val * 0.24, 4.8)
+        raw_score += np.random.uniform(-0.1, 0.1)
+        raw_score = max(0.0, min(6.0, raw_score))
         
         self.pain_history.append(raw_score)
         self.pain_score = round(float(np.median(list(self.pain_history))), 1)
@@ -565,9 +566,9 @@ def draw_medical_hud(frame, hr, rr, pain, fps, rppg_active, pain_active, lightin
     # 2. PAIN (Yellow/Red)
     if pain_active:
         pain_color = (0, 255, 255)  # Yellow
-        if pain > 6.0:
-            pain_color = (0, 0, 255)  # Red
-        pain_str = f"PAIN: {pain:.1f}/10"
+        if pain > 3.5:
+            pain_color = (0, 0, 255)  # Red for severe pain
+        pain_str = f"PAIN: {pain:.1f}/6"
         (text_w, text_h), _ = cv2.getTextSize(pain_str, cv2.FONT_HERSHEY_SIMPLEX, 0.45, 1)
         x_start -= text_w + 20
         cv2.putText(frame, pain_str, (x_start, 40),
@@ -754,8 +755,8 @@ if __name__ == "__main__":
     except ImportError:
         pass
 
-    # Instantiate PainDetector
-    pain_detector = PainDetector()
+    # Duplicate instantiation of pain_detector removed (already instantiated on line 632)
+    pass
 
     # Push to Go function for Vitals
     def push_to_go(hr_val, rr_val):
