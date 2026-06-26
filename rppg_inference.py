@@ -292,7 +292,20 @@ class RPPGDetector:
         valid_idx = np.where((freqs >= 0.8) & (freqs <= 2.5))[0]
         
         if len(valid_idx) > 0:
-            peak_idx = valid_idx[np.argmax(fft_vals[valid_idx])]
+            # Thuật toán lọc đỉnh tần số thông minh (Historically-weighted Frequency Tracking)
+            # Tăng độ lệch chuẩn (sigma) để cho phép phản ứng nhanh khi vận động mạnh
+            prior_center = self.heart_rate if self.heart_rate > 0.0 else 72.0
+            sigma = (25.0 / 60.0) if self.heart_rate > 0.0 else (35.0 / 60.0)
+            
+            # Tính trọng số Gaussian cho từng tần số hợp lệ
+            prev_freq = prior_center / 60.0
+            freqs_valid = freqs[valid_idx]
+            weights = np.exp(-((freqs_valid - prev_freq) ** 2) / (2 * (sigma ** 2)))
+            
+            # Nhân trọng số để ưu tiên dải nhịp tim gần lịch sử / nhịp sinh lý người bình thường
+            weighted_fft = fft_vals[valid_idx] * weights
+            
+            peak_idx = valid_idx[np.argmax(weighted_fft)]
             raw_hr = freqs[peak_idx] * 60.0
             
             # 4. Post-processing smoothing
@@ -371,6 +384,7 @@ class PainDetector:
         self.pain_history = deque(maxlen=30)
         self.face_mesh = None
         self.init_failed = False
+        self.simulated_pain_until = 0.0
         
         try:
             import mediapipe as mp
@@ -435,6 +449,15 @@ class PainDetector:
         if crop is None:
             return 0.0
         
+        # Check if pain simulation is active
+        import time as pytime
+        if getattr(self, 'simulated_pain_until', 0.0) > pytime.time():
+            raw_score = 4.8 + np.random.uniform(-0.2, 0.2)
+            raw_score = max(0.0, min(6.0, raw_score))
+            self.pain_history.append(raw_score)
+            self.pain_score = round(float(np.median(list(self.pain_history))), 1)
+            return self.pain_score
+        
         # 1. AI Logic: Sử dụng mô hình Deep Learning trên AU features
         if self.face_mesh is not None and self.model is not None:
             try:
@@ -468,8 +491,11 @@ class PainDetector:
             diff_val = np.mean(diff)
         self.prev_gray = gray.copy()
         
-        # Motion fallback scaled to 6
-        raw_score = 0.24 + min(diff_val * 0.24, 4.8)
+        # Trừ đi nhiễu nền camera (noise threshold khoảng 0.9) để ổn định khi ngồi yên
+        stable_diff = max(0.0, diff_val - 0.9)
+        
+        # Motion fallback scaled to 6 (Sử dụng stable_diff để tránh nhảy số khống)
+        raw_score = 0.20 + min(stable_diff * 2.2, 5.8)
         raw_score += np.random.uniform(-0.1, 0.1)
         raw_score = max(0.0, min(6.0, raw_score))
         
@@ -900,8 +926,12 @@ if __name__ == "__main__":
         
         if not args.headless:
             cv2.imshow("Remote Heart Rate Monitor (rPPG)", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
                 break
+            elif key == ord('p'):
+                print("-> [SIMULATION] Keyboard 'p' pressed. Simulating high pain (4.8/6) for 5 seconds.")
+                pain_detector.simulated_pain_until = time.time() + 5.0
         else:
             time.sleep(0.03)
             

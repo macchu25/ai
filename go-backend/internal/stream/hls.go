@@ -139,14 +139,17 @@ func (s *HLSServer) StartHLS(ctx context.Context, camID string, rtspURL string) 
 					}
 				}
 			} else {
-				// Cấu hình mặc định cho camera RTSP (Dùng -c:v copy để không transcode, giảm 99% CPU và triệt tiêu độ trễ)
+				// Cấu hình mặc định cho camera RTSP (Transcode sang H.264 để tương thích 100% với trình duyệt Web/hls.js)
 				args = []string{
 					"-y",
 					"-rtsp_transport", "tcp",
 					"-fflags", "nobuffer",
 					"-flags", "low_delay",
 					"-i", rtspURL,
-					"-c:v", "copy",
+					"-c:v", "libx264",
+					"-preset", "ultrafast",
+					"-tune", "zerolatency",
+					"-b:v", "800k",
 					"-an", // Tắt âm thanh để tối ưu dung lượng phân đoạn HLS và giảm tải truyền tải
 					"-hls_time", "1",
 					"-hls_list_size", "5",
